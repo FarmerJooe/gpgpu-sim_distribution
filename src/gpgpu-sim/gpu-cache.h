@@ -1002,6 +1002,10 @@ class tag_array {
 
   typedef tr1_hash_map<new_addr_type, unsigned> line_table;
   line_table pending_lines;
+
+  friend class basline_cache;
+  friend class l2_cache;
+  friend class sub_mee;
 };
 
 class mshr_table {
@@ -1436,6 +1440,10 @@ class baseline_cache : public cache_t {
   };
 
   bandwidth_management m_bandwidth_management;
+
+  friend class l2_cache;
+  friend class data_cache;
+  friend class sub_mee;
 };
 
 /// Read only cache

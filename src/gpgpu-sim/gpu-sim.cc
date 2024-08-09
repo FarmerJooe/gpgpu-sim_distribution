@@ -237,6 +237,12 @@ void memory_config::reg_options(class OptionParser *opp) {
                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                          "alloc>,<mshr>:<N>:<merge>,<mq>}",
                          "64:128:8,L:B:m:N,A:16:4,4");
+  option_parser_register(opp, "-gpgpu_cache:dmeta", OPT_CSTR,
+                         &m_META_config.m_config_string,
+                         "unified banked META data cache config "
+                         " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
+                         "alloc>,<mshr>:<N>:<merge>,<mq>}",
+                         "64:128:8,L:B:m:N,A:16:4,4");
   option_parser_register(opp, "-gpgpu_cache:dl2_texture_only", OPT_BOOL,
                          &m_L2_texure_only, "L2 cache used for texture only",
                          "1");
@@ -2024,7 +2030,7 @@ void gpgpu_sim::cycle() {
         if (m_memory_config->m_L2_config.get_num_lines()) {
           int dlc = 0;
           for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
-            dlc = m_memory_sub_partition[i]->flushL2();
+            dlc = m_memory_sub_partition[i]->flushL2();//TODO
             assert(dlc == 0);  // TODO: need to model actual writes to DRAM here
             printf("Dirty lines flushed from L2 %d is %d\n", i, dlc);
           }

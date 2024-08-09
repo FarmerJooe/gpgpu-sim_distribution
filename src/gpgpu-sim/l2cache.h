@@ -32,6 +32,7 @@
 
 #include "../abstract_hardware_model.h"
 #include "dram.h"
+#include "gpu-cache.h"
 
 #include <list>
 #include <queue>
@@ -154,6 +155,8 @@ class memory_partition_unit {
   std::list<dram_delay_t> m_dram_latency_queue;
 
   class gpgpu_sim *m_gpu;
+
+  friend class sub_mee;
 };
 
 class memory_sub_partition {
@@ -178,14 +181,30 @@ class memory_sub_partition {
   unsigned flushL2();
   unsigned invalidateL2();
 
-  // interface to L2_dram_queue
-  bool L2_dram_queue_empty() const;
-  class mem_fetch *L2_dram_queue_top() const;
-  void L2_dram_queue_pop();
+  // interface to L2_mee_queue
+  bool L2_mee_queue_empty() const;
+  class mem_fetch *L2_mee_queue_top() const;
+  void L2_mee_queue_pop();
 
-  // interface to dram_L2_queue
-  bool dram_L2_queue_full() const;
-  void dram_L2_queue_push(class mem_fetch *mf);
+  // interface to mee_dram_queue
+  bool mee_dram_queue_full() const;
+  void mee_dram_queue_push(class mem_fetch *mf);
+
+  bool mee_dram_queue_empty() const;
+  class mem_fetch *mee_dram_queue_top() const;
+  void mee_dram_queue_pop();
+
+  // interface to dram_mee_queue
+  bool dram_mee_queue_full() const;
+  void dram_mee_queue_push(class mem_fetch *mf);
+
+  bool dram_mee_queue_empty() const;
+  class mem_fetch *dram_mee_queue_top() const;
+  void dram_mee_queue_pop();
+
+  // interface to mee_L2_queue
+  bool mee_L2_queue_full() const;
+  void mee_L2_queue_push(class mem_fetch *mf);
 
   void visualizer_print(gzFile visualizer_file);
   void print_cache_stat(unsigned &accesses, unsigned &misses) const;
@@ -203,13 +222,20 @@ class memory_sub_partition {
     m_L2cache->force_tag_access(addr, m_memcpy_cycle_offset + time, mask);
     m_memcpy_cycle_offset += 1;
   }
-
+  // class l2_cache *m_CTRcache;
+  std::vector<mem_fetch *> breakdown_request_to_sector_requests(mem_fetch *mf);
+  
  private:
   // data
   unsigned m_id;  //< the global sub partition ID
   const memory_config *m_config;
   class l2_cache *m_L2cache;
   class L2interface *m_L2interface;
+  class l2_cache *m_CTRcache;
+  class l2_cache *m_MACcache;
+  class l2_cache *m_BMTcache;
+  class sub_mee *m_sub_mee;
+  class metainterface *m_metainterface;
   class gpgpu_sim *m_gpu;
   partition_mf_allocator *m_mf_allocator;
 
@@ -222,8 +248,10 @@ class memory_sub_partition {
 
   // these are various FIFOs between units within a memory partition
   fifo_pipeline<mem_fetch> *m_icnt_L2_queue;
-  fifo_pipeline<mem_fetch> *m_L2_dram_queue;
-  fifo_pipeline<mem_fetch> *m_dram_L2_queue;
+  fifo_pipeline<mem_fetch> *m_L2_mee_queue;
+  fifo_pipeline<mem_fetch> *m_mee_dram_queue; 
+  fifo_pipeline<mem_fetch> *m_dram_mee_queue; 
+  fifo_pipeline<mem_fetch> *m_mee_L2_queue;
   fifo_pipeline<mem_fetch> *m_L2_icnt_queue;  // L2 cache hit response queue
 
   class mem_fetch *L2dramout;
@@ -234,8 +262,9 @@ class memory_sub_partition {
   std::set<mem_fetch *> m_request_tracker;
 
   friend class L2interface;
+  friend class metainterface;
 
-  std::vector<mem_fetch *> breakdown_request_to_sector_requests(mem_fetch *mf);
+  // std::vector<mem_fetch *> breakdown_request_to_sector_requests(mem_fetch *mf);
 
   // This is a cycle offset that has to be applied to the l2 accesses to account
   // for the cudamemcpy read/writes. We want GPGPU-Sim to only count cycles for
@@ -252,11 +281,29 @@ class L2interface : public mem_fetch_interface {
   virtual ~L2interface() {}
   virtual bool full(unsigned size, bool write) const {
     // assume read and write packets all same size
-    return m_unit->m_L2_dram_queue->full();
+    return m_unit->m_L2_mee_queue->full();
   }
   virtual void push(mem_fetch *mf) {
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
-    m_unit->m_L2_dram_queue->push(mf);
+    m_unit->m_L2_mee_queue->push(mf);
+    // printf("l2 to mee access type: %d\n",mf->get_access_type());
+  }
+
+ private:
+  memory_sub_partition *m_unit;
+};
+
+class metainterface : public mem_fetch_interface {
+ public:
+  metainterface(memory_sub_partition *unit) { m_unit = unit; }
+  virtual ~metainterface() {}
+  virtual bool full(unsigned size, bool write) const {
+    // assume read and write packets all same size
+    return m_unit->m_mee_dram_queue->full();
+  }
+  virtual void push(mem_fetch *mf) {
+    mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
+    m_unit->m_mee_dram_queue->push(mf);
   }
 
  private:
