@@ -82,6 +82,34 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
       m_gpu(gpu) {
   m_dram = new dram_t(m_id, m_config, m_stats, this, gpu);
 
+  char L2c_name[32];
+  snprintf(L2c_name, 32, "L2_bank_%03d", m_id);
+  m_metainterface = new metainterface(this);
+  m_mf_allocator = new partition_mf_allocator(config);
+
+  if (!m_config->m_L2_config.disabled()) {
+    m_CTRcache =
+        new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
+                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+    m_MACcache =
+        new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
+                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+    m_BMTcache =
+        new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
+                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+  }
+
+  unsigned int icnt_L2;
+  unsigned int L2_dram;
+  unsigned int dram_L2;
+  unsigned int L2_icnt;
+  sscanf(m_config->gpgpu_L2_queue_config, "%u:%u:%u:%u", &icnt_L2, &L2_dram,
+         &dram_L2, &L2_icnt);
+  m_mee_dram_queue = new fifo_pipeline<mem_fetch>("mee-to-dram", 0, L2_dram);
+  m_dram_mee_queue = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, dram_L2);
+
+  m_mee = new mee(this, m_CTRcache, m_MACcache, m_BMTcache, m_config, m_gpu);
+  
   m_sub_partition = new memory_sub_partition
       *[m_config->m_n_sub_partition_per_memory_channel];
   for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
@@ -108,6 +136,9 @@ void memory_partition_unit::handle_memcpy_to_gpu(
 
 memory_partition_unit::~memory_partition_unit() {
   delete m_dram;
+  delete m_CTRcache;
+  delete m_metainterface;
+  delete m_mee;
   for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
        p++) {
     delete m_sub_partition[p];
@@ -197,10 +228,12 @@ bool memory_partition_unit::busy() const {
 }
 
 void memory_partition_unit::cache_cycle(unsigned cycle) {
-  for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
-       p++) {
-    m_sub_partition[p]->cache_cycle(cycle);
-  }
+  // for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
+  //      p++) {
+  //   m_sub_partition[p]->cache_cycle(cycle);
+  // }
+  // printf("memory_partition_unit cycle: %d\n", cycle);
+  m_mee->simple_cycle(cycle);
 }
 
 void memory_partition_unit::visualizer_print(gzFile visualizer_file) const {
@@ -214,7 +247,7 @@ void memory_partition_unit::visualizer_print(gzFile visualizer_file) const {
 // determine whether a given subpartition can issue to DRAM
 bool memory_partition_unit::can_issue_to_dram(int inner_sub_partition_id) {
   int spid = inner_sub_partition_id;
-  bool sub_partition_contention = m_sub_partition[spid]->dram_mee_queue_full();
+  bool sub_partition_contention = dram_mee_queue_full();
   bool has_dram_resource = m_arbitration_metadata.has_credits(spid);
 
   MEMPART_DPRINTF(
@@ -245,12 +278,12 @@ void memory_partition_unit::simple_dram_model_cycle() {
       unsigned dest_global_spid = mf_return->get_sub_partition_id();
       int dest_spid = global_sub_partition_id_to_local_id(dest_global_spid);
       assert(m_sub_partition[dest_spid]->get_id() == dest_global_spid);
-      if (!m_sub_partition[dest_spid]->dram_mee_queue_full()) {
+      if (!dram_mee_queue_full()) {
         if (mf_return->get_access_type() == L1_WRBK_ACC) {
           m_sub_partition[dest_spid]->set_done(mf_return);
           delete mf_return;
         } else {
-          m_sub_partition[dest_spid]->dram_mee_queue_push(mf_return);
+          dram_mee_queue_push(mf_return);
           mf_return->set_status(
               IN_PARTITION_DRAM_TO_L2_QUEUE,
               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -309,12 +342,12 @@ void memory_partition_unit::dram_cycle() {
     unsigned dest_global_spid = mf_return->get_sub_partition_id();
     int dest_spid = global_sub_partition_id_to_local_id(dest_global_spid);
     assert(m_sub_partition[dest_spid]->get_id() == dest_global_spid);
-    if (!m_sub_partition[dest_spid]->dram_mee_queue_full()) {
+    if (!dram_mee_queue_full()) {
       if (mf_return->get_access_type() == L1_WRBK_ACC) {
         m_sub_partition[dest_spid]->set_done(mf_return);
         delete mf_return;
       } else {
-        m_sub_partition[dest_spid]->dram_mee_queue_push(mf_return);
+        dram_mee_queue_push(mf_return);
         mf_return->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,
                               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         m_arbitration_metadata.return_credit(dest_spid);
@@ -340,12 +373,15 @@ void memory_partition_unit::dram_cycle() {
        p++) {
     int spid = (p + last_issued_partition + 1) %
                m_config->m_n_sub_partition_per_memory_channel;
-    if (!m_sub_partition[spid]->mee_dram_queue_empty() &&
+    if (!mee_dram_queue_empty() &&
         can_issue_to_dram(spid)) {
-      mem_fetch *mf = m_sub_partition[spid]->mee_dram_queue_top();
+      mem_fetch *mf = mee_dram_queue_top();
+
+      if (global_sub_partition_id_to_local_id(mf->get_sub_partition_id()) != spid) continue;
+
       if (m_dram->full(mf->is_write())) break;
 
-      m_sub_partition[spid]->mee_dram_queue_pop();
+      mee_dram_queue_pop();
       MEMPART_DPRINTF(
           "Issue mem_fetch request %p from sub partition %d to dram\n", mf,
           spid);
@@ -435,25 +471,25 @@ memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,
   char L2c_name[32];
   snprintf(L2c_name, 32, "L2_bank_%03d", m_id);
   m_L2interface = new L2interface(this);
-  m_metainterface = new metainterface(this);
+  // m_metainterface = new metainterface(this);
   m_mf_allocator = new partition_mf_allocator(config);
 
   if (!m_config->m_L2_config.disabled()) {
     m_L2cache =
         new l2_cache(L2c_name, m_config->m_L2_config, -1, -1, m_L2interface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
-    m_CTRcache =
-        new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
-                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
-    m_MACcache =
-        new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
-                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
-    m_BMTcache =
-        new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
-                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+    // m_CTRcache =
+    //     new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
+    //                  m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+    // m_MACcache =
+    //     new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
+    //                  m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+    // m_BMTcache =
+    //     new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
+    //                  m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
   }
 
-  m_sub_mee = new sub_mee(this, m_CTRcache, m_MACcache, m_BMTcache, m_config, m_gpu);
+  // m_sub_mee = new sub_mee(this, m_CTRcache, m_MACcache, m_BMTcache, m_config, m_gpu);
 
   unsigned int icnt_L2;
   unsigned int L2_dram;
@@ -463,8 +499,8 @@ memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,
          &dram_L2, &L2_icnt);
   m_icnt_L2_queue = new fifo_pipeline<mem_fetch>("icnt-to-L2", 0, icnt_L2);
   m_L2_mee_queue = new fifo_pipeline<mem_fetch>("L2-to-mee", 0, L2_dram);
-  m_mee_dram_queue = new fifo_pipeline<mem_fetch>("mee-to-dram", 0, L2_dram);
-  m_dram_mee_queue = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, dram_L2);
+  // m_mee_dram_queue = new fifo_pipeline<mem_fetch>("mee-to-dram", 0, L2_dram);
+  // m_dram_mee_queue = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, dram_L2);
   m_mee_L2_queue = new fifo_pipeline<mem_fetch>("mee-to-L2", 0, dram_L2);
   m_L2_icnt_queue = new fifo_pipeline<mem_fetch>("L2-to-icnt", 0, L2_icnt);
   wb_addr = -1;
@@ -476,13 +512,11 @@ memory_sub_partition::~memory_sub_partition() {
   delete m_mee_L2_queue;
   delete m_L2_icnt_queue;
   delete m_L2cache;
-  delete m_CTRcache;
   delete m_L2interface;
-  delete m_metainterface;
-  delete m_sub_mee;
 }
 
 void memory_sub_partition::cache_cycle(unsigned cycle) {
+  // printf("memory_partition_unit cycle: %d\n", cycle);
   // L2 fill responses
   if (!m_config->m_L2_config.disabled()) {
     if (m_L2cache->access_ready() && !m_L2_icnt_queue->full()) {
@@ -530,7 +564,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
     }
   }
 
-  m_sub_mee->simple_cycle(cycle);
+  // m_mee->simple_cycle(cycle);
   
   // prior L2 misses inserted into m_L2_mee_queue here
   if (!m_config->m_L2_config.disabled()) m_L2cache->cycle();
@@ -626,64 +660,64 @@ bool memory_sub_partition::full(unsigned size) const {
 
 // interface to L2_mee_queue
 
-bool memory_sub_partition::L2_mee_queue_empty() const {
-  return m_L2_mee_queue->empty(); // TODO
+bool memory_partition_unit::L2_mee_queue_empty(unsigned spid) const {
+  return m_sub_partition[spid]->m_L2_mee_queue->empty(); // TODO
 }
 
-class mem_fetch *memory_sub_partition::L2_mee_queue_top() const {
-  return m_L2_mee_queue->top(); // TODO
+class mem_fetch *memory_partition_unit::L2_mee_queue_top(unsigned spid) const {
+  return m_sub_partition[spid]->m_L2_mee_queue->top(); // TODO
 }
 
-void memory_sub_partition::L2_mee_queue_pop() { m_L2_mee_queue->pop(); } // TODO
+void memory_partition_unit::L2_mee_queue_pop(unsigned spid) { m_sub_partition[spid]->m_L2_mee_queue->pop(); } // TODO
 
 // interface to mee_dram_queue
 
-bool memory_sub_partition::mee_dram_queue_empty() const {
+bool memory_partition_unit::mee_dram_queue_empty() const {
   return m_mee_dram_queue->empty(); // TODO
 }
 
-class mem_fetch *memory_sub_partition::mee_dram_queue_top() const {
+class mem_fetch *memory_partition_unit::mee_dram_queue_top() const {
   return m_mee_dram_queue->top(); // TODO
 }
 
-void memory_sub_partition::mee_dram_queue_pop() { m_mee_dram_queue->pop(); } // TODO
+void memory_partition_unit::mee_dram_queue_pop() { m_mee_dram_queue->pop(); } // TODO
 
-bool memory_sub_partition::mee_dram_queue_full() const {
+bool memory_partition_unit::mee_dram_queue_full() const {
   return m_mee_dram_queue->full(); //TODO
 }
 
-void memory_sub_partition::mee_dram_queue_push(class mem_fetch *mf) {
+void memory_partition_unit::mee_dram_queue_push(class mem_fetch *mf) {
   m_mee_dram_queue->push(mf); //TODO
 }
 
 // interface to dram_mee_queue
 
-bool memory_sub_partition::dram_mee_queue_empty() const {
+bool memory_partition_unit::dram_mee_queue_empty() const {
   return m_dram_mee_queue->empty(); // TODO
 }
 
-class mem_fetch *memory_sub_partition::dram_mee_queue_top() const {
+class mem_fetch *memory_partition_unit::dram_mee_queue_top() const {
   return m_dram_mee_queue->top(); // TODO
 }
 
-void memory_sub_partition::dram_mee_queue_pop() { m_dram_mee_queue->pop(); } // TODO
+void memory_partition_unit::dram_mee_queue_pop() { m_dram_mee_queue->pop(); } // TODO
 
-bool memory_sub_partition::dram_mee_queue_full() const {
+bool memory_partition_unit::dram_mee_queue_full() const {
   return m_dram_mee_queue->full(); //TODO
 }
 
-void memory_sub_partition::dram_mee_queue_push(class mem_fetch *mf) {
+void memory_partition_unit::dram_mee_queue_push(class mem_fetch *mf) {
   m_dram_mee_queue->push(mf); //TODO
 }
 
 // interface to mee_L2_queue
 
-bool memory_sub_partition::mee_L2_queue_full() const {
-  return m_mee_L2_queue->full(); //TODO
+bool memory_partition_unit::mee_L2_queue_full(unsigned spid) const {
+  return m_sub_partition[spid]->m_mee_L2_queue->full(); //TODO
 }
 
-void memory_sub_partition::mee_L2_queue_push(class mem_fetch *mf) {
-  m_mee_L2_queue->push(mf); //TODO
+void memory_partition_unit::mee_L2_queue_push(unsigned spid, class mem_fetch *mf) {
+  m_sub_partition[spid]->m_mee_L2_queue->push(mf); //TODO
 }
 
 void memory_sub_partition::print_cache_stat(unsigned &accesses,
@@ -767,7 +801,7 @@ void gpgpu_sim::print_dram_stats(FILE *fout) const {
 unsigned memory_sub_partition::flushL2() {
   if (!m_config->m_L2_config.disabled()) {
     m_L2cache->flush();//TODO
-    m_CTRcache->flush();
+    // m_CTRcache->flush();
   }
   return 0;  // TODO: write the flushed data to the main memory
 }
@@ -775,7 +809,7 @@ unsigned memory_sub_partition::flushL2() {
 unsigned memory_sub_partition::invalidateL2() {
   if (!m_config->m_L2_config.disabled()) {
     m_L2cache->invalidate();//TODO
-    m_CTRcache->invalidate();
+    // m_CTRcache->invalidate();
   }
   return 0;
 }

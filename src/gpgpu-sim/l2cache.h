@@ -108,12 +108,43 @@ class memory_partition_unit {
     return m_gpu;
   }
 
+  bool L2_mee_queue_empty(unsigned spid) const;
+  class mem_fetch *L2_mee_queue_top(unsigned spid) const;
+  void L2_mee_queue_pop(unsigned spid);
+
+  bool mee_dram_queue_empty() const;
+  class mem_fetch *mee_dram_queue_top() const;
+  void mee_dram_queue_pop();
+  bool mee_dram_queue_full() const;
+  void mee_dram_queue_push(class mem_fetch *mf);
+
+  bool dram_mee_queue_empty() const;
+  class mem_fetch *dram_mee_queue_top() const;
+  void dram_mee_queue_pop();
+  bool dram_mee_queue_full() const;
+  void dram_mee_queue_push(class mem_fetch *mf);
+
+  void mee_L2_queue_push(unsigned spid, class mem_fetch *mf);
+  bool mee_L2_queue_full(unsigned spid) const;
+
+  class memory_sub_partition **m_sub_partition;
+  
  private:
   unsigned m_id;
   const memory_config *m_config;
   class memory_stats_t *m_stats;
-  class memory_sub_partition **m_sub_partition;
+  // class memory_sub_partition **m_sub_partition;
   class dram_t *m_dram;
+
+  class l2_cache *m_CTRcache;
+  class l2_cache *m_MACcache;
+  class l2_cache *m_BMTcache;
+  class mee *m_mee;
+  class metainterface *m_metainterface;
+  partition_mf_allocator *m_mf_allocator;
+
+  fifo_pipeline<mem_fetch> *m_mee_dram_queue; 
+  fifo_pipeline<mem_fetch> *m_dram_mee_queue; 
 
   class arbitration_metadata {
    public:
@@ -156,7 +187,7 @@ class memory_partition_unit {
 
   class gpgpu_sim *m_gpu;
 
-  friend class sub_mee;
+  friend class mee;
 };
 
 class memory_sub_partition {
@@ -224,6 +255,14 @@ class memory_sub_partition {
   }
   // class l2_cache *m_CTRcache;
   std::vector<mem_fetch *> breakdown_request_to_sector_requests(mem_fetch *mf);
+
+  // these are various FIFOs between units within a memory partition
+  fifo_pipeline<mem_fetch> *m_icnt_L2_queue;
+  fifo_pipeline<mem_fetch> *m_L2_mee_queue;
+  // fifo_pipeline<mem_fetch> *m_mee_dram_queue; 
+  // fifo_pipeline<mem_fetch> *m_dram_mee_queue; 
+  fifo_pipeline<mem_fetch> *m_mee_L2_queue;
+  fifo_pipeline<mem_fetch> *m_L2_icnt_queue;  // L2 cache hit response queue
   
  private:
   // data
@@ -231,11 +270,11 @@ class memory_sub_partition {
   const memory_config *m_config;
   class l2_cache *m_L2cache;
   class L2interface *m_L2interface;
-  class l2_cache *m_CTRcache;
-  class l2_cache *m_MACcache;
-  class l2_cache *m_BMTcache;
-  class sub_mee *m_sub_mee;
-  class metainterface *m_metainterface;
+  // class l2_cache *m_CTRcache;
+  // class l2_cache *m_MACcache;
+  // class l2_cache *m_BMTcache;
+  // class mee *m_mee;
+  // class metainterface *m_metainterface;
   class gpgpu_sim *m_gpu;
   partition_mf_allocator *m_mf_allocator;
 
@@ -245,14 +284,6 @@ class memory_sub_partition {
     class mem_fetch *req;
   };
   std::queue<rop_delay_t> m_rop;
-
-  // these are various FIFOs between units within a memory partition
-  fifo_pipeline<mem_fetch> *m_icnt_L2_queue;
-  fifo_pipeline<mem_fetch> *m_L2_mee_queue;
-  fifo_pipeline<mem_fetch> *m_mee_dram_queue; 
-  fifo_pipeline<mem_fetch> *m_dram_mee_queue; 
-  fifo_pipeline<mem_fetch> *m_mee_L2_queue;
-  fifo_pipeline<mem_fetch> *m_L2_icnt_queue;  // L2 cache hit response queue
 
   class mem_fetch *L2dramout;
   unsigned long long int wb_addr;
@@ -295,19 +326,19 @@ class L2interface : public mem_fetch_interface {
 
 class metainterface : public mem_fetch_interface {
  public:
-  metainterface(memory_sub_partition *unit) { m_unit = unit; }
+  metainterface(memory_partition_unit *unit) { m_unit = unit; }
   virtual ~metainterface() {}
   virtual bool full(unsigned size, bool write) const {
     // assume read and write packets all same size
-    return m_unit->m_mee_dram_queue->full();
+    return m_unit->mee_dram_queue_full();
   }
   virtual void push(mem_fetch *mf) {
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
-    m_unit->m_mee_dram_queue->push(mf);
+    m_unit->mee_dram_queue_push(mf);
   }
 
  private:
-  memory_sub_partition *m_unit;
+  memory_partition_unit *m_unit;
 };
 
 #endif

@@ -1700,6 +1700,18 @@ enum cache_request_status read_only_cache::access(
 //! A general function that takes the result of a tag_array probe
 //  and performs the correspding functions based on the cache configuration
 //  The access fucntion calls this function
+
+enum cache_request_status data_cache::probe(new_addr_type addr, mem_fetch *mf) const {
+  assert(mf->get_data_size() <= m_config.get_atom_sz());
+  bool wr = mf->get_is_write();
+  new_addr_type block_addr = m_config.block_addr(addr);
+  unsigned cache_index = (unsigned)-1;
+  enum cache_request_status probe_status =
+      m_tag_array->probe(block_addr, cache_index, mf, mf->is_write(), true);
+  
+  return probe_status;
+}
+
 enum cache_request_status data_cache::process_tag_probe(
     bool wr, enum cache_request_status probe_status, new_addr_type addr,
     unsigned cache_index, mem_fetch *mf, unsigned time,
@@ -1781,6 +1793,10 @@ enum cache_request_status l2_cache::access(new_addr_type addr, mem_fetch *mf,
                                            unsigned time,
                                            std::list<cache_event> &events) {
   return data_cache::access(addr, mf, time, events);
+}
+
+enum cache_request_status l2_cache::probe(new_addr_type addr, mem_fetch *mf) const {
+  return data_cache::probe(addr, mf);
 }
 
 /// Access function for tex_cache

@@ -885,6 +885,7 @@ class cache_config {
   friend class l1_cache;
   friend class l2_cache;
   friend class memory_sub_partition;
+  friend class mee;
 };
 
 class l1d_cache_config : public cache_config {
@@ -1005,7 +1006,7 @@ class tag_array {
 
   friend class basline_cache;
   friend class l2_cache;
-  friend class sub_mee;
+  friend class mee;
 };
 
 class mshr_table {
@@ -1443,7 +1444,7 @@ class baseline_cache : public cache_t {
 
   friend class l2_cache;
   friend class data_cache;
-  friend class sub_mee;
+  friend class mee;
 };
 
 /// Read only cache
@@ -1571,6 +1572,7 @@ class data_cache : public baseline_cache {
                                               unsigned cache_index,
                                               mem_fetch *mf, unsigned time,
                                               std::list<cache_event> &events);
+  enum cache_request_status probe(new_addr_type addr, mem_fetch *mf) const;
 
  protected:
   mem_fetch_allocator *m_memfetch_creator;
@@ -1700,6 +1702,7 @@ class l2_cache : public data_cache {
   virtual enum cache_request_status access(new_addr_type addr, mem_fetch *mf,
                                            unsigned time,
                                            std::list<cache_event> &events);
+  virtual enum cache_request_status probe(new_addr_type addr, mem_fetch *mf) const;
 };
 
 /*****************************************************************************/

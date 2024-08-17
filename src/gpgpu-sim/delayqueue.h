@@ -154,6 +154,7 @@ class fifo_pipeline {
   }
 
   bool full() const { return (m_max_len && m_length >= m_max_len); }
+  bool full(int n) const { return (m_max_len && m_length + n >= m_max_len); }
   bool is_avilable_size(unsigned size) const {
     return (m_max_len && m_length + size - 1 >= m_max_len);
   }
