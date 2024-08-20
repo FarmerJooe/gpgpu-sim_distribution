@@ -116,6 +116,7 @@ class memory_partition_unit {
   class mem_fetch *mee_dram_queue_top() const;
   void mee_dram_queue_pop();
   bool mee_dram_queue_full() const;
+  bool mee_dram_queue_full(int size) const;
   void mee_dram_queue_push(class mem_fetch *mf);
 
   bool dram_mee_queue_empty() const;

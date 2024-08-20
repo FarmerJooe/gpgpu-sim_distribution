@@ -686,6 +686,10 @@ bool memory_partition_unit::mee_dram_queue_full() const {
   return m_mee_dram_queue->full(); //TODO
 }
 
+bool memory_partition_unit::mee_dram_queue_full(int size) const {
+  return m_mee_dram_queue->full(size); //TODO
+}
+
 void memory_partition_unit::mee_dram_queue_push(class mem_fetch *mf) {
   m_mee_dram_queue->push(mf); //TODO
 }
