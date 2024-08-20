@@ -11,11 +11,11 @@ mee::mee(class memory_partition_unit *unit, class l2_cache *CTRcache, class l2_c
     m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
     m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
     m_MAC_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
-    m_BMT_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 80);
+    m_BMT_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
 
     m_CTR_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
     m_MAC_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
-    m_BMT_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 80);
+    m_BMT_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
     m_Ciphertext_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
 
     m_OTP_queue = new fifo_pipeline<mem_fetch>("meta-queue", 10, 18);
@@ -24,9 +24,9 @@ mee::mee(class memory_partition_unit *unit, class l2_cache *CTRcache, class l2_c
     m_MAC_HASH_queue = new fifo_pipeline<mem_fetch>("meta-queue", 10, 18);
     m_MAC_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
 
-    m_BMT_HASH_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 180);
-    m_BMT_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 80);
-    m_CTR_BMT_Buffer = new fifo_pipeline<mem_fetch>("meta-queue", 0, 80);
+    m_BMT_HASH_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 18);
+    m_BMT_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
+    m_CTR_BMT_Buffer = new fifo_pipeline<mem_fetch>("meta-queue", 0, 8);
 
     BMT_busy = false;
 }
@@ -283,18 +283,18 @@ void mee::BMT_CHECK_cycle() {
             // printf("BBBBBB");
             //计算下一层BMT
             if (!mf || get_BMT_Layer(mf->get_addr()) == 5) {
-                printf("AAAAAAAAAAAA\n");
+                // printf("AAAAAAAAAAAA\n");
                 BMT_busy = false;
                 cnt--;
             } else if (get_BMT_Layer(mf->get_addr()) == 4) {
-                printf("AAAAAAAAAAAA\n");
+                // printf("AAAAAAAAAAAA\n");
                 assert(!m_BMT_CHECK_queue->full());
                 m_BMT_CHECK_queue->push(BMT_ROOT_mf);
                 m_BMT_table[(new_addr_type) BMT_ROOT_mf] = (new_addr_type) mf;
                 assert(!m_BMT_HASH_queue->full());
                 m_BMT_HASH_queue->push(mf);
             } else {
-                printf("XXXXXXXXXXXXX\n");
+                // printf("XXXXXXXXXXXXX\n");
                 assert(get_BMT_Layer(mf->get_addr()) && get_BMT_Layer(mf->get_addr())<4);
                 assert(!m_BMT_queue->full(2));
                 gen_BMT_mf(mf->get_original_mf(), false, META_RBW, 128);
@@ -536,8 +536,8 @@ void mee::META_fill_responses(class l2_cache *m_METAcache, fifo_pipeline<mem_fet
     if (m_METAcache->access_ready() && !m_META_RET_queue->full()) {
         mem_fetch *mf = m_METAcache->next_access();
         m_META_RET_queue->push(mf);
-        if (m_METAcache == m_BMTcache)
-            print_addr("fill responses:", mf);
+        // if (m_METAcache == m_BMTcache)
+        //     print_addr("fill responses:", mf);
         // reply(m_METAcache, mf);
         // delete mf;
     }
@@ -551,8 +551,8 @@ void mee::META_fill(class l2_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_MET
         if (m_METAcache->fill_port_free()) {
             m_METAcache->fill(mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
                                     m_memcpy_cycle_offset);
-            if (m_METAcache == m_BMTcache)
-                print_addr("fill:\t\t\t\t", mf);
+            // if (m_METAcache == m_BMTcache)
+            //     print_addr("fill:\t\t\t\t", mf);
                 // printf("%llx & %llx == %llx\n", mf->get_addr(), BASE, mf->get_addr() & BASE); 
             // if (mf->get_sub_partition_id() == 1) { 
             //     printf("CTR Fill: %p\n", mf);
