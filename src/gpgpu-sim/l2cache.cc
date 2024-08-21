@@ -456,6 +456,43 @@ void memory_partition_unit::print(FILE *fp) const {
   m_dram->print(fp);
 }
 
+void memory_partition_unit::accumulate_METAcache_stats(
+    class cache_stats &l2_stats, char META[]) const {
+  class l2_cache *m_METAcache;
+  if (strcmp(META, "CTR") == 0) {
+    m_METAcache = m_CTRcache;
+  } else if (strcmp(META, "MAC") == 0) {
+    m_METAcache = m_MACcache;
+  } else if (strcmp(META, "BMT") == 0) {
+    m_METAcache = m_BMTcache;
+  } else {
+    // 如果 s 不是预期的值,可以在这里添加错误处理逻辑
+    assert(0);
+  }
+  if (!m_config->m_META_config.disabled()) {
+    l2_stats += m_METAcache->get_stats();
+  }
+}
+
+void memory_partition_unit::get_METAcache_sub_stats(
+    struct cache_sub_stats &css, char META[]) const {
+  class l2_cache *m_METAcache;
+  if (strcmp(META, "CTR") == 0) {
+    m_METAcache = m_CTRcache;
+  } else if (strcmp(META, "MAC") == 0) {
+    m_METAcache = m_MACcache;
+  } else if (strcmp(META, "BMT") == 0) {
+    m_METAcache = m_BMTcache;
+  } else {
+    // 如果 s 不是预期的值,可以在这里添加错误处理逻辑
+    assert(0);
+  }
+  if (!m_config->m_META_config.disabled()) {
+    m_METAcache->get_sub_stats(css);
+  }
+}
+
+
 memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,
                                            const memory_config *config,
                                            class memory_stats_t *stats,

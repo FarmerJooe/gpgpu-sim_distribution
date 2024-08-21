@@ -1351,6 +1351,65 @@ void gpgpu_sim::clear_executed_kernel_info() {
   m_executed_kernel_names.clear();
   m_executed_kernel_uids.clear();
 }
+
+void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
+  if (!m_memory_config->m_META_config.disabled()) {
+    cache_stats l2_stats;
+    struct cache_sub_stats l2_css;
+    struct cache_sub_stats total_l2_css;
+    l2_stats.clear();
+    l2_css.clear();
+    total_l2_css.clear();
+
+    printf("\n========= %s cache stats =========\n", META);
+    
+    for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+      m_memory_partition_unit[i]->accumulate_METAcache_stats(l2_stats, META);
+      m_memory_partition_unit[i]->get_METAcache_sub_stats(l2_css, META);
+
+      fprintf(stdout,
+              "%s_cache_bank[%d]: Access = %llu, Miss = %llu, Miss_rate = "
+              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu\n",
+              META, i, l2_css.accesses, l2_css.misses,
+              (double)l2_css.misses / (double)l2_css.accesses,
+              l2_css.pending_hits, l2_css.res_fails);
+
+      total_l2_css += l2_css;
+    }
+    
+    if (!m_memory_config->m_META_config.disabled() &&
+        m_memory_config->m_META_config.get_num_lines()) {
+      // L2c_print_cache_stat();
+      printf("%s_total_cache_accesses = %llu\n", META, total_l2_css.accesses);
+      printf("%s_total_cache_misses = %llu\n", META, total_l2_css.misses);
+      if (total_l2_css.accesses > 0)
+        printf("%s_total_cache_miss_rate = %.4lf\n",
+               META, (double)total_l2_css.misses / (double)total_l2_css.accesses);
+      printf("%s_total_cache_pending_hits = %llu\n", META, total_l2_css.pending_hits);
+      printf("%s_total_cache_reservation_fails = %llu\n",
+             META, total_l2_css.res_fails);
+      printf("%s_total_cache_breakdown:\n", META);
+
+      char META_cache_stats_breakdown[128];
+      strcpy(META_cache_stats_breakdown, META);
+      strcat(META_cache_stats_breakdown, "_cache_stats_breakdown");
+      l2_stats.print_stats(stdout, META_cache_stats_breakdown);
+      
+      printf("%s_total_cache_reservation_fail_breakdown:\n", META);
+      
+      char META_cache_stats_fail_breakdown[128];
+      strcpy(META_cache_stats_fail_breakdown, META);
+      strcat(META_cache_stats_fail_breakdown, "_cache_stats_fail_breakdown");
+      l2_stats.print_fail_stats(stdout, "L2_cache_stats_fail_breakdown");
+
+      char META_cache[128];
+      strcpy(META_cache, META);
+      strcat(META_cache, "_cache");
+      total_l2_css.print_port_stats(stdout, META_cache);
+    }
+  }
+}
+
 void gpgpu_sim::gpu_print_stat() {
   FILE *statfout = stdout;
 
@@ -1501,6 +1560,12 @@ void gpgpu_sim::gpu_print_stat() {
       total_l2_css.print_port_stats(stdout, "L2_cache");
     }
   }
+  // CTR cache stats
+  gpu_print_METACache_stat("CTR");
+  // MAC cache stats
+  gpu_print_METACache_stat("MAC");
+  // BMT cache stats
+  gpu_print_METACache_stat("BMT");
 
   if (m_config.gpgpu_cflog_interval != 0) {
     spill_log_to_file(stdout, 1, gpu_sim_cycle);

@@ -570,6 +570,7 @@ class gpgpu_sim : public gpgpu_t {
   void decrement_kernel_latency();
 
   const gpgpu_sim_config &get_config() const { return m_config; }
+  void gpu_print_METACache_stat(char META[]);
   void gpu_print_stat();
   void dump_pipeline(int mask, int s, int m) const;
 
