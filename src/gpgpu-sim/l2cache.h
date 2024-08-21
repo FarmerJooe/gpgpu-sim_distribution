@@ -220,6 +220,11 @@ class memory_sub_partition {
   };
   std::queue<rop_delay_t> m_rop;
 
+  // STT-RAM fill and write stall buffer
+  bool stall_en;
+  unsigned stall_counter;
+  class mem_fetch *stall_mf;
+
   // these are various FIFOs between units within a memory partition
   fifo_pipeline<mem_fetch> *m_icnt_L2_queue;
   fifo_pipeline<mem_fetch> *m_L2_dram_queue;

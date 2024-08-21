@@ -32,44 +32,44 @@ POSSIBILITY OF SUCH DAMAGE. -->
 
 		<!-- DYNAMIC Power Activity Factors -->
 
-		<param name="TOT_INST" value="10" /> <!--Instruction Buffer Activity Factor(Total Warp Instructions)-->
-		<param name="FP_INT" value="4.661" /> <!--Scheduler Activity Factor(Non-Memory Warp Instructons)-->
-		<param name="IC_H" value="8.593489331" /> <!--Instruction Cache Hits -->
-		<param name="IC_M" value="29.735231" /> <!--Instruction Cache Misses-->
-		<param name="DC_RH" value="9.835033124" /> <!--L1 Data Cache Read Hits--> 
-		<param name="DC_RM" value="10.95446778" /> <!--L1 Data Cache Read Misses-->
-		<param name="DC_WH" value="0.679656761" /> <!--L1 Data Cache Write Hits-->
-		<param name="DC_WM" value="17.67551799" /> <!--L1 Data Cache Write Misses-->
-		<param name="CC_H" value="0.1107" /> <!--Constant Cache Hits-->
-		<param name="CC_M" value="0.1233" /> <!--Constant Cache Misses-->
-		<param name="SHRD_ACC" value="0.779992642" /> <!--Shared Memory Accesses-->
-		<param name="REG_RD" value="0.100560581" /> <!--Register Reads-->
-		<param name="REG_WR" value="0.140604679" /> <!--Register Writes-->
-		<param name="INT_ACC" value="14.98768151" /> <!--Integer ALU Accesses-->
-		<param name="FP_ACC" value="0.529670751" /> <!--FPU Accesses-->
-		<param name="DP_ACC" value="0.777229051" /> <!--Integer Accesses-->
-		<param name="INT_MUL_ACC" value="0.115098047" /> <!--Integer MUL Accesses-->
-		<param name="FP_MUL_ACC" value="0.089517055" /> <!--FP MUL Accesses-->
+		<param name="TOT_INST" value="100" /> <!--Instruction Buffer Activity Factor(Total Warp Instructions)-->
+		<param name="FP_INT" value="48.259994" /> <!--Scheduler Activity Factor(Non-Memory Warp Instructons)-->
+		<param name="IC_H" value="0" /> <!--Instruction Cache Hits -->
+		<param name="IC_M" value="0" /> <!--Instruction Cache Misses-->
+		<param name="DC_RH" value="6.607568654" /> <!--L1 Data Cache Read Hits--> 
+		<param name="DC_RM" value="7.359649633" /> <!--L1 Data Cache Read Misses-->
+		<param name="DC_WH" value="0.456620598" /> <!--L1 Data Cache Write Hits-->
+		<param name="DC_WM" value="11.87512" /> <!--L1 Data Cache Write Misses-->
+		<param name="CC_H" value="5.932232271" /> <!--Constant Cache Hits-->
+		<param name="CC_M" value="6.607445701" /> <!--Constant Cache Misses-->
+		<param name="SHRD_ACC" value="5.116439734" /> <!--Shared Memory Accesses-->
+		<param name="REG_RD" value="0" /> <!--Register Reads-->
+		<param name="REG_WR" value="0" /> <!--Register Writes-->
+		<param name="INT_ACC" value="7.725550311" /> <!--Integer ALU Accesses-->
+		<param name="FP_ACC" value="0.201142468" /> <!--FPU Accesses-->
+		<param name="DP_ACC" value="0.201146878" /> <!--Integer Accesses-->
+		<param name="INT_MUL_ACC" value="0.130624774" /> <!--Integer MUL Accesses-->
+		<param name="FP_MUL_ACC" value="0.130623287" /> <!--FP MUL Accesses-->
 		<param name="FP_SQRT_ACC" value="0.195089274" /> <!--SFU: sqrt Accesses-->
-		<param name="FP_LG_ACC" value="0.125521663" /> <!--SFU: log Accesses-->
-		<param name="FP_SIN_ACC" value="0.13336307" /> <!--SFU: sin/cos Accesses-->
-		<param name="FP_EXP_ACC" value="0.36204415" /> <!--SFU: exponent Accesses-->
-		<param name="DP_MUL_ACC" value="0.1321288" /> <!--DP MUL Accesses-->
-		<param name="TENSOR_ACC" value="0.815454621" /> <!--Tensor Accesses-->
-		<param name="TEX_ACC" value="0.115100088" /> <!--Texture Unit Accesses-->
-		<param name="MEM_RD" value="0.025941068" /> <!--DRAM Reads-->
-		<param name="MEM_WR" value="0.031443719" /> <!--DRAM Writes-->
-		<param name="MEM_PRE" value="0.008647023" /> <!--DRAM Precharge-->
-		<param name="L2_RH" value="1.260867526" /> <!--L2 Data Cache Read Hits--> 
-		<param name="L2_RM" value="2.394535301" /> <!--L2 Data Cache Read Misses-->
-		<param name="L2_WH" value="4.124916" /> <!--L2 Data Cache Write Hits-->
-		<param name="L2_WM" value="1.222707601" /> <!--L2 Data Cache Write Misses-->
-		<param name="NOC_A" value="32.09037703" /> <!--Interconnect Network Accesses-->
+		<param name="FP_LG_ACC" value="0.130617842" /> <!--SFU: log Accesses-->
+		<param name="FP_SIN_ACC" value="0.202205086" /> <!--SFU: sin/cos Accesses-->
+		<param name="FP_EXP_ACC" value="0.130621909" /> <!--SFU: exponent Accesses-->
+		<param name="DP_MUL_ACC" value="0.130622532" /> <!--DP MUL Accesses-->
+		<param name="TENSOR_ACC" value="0.240811904" /> <!--Tensor Accesses-->
+		<param name="TEX_ACC" value="3.453002628" /> <!--Texture Unit Accesses-->
+		<param name="MEM_RD" value="0.01527021" /> <!--DRAM Reads-->
+		<param name="MEM_WR" value="0.018509345" /> <!--DRAM Writes-->
+		<param name="MEM_PRE" value="0.00509007" /> <!--DRAM Precharge-->
+		<param name="L2_RH" value="3.391355385" /> <!--L2 Data Cache Read Hits--> 
+		<param name="L2_RM" value="6.440581599" /> <!--L2 Data Cache Read Misses-->
+		<param name="L2_WH" value="11.09478657" /> <!--L2 Data Cache Write Hits-->
+		<param name="L2_WM" value="3.288716634" /> <!--L2 Data Cache Write Misses-->
+		<param name="NOC_A" value="86.3134871" /> <!--Interconnect Network Accesses-->
 		<param name="PIPE_A" value="0.514" /> <!--Pipeline Accesses-->
 
 		<!-- STATIC & CONSTANT Power -->
 
-		<param name="constant_power" value="32.32522272" /> <!--Constant power 32.5W --> 
+		<param name="constant_power" value="32.32522272" /> <!--Constant power-->
 		<param name="idle_core_power" value="0.28279166"/> <!--Idle SM power-->
 
 		<param name="static_cat1_flane" value="15.29035866"/> <!--INT (ADD+MUL) First Lane Activation Power-->

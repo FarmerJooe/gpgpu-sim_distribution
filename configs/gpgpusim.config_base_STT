@@ -161,10 +161,10 @@
 -gpgpu_smem_latency 20
 
 # 32 sets, each 128 bytes 24-way for each memory sub partition (96 KB per memory sub partition). This gives us 6MB L2 cache
--gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
+-gpgpu_cache:dl2 S:32:128:32,L:B:m:L:P,A:192:4,32:0,32
 -gpgpu_cache:dl2_texture_only 0
 -gpgpu_dram_partition_queues 64:64:64:64
--gpgpu_perf_sim_memcpy 1
+-gpgpu_perf_sim_memcpy 0
 -gpgpu_memory_partition_indexing 2
 
 # 128 KB Inst.
@@ -234,8 +234,3 @@
 #-trace_enabled 1
 #-trace_components WARP_SCHEDULER,SCOREBOARD
 #-trace_sampling_core 0
-
-# power simulation
--power_simulation_enabled 1 
--power_simulation_mode 0
--accelwattch_xml_file accelwattch_sass_sim.xml

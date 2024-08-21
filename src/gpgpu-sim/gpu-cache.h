@@ -921,6 +921,10 @@ class l2_cache_config : public cache_config {
   l2_cache_config() : cache_config() {}
   void init(linear_to_raw_address_translation *address_mapping);
   virtual unsigned set_index(new_addr_type addr) const;
+  // step 2
+  unsigned l2_write_latency;
+  unsigned l2_miss_latency;
+  unsigned l2_read_latency;
 
  private:
   linear_to_raw_address_translation *m_address_mapping;

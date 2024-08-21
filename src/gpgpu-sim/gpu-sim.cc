@@ -237,6 +237,13 @@ void memory_config::reg_options(class OptionParser *opp) {
                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                          "alloc>,<mshr>:<N>:<merge>,<mq>}",
                          "64:128:8,L:B:m:N,A:16:4,4");
+  //step 1
+  option_parser_register(opp, "-l2_read_latency", OPT_UINT32, &m_L2_config.l2_read_latency,
+                        "L2 cache read latency", "1");
+  option_parser_register(opp, "-l2_miss_latency", OPT_UINT32, &m_L2_config.l2_miss_latency,
+                         "L2 cache miss latency", "1");
+  option_parser_register(opp, "-l2_write_latency", OPT_UINT32, &m_L2_config.l2_write_latency,
+                         "L2 cache write latency", "1");
   option_parser_register(opp, "-gpgpu_cache:dl2_texture_only", OPT_BOOL,
                          &m_L2_texure_only, "L2 cache used for texture only",
                          "1");

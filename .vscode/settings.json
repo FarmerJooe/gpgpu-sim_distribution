@@ -1,0 +1,10 @@
+{
+    "makefile.buildLog": "/mnt/user/zhangqr/gpuroot/",
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/cuobjdump_to_ptxplus",
+            "binaryPath": "/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/cuobjdump_to_ptxplus/cuobjdump_to_ptxplus",
+            "binaryArgs": []
+        }
+    ]
+}

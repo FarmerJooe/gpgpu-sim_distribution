@@ -60,16 +60,16 @@ POSSIBILITY OF SUCH DAMAGE. -->
 		<param name="MEM_RD" value="0.025941068" /> <!--DRAM Reads-->
 		<param name="MEM_WR" value="0.031443719" /> <!--DRAM Writes-->
 		<param name="MEM_PRE" value="0.008647023" /> <!--DRAM Precharge-->
-		<param name="L2_RH" value="1.260867526" /> <!--L2 Data Cache Read Hits--> 
-		<param name="L2_RM" value="2.394535301" /> <!--L2 Data Cache Read Misses-->
-		<param name="L2_WH" value="4.124916" /> <!--L2 Data Cache Write Hits-->
-		<param name="L2_WM" value="1.222707601" /> <!--L2 Data Cache Write Misses-->
+        <param name="L2_RH" value="4.84703" /> <!--L2 Data Cache Read Hits-->
+        <param name="L2_RM" value="9.20509" /> <!--L2 Data Cache Read Miss-->
+        <param name="L2_WH" value="4.48352" /> <!--L2 Data Cache Write Hits-->
+        <param name="L2_WM" value="1.15028" /> <!--L2 Data Cache Write Miss-->
 		<param name="NOC_A" value="32.09037703" /> <!--Interconnect Network Accesses-->
 		<param name="PIPE_A" value="0.514" /> <!--Pipeline Accesses-->
 
 		<!-- STATIC & CONSTANT Power -->
 
-		<param name="constant_power" value="32.32522272" /> <!--Constant power 32.5W --> 
+		<param name="constant_power" value="20.42522272" /> <!--Constant power 32.5W --> 
 		<param name="idle_core_power" value="0.28279166"/> <!--Idle SM power-->
 
 		<param name="static_cat1_flane" value="15.29035866"/> <!--INT (ADD+MUL) First Lane Activation Power-->

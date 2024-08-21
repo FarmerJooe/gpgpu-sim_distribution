@@ -330,7 +330,7 @@ void calculate_hw_mcpat(const gpgpu_sim_config &config,
       l2_write_hits = power_stats->get_l2_write_hits(1) - power_stats->l2w_hits_kernel;
     if((power_simulation_mode == 2) && (accelwattch_hybrid_configuration[HW_L2_WM]))
       l2_write_misses = power_stats->get_l2_write_misses(1) - power_stats->l2w_misses_kernel;
-
+    // flag
     wrapper->set_l2cache_power(l2_read_hits, l2_read_misses, l2_write_hits, l2_write_misses);
     
     float active_sms = (*power_stats->m_active_sms) / stat_sample_freq;
