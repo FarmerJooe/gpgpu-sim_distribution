@@ -33,6 +33,13 @@
 #include "../abstract_hardware_model.h"
 #include "addrdec.h"
 
+enum data_type {
+  DEFAULT = 0,
+  CTR,
+  MAC,
+  BMT
+};
+
 enum mf_type {
   READ_REQUEST = 0,
   WRITE_REQUEST,
@@ -129,8 +136,13 @@ class mem_fetch {
   mem_fetch *get_original_wr_mf() { return original_wr_mf; }
 
   bool is_raw() {return raw_data; }
-  
   void set_cooked_status() {raw_data = false; }
+  
+  unsigned get_id() { return this->id; }
+  void set_id(unsigned id) { this->id = id; }
+
+  enum data_type get_data_type() { return this->m_data_type; }
+  void set_data_type(enum data_type m_data_type) { this->m_data_type = m_data_type; }
 
  private:
   // request source information
@@ -179,7 +191,8 @@ class mem_fetch {
   mem_fetch *original_wr_mf;  // this pointer refers to the original write req,
                               // when fetch-on-write policy is used
   bool raw_data = true;
-
+  unsigned id;
+  enum data_type m_data_type = DEFAULT;
 };
 
 #endif

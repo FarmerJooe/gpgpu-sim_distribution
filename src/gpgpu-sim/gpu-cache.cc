@@ -1084,6 +1084,9 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
   }
 
   extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
+  if (e == m_extra_mf_fields.end()) {
+    printf("XXXXXXXXX%x %dXXXXXXXXXXXXXXX\n", mf->get_addr(), mf->get_access_type());
+  }
   assert(e != m_extra_mf_fields.end());
   assert(e->second.m_valid);
   mf->set_data_size(e->second.m_data_size);

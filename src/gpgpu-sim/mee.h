@@ -17,7 +17,9 @@ class mee {
         void simple_cycle(unsigned cycle);
         void print_addr(char s[], mem_fetch *mf);
         void print_tag();
-        void meta_access(fifo_pipeline<mem_fetch> *m_META_queue, new_addr_type addr, mem_access_type type, unsigned size, bool wr, unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc, mem_fetch *original_mf) const;
+        void meta_access(fifo_pipeline<mem_fetch> *m_META_queue, new_addr_type addr, mem_access_type type, 
+            unsigned size, bool wr, unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc, 
+            mem_fetch *original_mf, unsigned mf_id, enum data_type m_data_type) const;
         void CTR_cycle();
         void MAC_cycle();
         void BMT_cycle();
@@ -30,13 +32,13 @@ class mee {
         new_addr_type get_addr(new_addr_type partition_id, new_addr_type partition_addr);
 
         unsigned int get_BMT_Layer(new_addr_type addr);
-        void gen_CTR_mf(mem_fetch *mf, mem_access_type meta_acc, bool wr);
-        void gen_MAC_mf(mem_fetch *mf, bool wr);
-        void gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type type, unsigned size);
+        void gen_CTR_mf(mem_fetch *mf, mem_access_type meta_acc, bool wr, unsigned mf_id);
+        void gen_MAC_mf(mem_fetch *mf, bool wr, unsigned mf_id);
+        void gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type type, unsigned size, unsigned mf_id);
         bool META_queue_empty();
 
         void META_fill_responses(class l2_cache *m_METAcache,  fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK);
-        void META_fill(class l2_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE);
+        void META_fill(class l2_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type);
 
         bool CTR_busy();
         bool MAC_busy();
@@ -112,9 +114,11 @@ class mee {
         mem_fetch *BMT_ROOT_mf = NULL;
         int cnt = 0;
 
-        unsigned OTP_couter = 0;
-        unsigned MAC_couter = 0;
-        unsigned BMT_couter = 0;
+        unsigned mf_counter = 0;
+        unsigned CT_counter = 0;
+        unsigned OTP_counter = 0;
+        unsigned MAC_counter = 0;
+        unsigned BMT_counter = 0;
 
 
 };
