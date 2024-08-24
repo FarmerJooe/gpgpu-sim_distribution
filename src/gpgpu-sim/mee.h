@@ -62,16 +62,17 @@ class mee {
         fifo_pipeline<mem_fetch> *m_BMT_RET_queue;
         fifo_pipeline<mem_fetch> *m_Ciphertext_RET_queue;
 
-        fifo_pipeline<mem_fetch> *m_OTP_queue;
+        fifo_pipeline<unsigned> *m_OTP_queue;
         fifo_pipeline<mem_fetch> *m_AES_queue;
-        fifo_pipeline<mem_fetch> *m_MAC_HASH_queue;
+        
+        fifo_pipeline<unsigned> *m_MAC_HASH_queue;
         fifo_pipeline<mem_fetch> *m_MAC_CHECK_queue;
 
         //m_CTR_BMT_Buffer-->m_BMT_CHECK_queue--|-->
         //                |->m_BMT_HASH_queue---|
         //              m_BMT_queue-->m_BMT_RET_queue-->
         fifo_pipeline<mem_fetch> *m_BMT_CHECK_queue;
-        fifo_pipeline<mem_fetch> *m_BMT_HASH_queue;
+        fifo_pipeline<unsigned> *m_BMT_HASH_queue;
         fifo_pipeline<mem_fetch> *m_CTR_BMT_Buffer;
 
         //CTR: 1111 1110 0000 0000 0000 0000 0000 0000
@@ -99,8 +100,8 @@ class mee {
         const int m_memcpy_cycle_offset = 0;
         const int mee_busy_mask = 0;
 
-        typedef tr1_hash_map<new_addr_type, new_addr_type> table;
-        typedef tr1_hash_map<new_addr_type, int> set;
+        typedef tr1_hash_map<new_addr_type, unsigned> table;
+        typedef tr1_hash_map<unsigned, int> set;
         table m_OTP_table;  //<密文，OTP(CTR)>
         set m_OTP_set;  //<OTP(CTR), cnt>
         table m_MAC_table;  //<MAC, hash(密文)>
@@ -110,5 +111,10 @@ class mee {
         //1111 1111 1111 1111 1100 0000 1111 1000
         mem_fetch *BMT_ROOT_mf = NULL;
         int cnt = 0;
+
+        unsigned OTP_couter = 0;
+        unsigned MAC_couter = 0;
+        unsigned BMT_couter = 0;
+
 
 };

@@ -128,6 +128,10 @@ class mem_fetch {
   mem_fetch *get_original_mf() { return original_mf; }
   mem_fetch *get_original_wr_mf() { return original_wr_mf; }
 
+  bool is_raw() {return raw_data; }
+  
+  void set_cooked_status() {raw_data = false; }
+
  private:
   // request source information
   unsigned m_request_uid;
@@ -174,6 +178,8 @@ class mem_fetch {
                      // size), so the pointer refers to the original request
   mem_fetch *original_wr_mf;  // this pointer refers to the original write req,
                               // when fetch-on-write policy is used
+  bool raw_data = true;
+
 };
 
 #endif
