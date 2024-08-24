@@ -668,8 +668,8 @@ void mee::simple_cycle(unsigned cycle) {
         // if (mf_return->get_sub_partition_id() == 58)
         // print_addr("Cipertext fill:", mf_return);
         if (
-            // mf_return->get_access_type() == L1_WR_ALLOC_R || 
-            // mf_return->get_access_type() == L2_WR_ALLOC_R ||
+            mf_return->get_access_type() == L1_WR_ALLOC_R || 
+            mf_return->get_access_type() == L2_WR_ALLOC_R ||
             mf_return->get_access_type() == L1_WRBK_ACC || 
             mf_return->get_access_type() == L2_WRBK_ACC
             ) {
