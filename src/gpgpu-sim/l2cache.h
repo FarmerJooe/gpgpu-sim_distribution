@@ -320,6 +320,9 @@ class L2interface : public mem_fetch_interface {
   virtual void push(mem_fetch *mf) {
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
     m_unit->m_L2_mee_queue->push(mf);
+    if (mf->get_access_type() == 9)
+                        printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 fill responses", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
+
     // printf("l2 to mee access type: %d\n",mf->get_access_type());
   }
 
