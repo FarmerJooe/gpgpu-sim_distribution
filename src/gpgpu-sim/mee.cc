@@ -175,11 +175,16 @@ void mee::CT_cycle() {
         int spid = m_unit->global_sub_partition_id_to_local_id(mf_return->get_sub_partition_id());
         // if (mf_return->get_access_type() != L1_WR_ALLOC_R && mf_return->get_access_type() != L2_WR_ALLOC_R) {
         if (mf_return->is_write()) { // write
+        // assert(!mf_return->is_write());
             // print_addr("mee to L2 W:\t", mf_return);
-            // if (!m_unit->mee_L2_queue_full(spid)){
-            //     m_unit->mee_L2_queue_push(spid, mf_return); //写密文完成，返回L2
+            if (!m_unit->mee_L2_queue_full(spid)){
+                // assert(!mf_return->is_write());
+                // assert(mf_return->get_access_type() != 4);
+                m_unit->mee_L2_queue_push(spid, mf_return); //写密文完成，返回L2
                 m_Ciphertext_RET_queue->pop();
-            // }
+            } else  {
+                assert(mf_return->get_access_type() != 4);
+            }
         } else if (!m_AES_queue->full() && !m_MAC_HASH_queue->full()) {              // read
             m_AES_queue->push(mf_return);   //密文从DRAM返回，送往AES解密
             // m_MAC_table[(new_addr_type)mf_return] = ++MAC_counter;
@@ -199,7 +204,9 @@ void mee::CT_cycle() {
         if (mf->get_sub_partition_id() == 58)
         var = mf->get_addr();
         if (mf->is_write()) { // write
+        // assert(!mf->is_write());
             if (mf->is_raw() && !m_AES_queue->full()) {
+                // assert(!mf->is_write());
                 // printf("QQQQQQQQQQQQQQQQ\n");
                 m_AES_queue->push(mf);  //写密文请求，将明文送入AES中解密
                 mf->set_cooked_status();
@@ -236,8 +243,10 @@ void mee::AES_cycle() {
         //     printf("PPPPPPPPPPPPPP\n");
         if (m_OTP_set[OTP_id]) {  // 得到了OTP和明文/密文，AES加密/解密完成 
             if (mf->is_write()) {   //加密
+            // assert(!mf->is_write());
                 // printf("OOOOOOOOOOOOOOOOOOOOOO\n");
                 if (!m_unit->mee_dram_queue_full() && !m_MAC_HASH_queue->full()) {
+                    // assert(!mf->is_write());
                     m_OTP_set[OTP_id]--;
                     // m_OTP_table[REQ_addr] = 0;
                     m_unit->mee_dram_queue_push(mf);    //加密完后更新DRAM中的密文
@@ -665,14 +674,16 @@ void mee::simple_cycle(unsigned cycle) {
     // dram to mee
     if (!m_unit->dram_mee_queue_empty()) {
         mem_fetch *mf_return = m_unit->dram_mee_queue_top();
+        // assert(!mf_return->is_write());
         // if (mf_return->get_sub_partition_id() == 58)
         // print_addr("Cipertext fill:", mf_return);
         if (
             mf_return->get_access_type() == L1_WR_ALLOC_R || 
-            mf_return->get_access_type() == L2_WR_ALLOC_R ||
+            // mf_return->get_access_type() == L2_WR_ALLOC_R ||
             mf_return->get_access_type() == L1_WRBK_ACC || 
             mf_return->get_access_type() == L2_WRBK_ACC
             ) {
+                assert(mf_return->get_access_type() == 4 && !mf_return->is_write());
             m_unit->dram_mee_queue_pop();
         } else {
         
@@ -693,6 +704,7 @@ void mee::simple_cycle(unsigned cycle) {
                 //     META_fill(m_BMTcache, m_BMT_RET_queue, mf_return, BMT_mask[layer], BMT_base[layer], BMT);
                 // }
             } else {    // 密文访存返回
+                // assert(mf_return->get_access_type() != 4);
                 // reply L2 read
                 // reply L2 write back
                 //m_unit->mee_L2_queue_push(m_unit->global_sub_partition_id_to_local_id(mf_return->get_sub_partition_id()), mf_return);

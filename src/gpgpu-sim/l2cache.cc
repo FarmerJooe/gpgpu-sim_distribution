@@ -587,9 +587,11 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
   // DRAM to L2 (texture) and icnt (not texture)
   if (!m_mee_L2_queue->empty()) {
     mem_fetch *mf = m_mee_L2_queue->top();
-
+    // assert(mf_return->get_access_type() != 4);
     if (!m_config->m_L2_config.disabled() && m_L2cache->waiting_for_fill(mf)) {
+      assert(mf->get_access_type() != 4);
       if (m_L2cache->fill_port_free()) {
+        assert(mf->get_access_type() != 4);
             printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 fill:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
 
         mf->set_status(IN_PARTITION_L2_FILL_QUEUE,
