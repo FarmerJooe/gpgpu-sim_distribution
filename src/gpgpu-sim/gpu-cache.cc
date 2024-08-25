@@ -1349,6 +1349,10 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
                     mf->get_sid(), mf->get_tpc(), mf->get_mem_config(),
                     m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle);
 
+  n_mf->set_data_type(mf->get_data_type());
+  n_mf->set_chip(mf->get_tlx_addr().chip);
+  n_mf->set_parition(mf->get_tlx_addr().sub_partition);
+  assert(n_mf->get_sub_partition_id() == mf->get_sub_partition_id());
   bool do_miss = false;
   bool wb = false;
   evicted_block_info evicted;
@@ -1372,6 +1376,7 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
           NULL);
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
+      wb->set_data_type(mf->get_data_type());
       wb->set_chip(mf->get_tlx_addr().chip);
       wb->set_parition(mf->get_tlx_addr().sub_partition);
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
@@ -1425,6 +1430,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
             NULL);
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
+        wb->set_data_type(mf->get_data_type());
         wb->set_chip(mf->get_tlx_addr().chip);
         wb->set_parition(mf->get_tlx_addr().sub_partition);
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
@@ -1474,6 +1480,9 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         mf->get_tpc(), mf->get_mem_config(),
         m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, NULL, mf);
 
+    n_mf->set_data_type(mf->get_data_type());
+    n_mf->set_chip(mf->get_tlx_addr().chip);
+    n_mf->set_parition(mf->get_tlx_addr().sub_partition);
     new_addr_type block_addr = m_config.block_addr(addr);
     bool do_miss = false;
     bool wb = false;
@@ -1498,6 +1507,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
             NULL);
         // the evicted block may have wrong chip id when advanced L2 hashing  is
         // used, so set the right chip address from the original mf
+        wb->set_data_type(mf->get_data_type());
         wb->set_chip(mf->get_tlx_addr().chip);
         wb->set_parition(mf->get_tlx_addr().sub_partition);
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
@@ -1565,6 +1575,7 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
           NULL);
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
+      wb->set_data_type(mf->get_data_type());
       wb->set_chip(mf->get_tlx_addr().chip);
       wb->set_parition(mf->get_tlx_addr().sub_partition);
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
@@ -1645,6 +1656,7 @@ enum cache_request_status data_cache::rd_miss_base(
           evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
           true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
           NULL);
+      wb->set_data_type(mf->get_data_type());
       // the evicted block may have wrong chip id when advanced L2 hashing  is
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
@@ -1796,6 +1808,19 @@ enum cache_request_status l2_cache::access(new_addr_type addr, mem_fetch *mf,
 }
 
 enum cache_request_status l2_cache::probe(new_addr_type addr, mem_fetch *mf) const {
+  return data_cache::probe(addr, mf);
+}
+
+// The l2 cache access function calls the base data_cache access
+// implementation.  When the L2 needs to diverge from L1, L2 specific
+// changes should be made here.
+enum cache_request_status meta_cache::access(new_addr_type addr, mem_fetch *mf,
+                                           unsigned time,
+                                           std::list<cache_event> &events) {
+  return data_cache::access(addr, mf, time, events);
+}
+
+enum cache_request_status meta_cache::probe(new_addr_type addr, mem_fetch *mf) const {
   return data_cache::probe(addr, mf);
 }
 

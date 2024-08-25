@@ -1705,6 +1705,22 @@ class l2_cache : public data_cache {
   virtual enum cache_request_status probe(new_addr_type addr, mem_fetch *mf) const;
 };
 
+class meta_cache : public data_cache {
+ public:
+  meta_cache(const char *name, cache_config &config, int core_id, int type_id,
+           mem_fetch_interface *memport, mem_fetch_allocator *mfcreator,
+           enum mem_fetch_status status, class gpgpu_sim *gpu)
+      : data_cache(name, config, core_id, type_id, memport, mfcreator, status,
+                   META_WR_ALLOC_R, META_WRBK_ACC, gpu) {}
+
+  virtual ~meta_cache() {}
+
+  virtual enum cache_request_status access(new_addr_type addr, mem_fetch *mf,
+                                           unsigned time,
+                                           std::list<cache_event> &events);
+  virtual enum cache_request_status probe(new_addr_type addr, mem_fetch *mf) const;
+};
+
 /*****************************************************************************/
 
 // See the following paper to understand this cache model:

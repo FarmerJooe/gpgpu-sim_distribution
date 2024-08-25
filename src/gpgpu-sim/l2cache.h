@@ -139,9 +139,9 @@ class memory_partition_unit {
   // class memory_sub_partition **m_sub_partition;
   class dram_t *m_dram;
 
-  class l2_cache *m_CTRcache;
-  class l2_cache *m_MACcache;
-  class l2_cache *m_BMTcache;
+  class meta_cache *m_CTRcache;
+  class meta_cache *m_MACcache;
+  class meta_cache *m_BMTcache;
   class mee *m_mee;
   class metainterface *m_metainterface;
   partition_mf_allocator *m_mf_allocator;
@@ -320,8 +320,8 @@ class L2interface : public mem_fetch_interface {
   virtual void push(mem_fetch *mf) {
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
     m_unit->m_L2_mee_queue->push(mf);
-    if (mf->get_access_type() == 9)
-                        printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 fill responses", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
+    // if (mf->get_access_type() == 9)
+    //                     printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 fill responses", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
 
     // printf("l2 to mee access type: %d\n",mf->get_access_type());
   }
@@ -340,6 +340,8 @@ class metainterface : public mem_fetch_interface {
   }
   virtual void push(mem_fetch *mf) {
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
+                            // printf("%saddr: %x\tmf_type: %d\tsp_addr: %x\taccess type:%d\n", "mee to dram:\t", mf->get_addr(), mf->get_data_type(), mf->get_partition_addr(), mf->get_access_type());
+
     m_unit->mee_dram_queue_push(mf);
   }
 

@@ -12,7 +12,7 @@
 
 class mee {
     public:
-        mee(class memory_partition_unit *unit, class l2_cache *CTRcache, class l2_cache *MACcache, class l2_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu);
+        mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu);
         void cycle(unsigned cycle);
         void simple_cycle(unsigned cycle);
         void print_addr(char s[], mem_fetch *mf);
@@ -37,8 +37,8 @@ class mee {
         void gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type type, unsigned size, unsigned mf_id);
         bool META_queue_empty();
 
-        void META_fill_responses(class l2_cache *m_METAcache,  fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK);
-        void META_fill(class l2_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type);
+        void META_fill_responses(class meta_cache *m_METAcache,  fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK);
+        void META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type);
 
         bool CTR_busy();
         bool MAC_busy();
@@ -48,9 +48,10 @@ class mee {
 
         
     private:
-        class l2_cache *m_CTRcache;
-        class l2_cache *m_MACcache;
-        class l2_cache *m_BMTcache;
+        typedef std::pair<enum data_type, int> hash;
+        class meta_cache *m_CTRcache;
+        class meta_cache *m_MACcache;
+        class meta_cache *m_BMTcache;
         class memory_partition_unit *m_unit;
         const memory_config *m_config;
         class gpgpu_sim *m_gpu;
@@ -67,14 +68,14 @@ class mee {
         fifo_pipeline<unsigned> *m_OTP_queue;
         fifo_pipeline<mem_fetch> *m_AES_queue;
         
-        fifo_pipeline<unsigned> *m_MAC_HASH_queue;
+        fifo_pipeline<hash> *m_HASH_queue;
         fifo_pipeline<mem_fetch> *m_MAC_CHECK_queue;
 
         //m_CTR_BMT_Buffer-->m_BMT_CHECK_queue--|-->
-        //                |->m_BMT_HASH_queue---|
+        //                |->m_HASH_queue---|
         //              m_BMT_queue-->m_BMT_RET_queue-->
         fifo_pipeline<mem_fetch> *m_BMT_CHECK_queue;
-        fifo_pipeline<unsigned> *m_BMT_HASH_queue;
+        // fifo_pipeline<unsigned> *m_HASH_queue;
         fifo_pipeline<mem_fetch> *m_CTR_BMT_Buffer;
 
         //CTR: 1111 1110 0000 0000 0000 0000 0000 0000
