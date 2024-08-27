@@ -845,6 +845,6 @@ void mee::cycle(unsigned cycle) {
 //ok 实现mf id匹配
 //ok BMT不需要每层都Check
 //ok 增加访存类型的属性
-//单个HASH单元
+//ok 单个HASH单元
 //ok None Sector
 //lazy_fetch_on_read不能和None_Sector混用，因为设置modified会Sector_MISS
