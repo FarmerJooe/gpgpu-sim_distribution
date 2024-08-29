@@ -270,7 +270,10 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
           return HIT;
         } else {
           idx = index;
-          return SECTOR_MISS;
+          if (m_config.m_cache_type == SECTOR)
+            return SECTOR_MISS;
+          else
+            return MISS;
         }
 
       } else if (line->is_valid_line() && line->get_status(mask) == INVALID) {
@@ -1852,6 +1855,8 @@ void tex_cache::cycle() {
         m_cache[r.m_index].m_valid = true;
         m_cache[r.m_index].m_block_addr = r.m_block_addr;
         m_result_fifo.push(e.m_request);
+        mem_fetch *mf = e.m_request;
+        // printf("tex fill response:\t spid:%d\taddr:%llx\n", mf->get_sub_partition_id(), mf->get_addr());
         m_rob.pop();
         m_fragment_fifo.pop();
       }
@@ -1897,6 +1902,7 @@ void tex_cache::fill(mem_fetch *mf, unsigned time) {
   assert(!r.m_ready);
   r.m_ready = true;
   r.m_time = time;
+  // printf("tex fill:\t spid:%d\taddr:%llx\n", mf->get_sub_partition_id(), mf->get_addr());
   assert(r.m_block_addr == m_config.block_addr(mf->get_addr()));
 }
 
