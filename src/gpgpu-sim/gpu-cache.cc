@@ -270,7 +270,10 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
           return HIT;
         } else {
           idx = index;
-          return SECTOR_MISS;
+          if (m_config.m_cache_type == SECTOR)
+            return SECTOR_MISS;
+          else
+            return MISS;
         }
 
       } else if (line->is_valid_line() && line->get_status(mask) == INVALID) {
