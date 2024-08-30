@@ -35,9 +35,14 @@
 
 enum data_type {
   DEFAULT = 0,
-  CTR,
   MAC,
-  BMT
+  BMT,
+  CTR,
+  BMT_L1,
+  BMT_L2,
+  BMT_L3,
+  BMT_L4,
+  BMT_ROOT
 };
 
 enum mf_type {

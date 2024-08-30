@@ -120,9 +120,11 @@ void mee::gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type type, unsigned size
     new_addr_type BMT_addr  = get_addr(sub_partition_id, partition_addr);
     BMT_addr |= 0xf2000000;
 
+    enum data_type BMT_type = static_cast<data_type>(mf->get_data_type() + 1);
+
     meta_access(m_BMT_queue, BMT_addr, type, 
             size, wr, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, 
-            mf->get_wid(), mf->get_sid(), mf->get_tpc(), mf, mf_id, BMT);
+            mf->get_wid(), mf->get_sid(), mf->get_tpc(), mf, mf_id, BMT_type);
 }
 
 void mee::meta_access(
@@ -298,7 +300,7 @@ void mee::MAC_CHECK_cycle() {
             //     printf("type:%d HASH :%d\n", mf->first, mf->get_id());
             if (mf->first == MAC)
                 m_MAC_set[mf->second]++; //MAC Hash计算完成
-            if (mf->first == BMT)
+            if (mf->first >= BMT)
                 m_BMT_set[mf->second]++; //BMT Hash计算完成
             m_HASH_queue->pop();
         }
@@ -327,26 +329,24 @@ void mee::BMT_CHECK_cycle() {
             
             // printf("BBBBBB");
             //计算下一层BMT
-            if (get_BMT_Layer(mf->get_addr()) == 4) {
+            if (mf->get_data_type() == BMT_L4) {
                 // printf("AAAAAAAAAAAA\n");
                 BMT_busy = false;
                 cnt--;
-            } else if (get_BMT_Layer(mf->get_addr()) == 3) {
-                // printf("AAAAAAAAAAAA\n");
-                assert(!m_BMT_CHECK_queue->full());
-                m_BMT_CHECK_queue->push(mf);
-                assert(!m_HASH_queue->full());
-                m_HASH_queue->push(new hash(BMT, HASH_id));
-            } else {
-                // printf("XXXXXXXXXXXXX\n");
-                assert(get_BMT_Layer(mf->get_addr()) && get_BMT_Layer(mf->get_addr())<4);
-                assert(!m_BMT_queue->full(2));
+            } 
+            // else if (mf->get_data_type() == BMT_L4) {
+            //     // printf("AAAAAAAAAAAA\n");
+            //     assert(!m_BMT_CHECK_queue->full());
+            //     assert(!m_HASH_queue->full());
+            //     mf->set_data_type(BMT_ROOT);
+            //     m_BMT_CHECK_queue->push(mf);//ROOT mf
+            //     m_HASH_queue->push(new hash(BMT, HASH_id));
+            // } 
+            else {
+                gen_BMT_mf(mf, false, META_ACC, 128, HASH_id);
                 if (mf->is_write())
-                    gen_BMT_mf(mf->get_original_mf(), false, META_RBW, 128, 0);
-                assert(!m_BMT_queue->full());
-                gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, HASH_id);
+                    gen_BMT_mf(mf->get_original_mf(), true, META_RBW, 8, 0);
                 assert(!m_HASH_queue->full());
-                m_HASH_queue->push(new hash(BMT, HASH_id));
             }
             
             // if (REQ_addr == (new_addr_type) BMT_ROOT_mf) {
@@ -373,7 +373,8 @@ void mee::BMT_CHECK_cycle() {
         assert(cnt==0);
         // assert(cnt);
         mem_fetch *mf = m_CTR_BMT_Buffer->top();
-            gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, mf->get_id());
+            // gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, mf->get_id());
+            m_BMT_CHECK_queue->push(mf);
             m_HASH_queue->push(new hash(BMT, mf->get_id()));
             m_CTR_BMT_Buffer->pop();
             BMT_busy = true;
@@ -392,7 +393,7 @@ void mee::CTR_cycle() {
                 // print_addr("MISS OTP:\t\t", mf_return);
             if (!m_OTP_queue->full() && !m_CTR_BMT_Buffer->full()) { //CTR读MISS，则应生成CTR to BMT任务
                 m_OTP_queue->push(new unsigned(mf_return->get_id()));   //得到CTR值，计算OTP用于解密
-                // m_CTR_BMT_Buffer->push(mf_return);
+                m_CTR_BMT_Buffer->push(mf_return);
                 m_CTR_RET_queue->pop();
             }
         }
@@ -420,7 +421,7 @@ void mee::CTR_cycle() {
         if (status == HIT) {
             m_CTR_queue->pop();
             if (mf->is_write()) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
-                // m_CTR_BMT_Buffer->push(mf);
+                m_CTR_BMT_Buffer->push(mf);
             }
             if (mf->get_access_type() != META_RBW) {
                 m_OTP_queue->push(new unsigned(mf->get_id()));  //CTR HIT后计算OTP用于加密/解密
@@ -508,8 +509,9 @@ void mee::BMT_cycle() {
         mem_fetch *mf_return = m_BMT_RET_queue->top();
         // print_addr("MISS OTP:\t\t", mf_return);
         if (mf_return->get_access_type() != META_RBW) {
-            if (!m_BMT_CHECK_queue->full()) {
+            if (!m_BMT_CHECK_queue->full() && !m_HASH_queue->full()) {
                 m_BMT_CHECK_queue->push(mf_return);
+                m_HASH_queue->push(new hash(BMT, mf_return->get_id()));
                 m_BMT_RET_queue->pop();
             }
         } else {
@@ -519,7 +521,7 @@ void mee::BMT_cycle() {
 
     m_BMTcache->cycle();
 
-    bool output_full = m_BMT_CHECK_queue->full() || m_BMT_RET_queue->full();
+    bool output_full = m_BMT_CHECK_queue->full() || m_BMT_RET_queue->full() || m_HASH_queue->full();
     bool port_free = m_unit->m_BMTcache->data_port_free();
     
     if (!m_BMT_queue->empty()) {
@@ -548,8 +550,10 @@ void mee::BMT_cycle() {
             assert(status == HIT);
         }
         if (status == HIT) {
-            if (mf->get_access_type() != META_RBW)
+            if (mf->get_access_type() != META_RBW) {
                 m_BMT_CHECK_queue->push(mf);
+                m_HASH_queue->push(new hash(BMT, mf->get_id()));
+            }
             m_BMT_queue->pop();
         } else if (status != RESERVATION_FAIL) {
             m_BMT_queue->pop();
@@ -654,7 +658,10 @@ void mee::simple_cycle(unsigned cycle) {
                 META_fill(m_CTRcache, m_CTR_RET_queue, mf_return, CTR_mask, CTR_base, CTR);
                 META_fill(m_MACcache, m_MAC_RET_queue, mf_return, MAC_mask, MAC_base, MAC);
                 // for (int layer = 1; layer <= 4; layer++) {
-                META_fill(m_BMTcache, m_BMT_RET_queue, mf_return, BMT_mask[1], BMT_base[1], BMT);
+                    META_fill(m_BMTcache, m_BMT_RET_queue, mf_return, BMT_mask[1], BMT_base[1], BMT_L1);
+                    META_fill(m_BMTcache, m_BMT_RET_queue, mf_return, BMT_mask[1], BMT_base[1], BMT_L2);
+                    META_fill(m_BMTcache, m_BMT_RET_queue, mf_return, BMT_mask[1], BMT_base[1], BMT_L3);
+                    META_fill(m_BMTcache, m_BMT_RET_queue, mf_return, BMT_mask[1], BMT_base[1], BMT_L4);
                 // }
             } else {    // 密文访存返回
                 // assert(mf_return->get_access_type() != 4);
