@@ -264,7 +264,8 @@ void dram_t::push(class mem_fetch *data) {
     max_mrqs_temp = (max_mrqs_temp > mrqq->get_length()) ? max_mrqs_temp
                                                          : mrqq->get_length();
   }
-  m_stats->memlatstat_dram_access(data);
+  if (data->get_sid() < 80)
+    m_stats->memlatstat_dram_access(data);
 }
 
 void dram_t::scheduler_fifo() {

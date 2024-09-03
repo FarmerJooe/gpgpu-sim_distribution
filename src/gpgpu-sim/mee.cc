@@ -10,7 +10,7 @@ mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class me
     m_BMTcache(BMTcache),
     m_config(config),
     m_gpu(gpu) {
-    unsigned len = 64;
+    unsigned len = 8;
     m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_MAC_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
@@ -19,7 +19,7 @@ mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class me
     m_CTR_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_MAC_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_BMT_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
-    m_Ciphertext_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_Ciphertext_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len + 100);
 
     m_OTP_queue = new fifo_pipeline<unsigned>("meta-queue", 40, 40 + len);
     m_AES_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
@@ -38,7 +38,7 @@ int decode(int addr) {
 }
 void mee::print_addr(char s[], mem_fetch *mf) {
     if (m_unit->get_mpid() == 0) {
-        // printf("%saddr: %x\twr: %d\tdata_type: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\n", s, mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id());        // print_tag();
+        // printf("%saddr: %x\twr: %d\tdata_type: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", s, mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
     }
 }
 
@@ -157,8 +157,8 @@ void mee::meta_access(
     for (unsigned i = 0; i < reqs.size(); ++i) {
         assert(reqs.size() == 1);
         mem_fetch *req = reqs[i];
-        reqs[i]->set_id(mf_id);
-        reqs[i]->set_data_type(m_data_type);
+        req->set_id(mf_id);
+        req->set_data_type(m_data_type);
         assert(!m_META_queue->full());
         m_META_queue->push(req);
     }
@@ -229,6 +229,7 @@ void mee::AES_cycle() {
         int spid = m_unit->global_sub_partition_id_to_local_id(mf->get_sub_partition_id());
         // if (mf->get_sub_partition_id() == 0) 
         //     printf("%x\n", OTP_addr);
+        print_addr("waiting for AES:\t", mf);
         assert(OTP_id);
         // if (mf->is_write())
         //     printf("PPPPPPPPPPPPPP\n");
@@ -520,12 +521,12 @@ void mee::BMT_cycle() {
         // print_addr("MAC cycle access:\t\t", mf);
         // assert(mf->get_access_type() == mf->get_access_type());
 
-        if (mf->get_access_type() == META_RBW) {
-            //对于BMT写，要等待上一层BMT Hash计算完，得到新的BMT值，才可以更新当前层BMT
-            if (m_BMTcache->probe(mf->get_addr(), mf) != HIT) {//读到CTR后，才可以CTR++，然后写CTR
-                return;
-            }
-        }
+        // if (mf->get_access_type() == META_RBW) {
+        //     //对于BMT写，要等待上一层BMT Hash计算完，得到新的BMT值，才可以更新当前层BMT
+        //     if (m_BMTcache->probe(mf->get_addr(), mf) != HIT) {//读到CTR后，才可以CTR++，然后写CTR
+        //         return;
+        //     }
+        // }
 
         std::list<cache_event> events;
         enum cache_request_status status = m_BMTcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
