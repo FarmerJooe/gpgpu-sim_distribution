@@ -119,6 +119,7 @@ class mee {
         unsigned CT_counter = 0;
         unsigned OTP_counter = 0;
         unsigned MAC_counter = 0;
+        unsigned CTR_counter = 0;
         unsigned BMT_counter = 0;
         int var;
 

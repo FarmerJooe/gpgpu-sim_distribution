@@ -1,7 +1,7 @@
 #include "mee.h"
 #include <list>
-// #define BMT_Enable
-// #define MAC_Enable
+#define BMT_Enable
+#define MAC_Enable
 
 mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu) : 
     m_unit(unit), 
@@ -331,6 +331,7 @@ void mee::BMT_CHECK_cycle() {
             if (mf->get_data_type() == BMT_L4) {
                 // printf("AAAAAAAAAAAA\n");
                 BMT_busy = false;
+                BMT_counter++;
             } else {
                 if (mf->is_write()) {
                     gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, HASH_id);
@@ -391,7 +392,7 @@ void mee::CTR_cycle() {
     bool output_full = m_OTP_queue->full() || m_CTR_RET_queue->full() || m_CTR_BMT_Buffer->full();
     bool port_free = m_unit->m_CTRcache->data_port_free();
 
-    if (!m_CTR_queue->empty() && !m_unit->mee_dram_queue_full() && !output_full && port_free) {
+    if (!m_CTR_queue->empty() && !m_unit->mee_dram_queue_full() && !output_full && port_free && CTR_counter <= BMT_counter) {
         mem_fetch *mf = m_CTR_queue->top();
         // print_addr("CTR cycle access:\t\t", mf);
 
@@ -410,6 +411,7 @@ void mee::CTR_cycle() {
             if (mf->is_write()) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
                 #ifdef BMT_Enable
                 m_CTR_BMT_Buffer->push(mf);
+                CTR_counter++;
                 #endif
             }
             if (mf->get_access_type() != META_RBW) {
@@ -421,8 +423,12 @@ void mee::CTR_cycle() {
             // set wating for CTR fill
             // print_addr("CTR cycle access:\t\t", mf);
             m_CTR_queue->pop();
-            if (mf->get_access_type() != META_RBW)
+            if (mf->get_access_type() != META_RBW) {
                 OTP_counter++;
+                #ifdef BMT_Enable
+                CTR_counter++;
+                #endif
+            }
         } else {
             assert(!write_sent);
             assert(!read_sent);
