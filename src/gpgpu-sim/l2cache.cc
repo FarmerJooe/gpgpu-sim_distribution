@@ -740,6 +740,9 @@ bool memory_partition_unit::mee_dram_queue_full(int size) const {
 }
 
 void memory_partition_unit::mee_dram_queue_push(class mem_fetch *mf) {
+  if (get_mpid() == 0) {
+        printf("%saddr: %x\twr: %d\tdata_type: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %lld\n", "mee to dram push:\t", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
+    }
   m_mee_dram_queue->push(mf); //TODO
 }
 

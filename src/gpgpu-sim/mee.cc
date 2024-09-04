@@ -1,7 +1,7 @@
 #include "mee.h"
 #include <list>
-#define BMT_Enable
-#define MAC_Enable
+// #define BMT_Enable
+// #define MAC_Enable
 
 mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu) : 
     m_unit(unit), 
@@ -229,7 +229,7 @@ void mee::AES_cycle() {
         int spid = m_unit->global_sub_partition_id_to_local_id(mf->get_sub_partition_id());
         // if (mf->get_sub_partition_id() == 0) 
         //     printf("%x\n", OTP_addr);
-        print_addr("waiting for AES:\t", mf);
+        // print_addr("waiting for AES:\t", mf);
         assert(OTP_id);
         // if (mf->is_write())
         //     printf("PPPPPPPPPPPPPP\n");
@@ -257,6 +257,7 @@ void mee::AES_cycle() {
                 // printf("IIIIIIIIIIIIIIII\n");
             }
         } else {
+            print_addr("waiting for AES:\t", mf);
             // if (mf->is_write()) 
             //     printf("%p %d AES waiting for OTP %d\n", mf, mf->get_sub_partition_id(), OTP_id);
         }
@@ -276,7 +277,7 @@ void mee::MAC_CHECK_cycle() {
     if (!m_MAC_CHECK_queue->empty()) {
         // printf("AAAAAAAAAAAAA\n");
         mem_fetch *mf = m_MAC_CHECK_queue->top();
-        print_addr("waiting for MAC Check:\t", mf);
+        // print_addr("waiting for MAC Check:\t", mf);
         new_addr_type REQ_addr = (new_addr_type) mf->get_original_mf();    //MAC Cache的值
         unsigned HASH_id = mf->get_id();    //MAC Hash值
         // if (mf->get_sub_partition_id() == 0) 
@@ -385,6 +386,7 @@ void mee::CTR_cycle() {
     }
 
     m_CTRcache->cycle();
+    CT_cycle();
     
     bool output_full = m_OTP_queue->full() || m_CTR_RET_queue->full() || m_CTR_BMT_Buffer->full();
     bool port_free = m_unit->m_CTRcache->data_port_free();
@@ -426,6 +428,8 @@ void mee::CTR_cycle() {
             assert(!read_sent);
         }
     }
+
+    // m_CTRcache->cycle();
 };
 
 void mee::MAC_cycle() {
@@ -555,7 +559,7 @@ void mee::META_fill_responses(class meta_cache *m_METAcache, fifo_pipeline<mem_f
             m_META_RET_queue->push(mf);
         // assert(mf->get_access_type() == META_ACC);
         // if (m_METAcache == m_BMTcache)
-        print_addr("fill responses:", mf);
+        print_addr("fill responses:\t", mf);
         // reply(m_METAcache, mf);
         // delete mf;
     } else {
@@ -586,7 +590,7 @@ void mee::META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
             // }
             m_unit->dram_mee_queue_pop();
         }
-    } else if ((mf->get_data_type() == m_data_type) && !m_META_RET_queue->full()) {
+    } else if (mf->get_data_type() == m_data_type) {
       if (mf->is_write() && mf->get_type() == WRITE_ACK)
         mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                        m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -741,7 +745,7 @@ void mee::simple_cycle(unsigned cycle) {
     BMT_cycle();
     AES_cycle();
     CTR_cycle();
-    CT_cycle();
+    // CT_cycle();
 }
 
 void mee::cycle(unsigned cycle) {
