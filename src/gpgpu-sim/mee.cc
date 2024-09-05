@@ -327,6 +327,7 @@ void mee::BMT_CHECK_cycle() {
         if (m_BMT_set[HASH_id] && !m_BMT_queue->full(2)) { //得到了BMT与Hash值，BMT Check完成, 计算下一层BMT
             m_BMT_set[HASH_id]--;
             m_BMT_CHECK_queue->pop();
+            print_addr("BMT Hash:\t", mf);
             //计算下一层BMT
             if (mf->get_data_type() == BMT_L4) {
                 // printf("AAAAAAAAAAAA\n");
@@ -334,9 +335,9 @@ void mee::BMT_CHECK_cycle() {
                 BMT_counter++;
             } else {
                 if (mf->is_write()) {
-                    gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, HASH_id);
+                    gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, HASH_id); // Lazy fetch on read策略下，写操作不会发给dram
                     assert(!m_BMT_queue->full());
-                    gen_BMT_mf(mf, false, META_RBW, 128, 0);
+                    gen_BMT_mf(mf, false, META_ACC, 128, HASH_id);
                 } else
                     gen_BMT_mf(mf, false, META_ACC, 128, HASH_id);
             }
@@ -410,19 +411,21 @@ void mee::CTR_cycle() {
             m_CTR_queue->pop();
             if (mf->is_write()) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
                 #ifdef BMT_Enable
+                print_addr("CTR Write:\t", mf);
                 m_CTR_BMT_Buffer->push(mf);
                 CTR_counter++;
                 #endif
             }
-            if (mf->get_access_type() != META_RBW) {
+            else if (mf->get_access_type() != META_RBW) {
                 m_OTP_queue->push(new unsigned(mf->get_id()));  //CTR HIT后计算OTP用于加密/解密
                 OTP_counter++;
             }
             // }
         } else if (status != RESERVATION_FAIL) {
             // set wating for CTR fill
-            // print_addr("CTR cycle access:\t\t", mf);
+            print_addr("CTR MISS:\t", mf);
             m_CTR_queue->pop();
+            assert(!mf->is_write());
             if (mf->get_access_type() != META_RBW) {
                 OTP_counter++;
                 #ifdef BMT_Enable
@@ -505,7 +508,7 @@ void mee::BMT_cycle() {
     if (!m_BMT_RET_queue->empty()) {
         mem_fetch *mf_return = m_BMT_RET_queue->top();
         // print_addr("MISS OTP:\t\t", mf_return);
-        if (mf_return->get_access_type() != META_RBW) {
+        if (!mf_return->is_write()) {
             if (!m_BMT_CHECK_queue->full() && !m_HASH_queue->full()) {
                 m_BMT_CHECK_queue->push(mf_return);
                 m_HASH_queue->push(new hash(BMT, mf_return->get_id()));
@@ -528,7 +531,7 @@ void mee::BMT_cycle() {
 
     if (!m_BMT_queue->empty() && !m_unit->mee_dram_queue_full() && !output_full && port_free) {
         mem_fetch *mf = m_BMT_queue->top();
-        // print_addr("MAC cycle access:\t\t", mf);
+        print_addr("BMT waiting access:\t", mf);
         // assert(mf->get_access_type() == mf->get_access_type());
 
         // if (mf->get_access_type() == META_RBW) {
@@ -544,14 +547,17 @@ void mee::BMT_cycle() {
         bool read_sent = was_read_sent(events);
         // print_addr("CTR cycle access:\t\t", mf);
         if (status == HIT) {
-            if (mf->get_access_type() != META_RBW) {
+            print_addr("BMT access HIT:\t", mf);
+            if (!mf->is_write()) {
                 m_BMT_CHECK_queue->push(mf);
                 m_HASH_queue->push(new hash(BMT, mf->get_id()));
             }
             m_BMT_queue->pop();
         } else if (status != RESERVATION_FAIL) {
+            print_addr("BMT access MISS:\t", mf);
             m_BMT_queue->pop();
         } else {
+            print_addr("BMT access reservation_fail:\t", mf);
             assert(!write_sent);
             assert(!read_sent);
         }
@@ -702,7 +708,7 @@ void mee::simple_cycle(unsigned cycle) {
                 // if (!m_Ciphertext_queue->full()) {
                 mf_counter++;
                 mf->set_id(mf_counter);
-                gen_CTR_mf(mf, META_RBW, false, 0);
+                gen_CTR_mf(mf, META_ACC, false, mf_counter);//Lazy_ftech_on_read
                 gen_CTR_mf(mf, META_ACC, true, mf_counter);
                 #ifdef MAC_Enable
                 gen_MAC_mf(mf, true, mf_counter);
