@@ -600,6 +600,7 @@ mem_fetch *mshr_table::next_access() {
   new_addr_type block_addr = m_current_response.front();
   assert(!m_data[block_addr].m_list.empty());
   mem_fetch *result = m_data[block_addr].m_list.front();
+  // printf("cache fill response: data size: %d\taccess size:%d\n", result->get_data_size(), result->get_access_size());
   m_data[block_addr].m_list.pop_front();
   if (m_data[block_addr].m_list.empty()) {
     // release entry
@@ -1054,6 +1055,7 @@ bool baseline_cache::bandwidth_management::fill_port_free() const {
 void baseline_cache::cycle() {
   if (!m_miss_queue.empty()) {
     mem_fetch *mf = m_miss_queue.front();
+    // printf("%s cache cycle: data size: %d\taccess size:%d\n", m_name.c_str(), mf->get_data_size(), mf->get_access_size());
     if (!m_memport->full(mf->size(), mf->get_is_write())) {
       m_miss_queue.pop_front();
       m_memport->push(mf);
@@ -1068,6 +1070,7 @@ void baseline_cache::cycle() {
 /// Interface for response from lower memory level (model bandwidth restictions
 /// in caller)
 void baseline_cache::fill(mem_fetch *mf, unsigned time) {
+  // printf("%s cache fill: data size: %d\taccess size:%d\taccess type:%d\n", m_name.c_str(), mf->get_data_size(), mf->get_access_size(), mf->get_access_type());
   if (m_config.m_mshr_type == SECTOR_ASSOC) {
     assert(mf->get_original_mf());
     extra_mf_fields_lookup::iterator e =

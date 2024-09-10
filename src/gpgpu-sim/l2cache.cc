@@ -82,20 +82,24 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
       m_gpu(gpu) {
   m_dram = new dram_t(m_id, m_config, m_stats, this, gpu);
 
-  char L2c_name[32];
-  snprintf(L2c_name, 32, "L2_bank_%03d", m_id);
+  char CTRc_name[32];
+  char MACc_name[32];
+  char BMTc_name[32];
+  snprintf(CTRc_name, 32, "CTR_bank_%03d\0", m_id);
+  snprintf(MACc_name, 32, "MAC_bank_%03d\0", m_id);
+  snprintf(BMTc_name, 32, "BMT_bank_%03d\0", m_id);
   m_metainterface = new metainterface(this);
   m_mf_allocator = new partition_mf_allocator(config);
 
   if (!m_config->m_META_config.disabled()) {
     m_CTRcache =
-        new meta_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
+        new meta_cache(CTRc_name, m_config->m_META_config, -1, -1, m_metainterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
     m_MACcache =
-        new meta_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
+        new meta_cache(MACc_name, m_config->m_META_config, -1, -1, m_metainterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
     m_BMTcache =
-        new meta_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
+        new meta_cache(BMTc_name, m_config->m_META_config, -1, -1, m_metainterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
   }
 

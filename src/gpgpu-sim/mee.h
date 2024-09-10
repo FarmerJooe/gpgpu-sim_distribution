@@ -32,9 +32,9 @@ class mee {
         new_addr_type get_addr(new_addr_type partition_id, new_addr_type partition_addr);
 
         unsigned int get_BMT_Layer(new_addr_type addr);
-        void gen_CTR_mf(mem_fetch *mf, mem_access_type meta_acc, bool wr, unsigned mf_id);
-        void gen_MAC_mf(mem_fetch *mf, bool wr, unsigned mf_id);
-        void gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type type, unsigned size, unsigned mf_id);
+        void gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id);
+        void gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id);
+        void gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id);
         bool META_queue_empty();
 
         void META_fill_responses(class meta_cache *m_METAcache,  fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK);
@@ -89,16 +89,16 @@ class mee {
         const new_addr_type CTR_mask = 0xFE000000;//1111 000x xxxx xxxx xxxx xxxx xxxx xxxx
         const new_addr_type MAC_mask = 0xF0000000;//1110 xxxx xxxx xxxx xxxx xxxx xxxx x000
         
-        //CTR: 1111 000x xxxx xxxx xxxx xxxx xxxx xxxx
-        //L1 : 1111 0010 000x xxxx xxxx xxxx xxxx x000
-        //L2 : 1111 0010 0010 000x xxxx xxxx xxxx x000
-        //L3 : 1111 0010 0010 0010 00xx xxxx 0xxx x000
-        //L4 : 1111 0010 0010 0010 00xx xxxx 1000 0000
-        //ROOT:1111 0010 0010 0010 00xx xxxx 1000 1000 
-        const new_addr_type BMT_base[5] = {0xF0000000, 0xF2000000, 0xF2200000, 0xF2220000, 0xF2220080};
+        //CTR: 1110 00xx xxxx xxxx xxxx xxxx xxxx xxxx
+        //L1 : 1110 0100 00xx xxxx xxxx xxxx xxxx x000
+        //L2 : 1110 0100 0100 00xx xxxx xxxx xxxx x000
+        //L3 : 1110 0100 0100 0100 00xx xxxx xxxx x000
+        //L4 : 1110 0100 0100 0100 01xx xxxx 0000 x000
+        //ROOT:1110 0100 0100 0100 01xx xxxx 0001 0000 
+        const new_addr_type BMT_base[5] = {0xE0000000, 0xE4000000, 0xE4400000, 0xE4440000, 0xE4444000};
         
-        const new_addr_type CTR_base = 0xF0000000;//1111 000x xxxx xxxx xxxx xxxx xxxx xxxx
-        const new_addr_type MAC_base = 0xE0000000;//1110 xxxx xxxx xxxx xxxx xxxx xxxx x000
+        const new_addr_type CTR_base = 0xE0000000;//1110 00xx xxxx xxxx xxxx xxxx xxxx xxxx
+        const new_addr_type MAC_base = 0xC0000000;//110x xxxx xxxx xxxx xxxx xxxx xxxx x000
 
         const int m_memcpy_cycle_offset = 0;
         const int mee_busy_mask = 0;
