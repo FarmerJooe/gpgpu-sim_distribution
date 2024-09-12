@@ -622,7 +622,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
   // new L2 texture accesses and/or non-texture accesses
   if (!m_L2_mee_queue->full() && !m_icnt_L2_queue->empty()) {
     mem_fetch *mf = m_icnt_L2_queue->top();
-                // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 access\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
+                // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 access\t", mf->get_addr(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type());
 
     if (!m_config->m_L2_config.disabled() &&
         ((m_config->m_L2_texure_only && mf->istexture()) ||
