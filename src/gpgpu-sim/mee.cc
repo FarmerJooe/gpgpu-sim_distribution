@@ -135,7 +135,7 @@ void mee::gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
     if (size == 128)
         partition_addr = partition_addr >> 11 << 7;
     else
-        partition_addr = partition_addr >> 7 << 3;
+        partition_addr = partition_addr >> 9 << 5;
     new_addr_type BMT_addr  = get_addr(sub_partition_id, partition_addr);
     BMT_addr |= 0xF2000000;
 
