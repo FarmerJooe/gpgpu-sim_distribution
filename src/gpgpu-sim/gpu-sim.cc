@@ -217,6 +217,9 @@ void power_config::reg_options(class OptionParser *opp) {
 }
 
 void memory_config::reg_options(class OptionParser *opp) {
+  option_parser_register(opp, "-gpgpu_crypto_latency", OPT_INT32,
+                         &m_crypto_latency, "gpgpu secmem crypto latency",
+                         "40");
   option_parser_register(opp, "-gpgpu_perf_sim_memcpy", OPT_BOOL,
                          &m_perf_sim_memcpy, "Fill the L2 cache on memcpy",
                          "1");
