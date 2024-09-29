@@ -1385,6 +1385,11 @@ void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
       if (total_l2_css.accesses > 0)
         printf("%s_total_cache_miss_rate = %.4lf\n",
                META, (double)total_l2_css.misses / (double)total_l2_css.accesses);
+      //secondary MISS
+      printf("%s_total_cache_secondary_misses = %llu\n", META, l2_stats.m_stats[META_ACC][MSHR_HIT]);
+      //secondary MISS rate
+      if (total_l2_css.misses > 0)
+        printf("%s_total_cache_secondary_miss_rate = %.4lf\n", META, (double)l2_stats.m_stats[META_ACC][MSHR_HIT] / (double)total_l2_css.misses + (double)l2_stats.m_stats[META_ACC][MSHR_HIT]);
       printf("%s_total_cache_pending_hits = %llu\n", META, total_l2_css.pending_hits);
       printf("%s_total_cache_reservation_fails = %llu\n",
              META, total_l2_css.res_fails);
@@ -1400,7 +1405,7 @@ void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
       char META_cache_stats_fail_breakdown[128];
       strcpy(META_cache_stats_fail_breakdown, META);
       strcat(META_cache_stats_fail_breakdown, "_cache_stats_fail_breakdown");
-      l2_stats.print_fail_stats(stdout, "L2_cache_stats_fail_breakdown");
+      l2_stats.print_fail_stats(stdout, META_cache_stats_fail_breakdown);
 
       char META_cache[128];
       strcpy(META_cache, META);
@@ -1408,6 +1413,32 @@ void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
       total_l2_css.print_port_stats(stdout, META_cache);
     }
   }
+}
+
+void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
+
+  printf("\n========= meta cache data type breakdown =========\n");
+  
+  unsigned long long m_cache_tot_DEFAULT_acc = 0;
+  unsigned long long m_cache_tot_CTR_acc = 0;
+  unsigned long long m_cache_tot_MAC_acc = 0;
+  unsigned long long m_cache_tot_BMT_acc = 0;
+  unsigned long long m_cache_tot_meta_wb = 0;
+  
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+    m_cache_tot_DEFAULT_acc += m_memory_partition_unit[i]->m_cache_DEFAULT_acc;
+    m_cache_tot_CTR_acc += m_memory_partition_unit[i]->m_cache_CTR_acc;
+    m_cache_tot_MAC_acc += m_memory_partition_unit[i]->m_cache_MAC_acc;
+    m_cache_tot_BMT_acc += m_memory_partition_unit[i]->m_cache_BMT_acc;
+    m_cache_tot_meta_wb += m_memory_partition_unit[i]->m_cache_meta_wb;
+  }
+
+  printf("m_cache_tot_DEFAULT_acc = %lld\n", m_cache_tot_DEFAULT_acc);
+  printf("m_cache_tot_CTR_acc = %lld\n", m_cache_tot_CTR_acc);
+  printf("m_cache_tot_MAC_acc = %lld\n", m_cache_tot_MAC_acc);
+  printf("m_cache_tot_BMT_acc = %lld\n", m_cache_tot_BMT_acc);
+  printf("m_cache_tot_meta_wb = %lld\n", m_cache_tot_meta_wb);
+
 }
 
 void gpgpu_sim::gpu_print_stat() {
@@ -1566,6 +1597,9 @@ void gpgpu_sim::gpu_print_stat() {
   gpu_print_METACache_stat("MAC");
   // BMT cache stats
   gpu_print_METACache_stat("BMT");
+  
+  // mf data type breakdown
+  gpu_print_METACache_data_type_breakdown();
 
   if (m_config.gpgpu_cflog_interval != 0) {
     spill_log_to_file(stdout, 1, gpu_sim_cycle);

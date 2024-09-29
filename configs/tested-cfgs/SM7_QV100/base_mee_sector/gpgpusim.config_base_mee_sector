@@ -165,8 +165,8 @@
 # 32 sets, each 128 bytes 24-way for each memory sub partition (96 KB per memory sub partition). This gives us 6MB L2 cache
 #-gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
 -gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
-#-gpgpu_cache:dmeta N:4:128:4,L:B:m:W:X,A:8:4,32:0,32
--gpgpu_cache:dmeta S:4:128:4,L:B:m:L:X,A:8:4,32:0,32
+#-gpgpu_cache:dmeta N:4:128:4,L:B:m:W:X,A:64:4,32:0,32
+-gpgpu_cache:dmeta S:4:128:4,L:B:m:L:X,A:64:64,32:0,32
 -gpgpu_cache:dl2_texture_only 0
 -gpgpu_dram_partition_queues 64:64:64:64
 -gpgpu_perf_sim_memcpy 0

@@ -146,6 +146,14 @@ class memory_partition_unit {
   class metainterface *m_metainterface;
   partition_mf_allocator *m_mf_allocator;
 
+ public:
+  unsigned long long m_cache_DEFAULT_acc;
+  unsigned long long m_cache_CTR_acc;
+  unsigned long long m_cache_MAC_acc;
+  unsigned long long m_cache_BMT_acc;
+  unsigned long long m_cache_meta_wb;
+
+ private:
   fifo_pipeline<mem_fetch> *m_mee_dram_queue; 
   fifo_pipeline<mem_fetch> *m_dram_mee_queue; 
 
@@ -321,7 +329,7 @@ class L2interface : public mem_fetch_interface {
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
     m_unit->m_L2_mee_queue->push(mf);
     // if (mf->get_access_type() == 9)
-    //                     printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 fill responses", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
+                        // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 to mee:", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
 
     // printf("l2 to mee access type: %d\n",mf->get_access_type());
   }

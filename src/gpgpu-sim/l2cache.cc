@@ -123,6 +123,11 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
     m_sub_partition[p] =
         new memory_sub_partition(sub_partition_id, m_config, stats, gpu);
   }
+  m_cache_DEFAULT_acc = 0;
+  m_cache_CTR_acc = 0;
+  m_cache_MAC_acc = 0;
+  m_cache_BMT_acc = 0;
+  m_cache_meta_wb = 0;
 }
 
 void memory_partition_unit::handle_memcpy_to_gpu(
@@ -410,6 +415,17 @@ void memory_partition_unit::dram_cycle() {
     mem_fetch *mf = m_dram_latency_queue.front().req;
     m_dram_latency_queue.pop_front();
     m_dram->push(mf);
+
+    if (mf->get_access_type() == META_WRBK_ACC) 
+      m_cache_meta_wb++;
+    else if (mf->get_data_type() == DEFAULT) 
+      m_cache_DEFAULT_acc++;
+    else if (mf->get_data_type() == CTR)
+      m_cache_CTR_acc++;
+    else if (mf->get_data_type() == MAC)
+      m_cache_MAC_acc++;
+    else if (mf->get_data_type() >= BMT_L1)
+      m_cache_BMT_acc++;
     // if (mf->get_sub_partition_id() == 0)
       // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "to dram", mf_return->get_addr(), mf_return->get_sub_partition_id(), mf_return->get_partition_addr(), mf_return->get_access_type());
     

@@ -1234,6 +1234,8 @@ class cache_stats {
   unsigned long long m_cache_port_available_cycles;
   unsigned long long m_cache_data_port_busy_cycles;
   unsigned long long m_cache_fill_port_busy_cycles;
+
+  friend class gpgpu_sim;
 };
 
 class cache_t {

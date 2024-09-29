@@ -10,7 +10,7 @@ mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class me
     m_BMTcache(BMTcache),
     m_config(config),
     m_gpu(gpu) {
-    unsigned len = 16;
+    unsigned len = 64;
     m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_MAC_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
@@ -288,7 +288,7 @@ void mee::AES_cycle() {
                 // printf("IIIIIIIIIIIIIIII\n");
             }
         } else {
-            print_addr("waiting for AES:\t", mf);
+            // print_addr("waiting for AES:\t", mf);
             // if (mf->is_write()) 
             //     printf("%p %d AES waiting for OTP %d\n", mf, mf->get_sub_partition_id(), OTP_id);
         }
@@ -322,7 +322,7 @@ void mee::MAC_CHECK_cycle() {
             m_MAC_CHECK_queue->pop();
             // printf("%p %d MAC HASH %d\n", mf, mf->get_sub_partition_id(), HASH_id);
         } else {
-            print_addr("waiting for MAC Check:\t", mf);
+            // print_addr("waiting for MAC Check:\t", mf);
             // if (mf->get_sub_partition_id() == 32) 
                 // printf("%p %d MAC waiting for HASH %d\n", mf, mf->get_sub_partition_id(), HASH_id);
         }
@@ -359,7 +359,7 @@ void mee::BMT_CHECK_cycle() {
         if (m_BMT_set[HASH_id] && ((m_config->m_META_config.m_cache_type == SECTOR && !m_BMT_queue->full(5)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_BMT_queue->full(2)))) { //得到了BMT与Hash值，BMT Check完成, 计算下一层BMT
             m_BMT_set[HASH_id]--;
             m_BMT_CHECK_queue->pop();
-            print_addr("BMT Hash:\t", mf);
+            // print_addr("BMT Hash:\t", mf);
             //计算下一层BMT
             if (mf->get_data_type() == BMT_L4) {
                 // printf("AAAAAAAAAAAA\n");
@@ -455,7 +455,7 @@ void mee::CTR_cycle() {
             m_CTR_queue->pop();
             if (mf->is_write()) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
                 #ifdef BMT_Enable
-                print_addr("CTR Write:\t", mf);
+                // print_addr("CTR Write:\t", mf);
                 if (mf->get_id())
                     m_CTR_BMT_Buffer->push(mf);
                 if (mf->get_id())
