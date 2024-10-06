@@ -19,7 +19,7 @@ class mee {
         void print_tag();
         void meta_access(fifo_pipeline<mem_fetch> *m_META_queue, new_addr_type addr, mem_access_type type, 
             unsigned size, bool wr, unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc, 
-            mem_fetch *original_mf, unsigned mf_id, enum data_type m_data_type) const;
+            mem_fetch *original_mf, unsigned mf_id, enum data_type m_data_type, enum BMT_Layer m_Layer) const;
         void CTR_cycle();
         void MAC_cycle();
         void BMT_cycle();

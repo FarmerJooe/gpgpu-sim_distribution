@@ -34,10 +34,16 @@
 #include "addrdec.h"
 
 enum data_type {
-  DEFAULT = 0,
-  MAC,
+  TOT = 0,
   BMT,
   CTR,
+  NORM,
+  MAC,
+  NUM_DATA_TYPE
+};
+
+enum BMT_Layer {
+  DEFAULT = 0,
   BMT_L1,
   BMT_L2,
   BMT_L3,
@@ -147,7 +153,10 @@ class mem_fetch {
   void set_id(unsigned id) { this->id = id; }
 
   enum data_type get_data_type() { return this->m_data_type; }
-  void set_data_type(enum data_type m_data_type) { this->m_data_type = m_data_type; }
+  void set_data_type(enum data_type dtype) { this->m_data_type = dtype; }
+
+  enum BMT_Layer get_BMT_Layer() { return this->m_BMT_Layer; }
+  void set_BMT_Layer(enum BMT_Layer Layer) { this->m_BMT_Layer = Layer; }
 
  private:
   // request source information
@@ -197,7 +206,8 @@ class mem_fetch {
                               // when fetch-on-write policy is used
   bool raw_data = true;
   unsigned id;
-  enum data_type m_data_type = DEFAULT;
+  enum data_type m_data_type = NORM;
+  enum BMT_Layer m_BMT_Layer = DEFAULT;
 };
 
 #endif

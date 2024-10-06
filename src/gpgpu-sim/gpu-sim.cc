@@ -1392,7 +1392,7 @@ void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
       printf("%s_total_cache_secondary_misses = %llu\n", META, l2_stats.m_stats[META_ACC][MSHR_HIT]);
       //secondary MISS rate
       if (total_l2_css.misses > 0)
-        printf("%s_total_cache_secondary_miss_rate = %.4lf\n", META, (double)l2_stats.m_stats[META_ACC][MSHR_HIT] / (double)total_l2_css.misses + (double)l2_stats.m_stats[META_ACC][MSHR_HIT]);
+        printf("%s_total_cache_secondary_miss_rate = %.4lf\n", META, (double)l2_stats.m_stats[META_ACC][MSHR_HIT] / ((double)total_l2_css.misses + (double)l2_stats.m_stats[META_ACC][MSHR_HIT]));
       printf("%s_total_cache_pending_hits = %llu\n", META, total_l2_css.pending_hits);
       printf("%s_total_cache_reservation_fails = %llu\n",
              META, total_l2_css.res_fails);

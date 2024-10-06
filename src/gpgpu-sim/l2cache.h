@@ -77,6 +77,8 @@ class memory_partition_unit {
 
   bool busy() const;
 
+  void dram_to_mee_cycle();
+  void mee_to_dram_cycle();
   void cache_cycle(unsigned cycle);
   void dram_cycle();
   void simple_dram_model_cycle();
@@ -117,13 +119,13 @@ class memory_partition_unit {
   bool mee_dram_queue_empty() const;
   class mem_fetch *mee_dram_queue_top() const;
   void mee_dram_queue_pop();
-  bool mee_dram_queue_full() const;
-  bool mee_dram_queue_full(int size) const;
-  void mee_dram_queue_push(class mem_fetch *mf);
+  bool mee_dram_queue_full(enum data_type dtype) const;
+  bool mee_dram_queue_full(int size, enum data_type dtype) const;
+  void mee_dram_queue_push(class mem_fetch *mf, enum data_type dtype);
 
-  bool dram_mee_queue_empty() const;
-  class mem_fetch *dram_mee_queue_top() const;
-  void dram_mee_queue_pop();
+  bool dram_mee_queue_empty(enum data_type dtype) const;
+  class mem_fetch *dram_mee_queue_top(enum data_type dtype) const;
+  void dram_mee_queue_pop(enum data_type dtype);
   bool dram_mee_queue_full() const;
   void dram_mee_queue_push(class mem_fetch *mf);
 
@@ -143,7 +145,10 @@ class memory_partition_unit {
   class meta_cache *m_MACcache;
   class meta_cache *m_BMTcache;
   class mee *m_mee;
-  class metainterface *m_metainterface;
+  // class metainterface *m_metainterface;
+  class metainterface *m_BMTinterface;
+  class metainterface *m_CTRinterface;
+  class metainterface *m_MACinterface;
   partition_mf_allocator *m_mf_allocator;
 
  public:
@@ -154,8 +159,20 @@ class memory_partition_unit {
   unsigned long long m_cache_meta_wb;
 
  private:
-  fifo_pipeline<mem_fetch> *m_mee_dram_queue; 
-  fifo_pipeline<mem_fetch> *m_dram_mee_queue; 
+  fifo_pipeline<mem_fetch> *m_mee_dram_queue[5]; 
+  fifo_pipeline<mem_fetch> *m_dram_mee_queue[5]; 
+  const unsigned send_trigger_threshold = 16;
+  const unsigned receive_stop_threshold = 16;
+  unsigned last_send = 0;
+  // fifo_pipeline<mem_fetch> *m_NORM_dram_queue; 
+  // fifo_pipeline<mem_fetch> *m_CTR_dram_queue; 
+  // fifo_pipeline<mem_fetch> *m_MAC_dram_queue; 
+  // fifo_pipeline<mem_fetch> *m_BMT_dram_queue;
+
+  // fifo_pipeline<mem_fetch> *m_dram_NORM_queue;
+  // fifo_pipeline<mem_fetch> *m_dram_CTR_queue;
+  // fifo_pipeline<mem_fetch> *m_dram_MAC_queue;
+  // fifo_pipeline<mem_fetch> *m_dram_BMT_queue; 
 
   class arbitration_metadata {
    public:
@@ -340,21 +357,30 @@ class L2interface : public mem_fetch_interface {
 
 class metainterface : public mem_fetch_interface {
  public:
-  metainterface(memory_partition_unit *unit) { m_unit = unit; }
+  // metainterface(memory_partition_unit *unit, enum cache_type dtype) { 
+  metainterface(fifo_pipeline<mem_fetch> *pipeline) { 
+    // m_unit = unit;
+    // m_dtype = dtype;
+    this->pipeline = pipeline;
+  }
   virtual ~metainterface() {}
   virtual bool full(unsigned size, bool write) const {
     // assume read and write packets all same size
-    return m_unit->mee_dram_queue_full();
+    // return m_unit->mee_dram_queue_full();
+    return pipeline->full();
   }
   virtual void push(mem_fetch *mf) {
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
-                            // printf("%saddr: %x\tmf_type: %d\tsp_addr: %x\taccess type:%d\n", "mee to dram:\t", mf->get_addr(), mf->get_data_type(), mf->get_partition_addr(), mf->get_access_type());
+    // printf("%saddr: %x\tmf_type: %d\tsp_addr: %x\taccess type:%d\n", "mee to dram:\t", mf->get_addr(), mf->get_data_type(), mf->get_partition_addr(), mf->get_access_type());
 
-    m_unit->mee_dram_queue_push(mf);
+    // m_unit->mee_dram_queue_push(mf);
+    pipeline->push(mf);
   }
 
  private:
   memory_partition_unit *m_unit;
+  enum cache_type m_dtype;
+  fifo_pipeline<mem_fetch> *pipeline;
 };
 
 #endif
