@@ -152,7 +152,7 @@ class memory_partition_unit {
   partition_mf_allocator *m_mf_allocator;
 
  public:
-  unsigned long long m_cache_DEFAULT_acc;
+  unsigned long long m_cache_NORM_acc;
   unsigned long long m_cache_CTR_acc;
   unsigned long long m_cache_MAC_acc;
   unsigned long long m_cache_BMT_acc;

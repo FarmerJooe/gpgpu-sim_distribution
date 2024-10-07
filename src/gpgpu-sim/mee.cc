@@ -38,7 +38,7 @@ int decode(int addr) {
 }
 void mee::print_addr(char s[], mem_fetch *mf) {
     if (m_unit->get_mpid() == 12) {
-        // printf("%saddr: %x\twr: %d\tdata_type: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", s, mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
+        // printf("%saddr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", s, mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
     }
 }
 
@@ -360,7 +360,7 @@ void mee::BMT_CHECK_cycle() {
         if (m_BMT_set[HASH_id] && ((m_config->m_META_config.m_cache_type == SECTOR && !m_BMT_queue->full(5)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_BMT_queue->full(2)))) { //得到了BMT与Hash值，BMT Check完成, 计算下一层BMT
             m_BMT_set[HASH_id]--;
             m_BMT_CHECK_queue->pop();
-            // print_addr("BMT Hash:\t", mf);
+            print_addr("BMT Hash:\t", mf);
             //计算下一层BMT
             if (mf->get_BMT_Layer() == BMT_L4) {
                 // printf("AAAAAAAAAAAA\n");
@@ -584,7 +584,7 @@ void mee::BMT_cycle() {
 
     if (!m_BMT_queue->empty() && !m_unit->mee_dram_queue_full(BMT) && !output_full && port_free) {
         mem_fetch *mf = m_BMT_queue->top();
-        print_addr("BMT waiting access:\t", mf);
+        // print_addr("BMT waiting access:\t", mf);
         // assert(mf->get_access_type() == mf->get_access_type());
 
         // if (mf->get_access_type() == META_RBW) {
@@ -600,17 +600,17 @@ void mee::BMT_cycle() {
         bool read_sent = was_read_sent(events);
         // print_addr("CTR cycle access:\t\t", mf);
         if (status == HIT) {
-            print_addr("BMT access HIT:\t", mf);
+            // print_addr("BMT access HIT:\t", mf);
             if (mf->get_id() && !mf->is_write()) {
                 m_BMT_CHECK_queue->push(mf);
                 m_HASH_queue->push(new hash(BMT, mf->get_id()));
             }
             m_BMT_queue->pop();
         } else if (status != RESERVATION_FAIL) {
-            print_addr("BMT access MISS:\t", mf);
+            // print_addr("BMT access MISS:\t", mf);
             m_BMT_queue->pop();
         } else {
-            print_addr("BMT access reservation_fail:\t", mf);
+            // print_addr("BMT access reservation_fail:\t", mf);
             assert(!write_sent);
             assert(!read_sent);
         }
@@ -624,7 +624,7 @@ void mee::META_fill_responses(class meta_cache *m_METAcache, fifo_pipeline<mem_f
             m_META_RET_queue->push(mf);
         // assert(mf->get_access_type() == META_ACC);
         // if (m_METAcache == m_BMTcache)
-        print_addr("fill responses:\t", mf);
+        // print_addr("fill responses:\t", mf);
         // reply(m_METAcache, mf);
         // delete mf;
     } else {
@@ -639,7 +639,7 @@ void mee::META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
     
     if (!m_unit->dram_mee_queue_empty(m_data_type)) {
         mem_fetch *mf_return = m_unit->dram_mee_queue_top(m_data_type);
-        print_addr("fill: \t", mf_return);
+        // print_addr("fill: \t", mf_return);
         if ((mf_return->get_data_type() == m_data_type) && m_METAcache->waiting_for_fill(mf_return)) {
             // print_addr("wating for fill:\t\t", mf); 
             if (m_METAcache->fill_port_free()) {
@@ -658,7 +658,7 @@ void mee::META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
                 // }
                 m_unit->dram_mee_queue_pop(m_data_type);
             } else {
-                print_addr("fill ERROR:\t", mf_return);
+                // print_addr("fill ERROR:\t", mf_return);
             }
         } else if (mf_return->get_data_type() == m_data_type) {
             if (mf_return->is_write() && mf_return->get_type() == WRITE_ACK)
@@ -693,7 +693,7 @@ void mee::simple_cycle(unsigned cycle) {
         mem_fetch *mf_return = m_unit->dram_mee_queue_top(NORM);
         // assert(!mf_return->is_write());
         // if (mf_return->get_sub_partition_id() == 58)
-        print_addr("waiting for fill:\t", mf_return);
+        // print_addr("waiting for fill:\t", mf_return);
         // printf("%saddr: %x\tdata_type: %d\tsp_addr: %x\taccess type:%d\n", "fill queue:\t", mf->get_addr(), mf->get_data_type(), mf->get_partition_addr(), mf->get_access_type());
 
         if (false
@@ -740,7 +740,7 @@ void mee::simple_cycle(unsigned cycle) {
         // if (mf->get_access_type() == 9)
                         // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 to mee:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
 
-        print_addr("L2 to mee: ", mf);
+        // print_addr("L2 to mee: ", mf);
         // mee to dram
         assert(mf->is_raw());
         // printf("TTTTTTTTTTTTTTTT\n");

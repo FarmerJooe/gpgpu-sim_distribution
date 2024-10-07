@@ -1422,21 +1422,21 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
 
   printf("\n========= meta cache data type breakdown =========\n");
   
-  unsigned long long m_cache_tot_DEFAULT_acc = 0;
+  unsigned long long m_cache_tot_NORM_acc = 0;
   unsigned long long m_cache_tot_CTR_acc = 0;
   unsigned long long m_cache_tot_MAC_acc = 0;
   unsigned long long m_cache_tot_BMT_acc = 0;
   unsigned long long m_cache_tot_meta_wb = 0;
   
   for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
-    m_cache_tot_DEFAULT_acc += m_memory_partition_unit[i]->m_cache_DEFAULT_acc;
+    m_cache_tot_NORM_acc += m_memory_partition_unit[i]->m_cache_NORM_acc;
     m_cache_tot_CTR_acc += m_memory_partition_unit[i]->m_cache_CTR_acc;
     m_cache_tot_MAC_acc += m_memory_partition_unit[i]->m_cache_MAC_acc;
     m_cache_tot_BMT_acc += m_memory_partition_unit[i]->m_cache_BMT_acc;
     m_cache_tot_meta_wb += m_memory_partition_unit[i]->m_cache_meta_wb;
   }
 
-  printf("m_cache_tot_DEFAULT_acc = %lld\n", m_cache_tot_DEFAULT_acc);
+  printf("m_cache_tot_NORM_acc = %lld\n", m_cache_tot_NORM_acc);
   printf("m_cache_tot_CTR_acc = %lld\n", m_cache_tot_CTR_acc);
   printf("m_cache_tot_MAC_acc = %lld\n", m_cache_tot_MAC_acc);
   printf("m_cache_tot_BMT_acc = %lld\n", m_cache_tot_BMT_acc);
