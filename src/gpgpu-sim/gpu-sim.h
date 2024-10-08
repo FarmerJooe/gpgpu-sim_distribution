@@ -351,6 +351,7 @@ class memory_config {
   unsigned gpgpu_frfcfs_dram_write_queue_size;
   unsigned write_high_watermark;
   unsigned write_low_watermark;
+  unsigned m_AES_Engines;
   unsigned m_crypto_latency;
   bool m_perf_sim_memcpy;
   bool simple_dram_model;
