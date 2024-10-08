@@ -755,7 +755,7 @@ void mee::simple_cycle(unsigned cycle) {
         
         if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(8)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
             && !m_MAC_queue->full() && !m_Ciphertext_queue->full()) {
-            assert(!mf->is_write());
+            // assert(!mf->is_write());
             if (mf->is_write()) { // write
                 assert(mf->is_raw());
                 // printf("LLLLLLLLLLLLLLLLLLL");
