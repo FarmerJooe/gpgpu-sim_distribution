@@ -22,10 +22,10 @@ mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class me
     m_Ciphertext_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len + 100);
 
     m_OTP_queue = new fifo_pipeline<unsigned>("meta-queue", m_config->m_crypto_latency, m_config->m_crypto_latency + len);
-    m_AES_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_AES_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 4);
 
     m_HASH_queue = new fifo_pipeline<hash>("meta-queue", m_config->m_crypto_latency, m_config->m_crypto_latency + len);
-    m_MAC_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_MAC_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 4);
 
     // m_HASH_queue = new fifo_pipeline<unsigned>("meta-queue", 40, 40 + len);
     m_BMT_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
@@ -37,7 +37,7 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) {
-    if (m_unit->get_mpid() == 12) {
+    if (m_unit->get_mpid() == 1) {
         // printf("%s\t", s);
         // if (mf->get_original_mf())
         //     printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
@@ -286,6 +286,7 @@ void mee::AES_cycle() {
                 // m_OTP_table[REQ_addr] = 0;
                 // print_addr("mee to L2 R:\t", mf);
                 m_unit->mee_L2_queue_push(spid, mf);    //解密完后返回L2
+                print_addr("MEE to L2:\t", mf);
                 // printf("JJJJJJJJJJJJJJJJJJJJJJJJJ");
                 m_AES_queue->pop();
                 
@@ -626,7 +627,7 @@ void mee::META_fill_responses(class meta_cache *m_METAcache, fifo_pipeline<mem_f
             m_META_RET_queue->push(mf);
         // assert(mf->get_access_type() == META_ACC);
         // if (m_METAcache == m_BMTcache)
-        // print_addr("fill responses:\t", mf);
+        print_addr("fill responses:\t", mf);
         // reply(m_METAcache, mf);
         // delete mf;
     } else {
@@ -641,7 +642,7 @@ void mee::META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
     
     if (!m_unit->dram_mee_queue_empty(m_data_type)) {
         mem_fetch *mf_return = m_unit->dram_mee_queue_top(m_data_type);
-        // print_addr("fill: \t", mf_return);
+        print_addr("fill: \t", mf_return);
         #ifdef BMT_Enable
         if (m_data_type == CTR)
             if (!m_META_RET_queue->full()) 
@@ -714,7 +715,7 @@ void mee::simple_cycle(unsigned cycle) {
             m_unit->dram_mee_queue_pop(NORM);
         } else {
         
-            // print_addr("dram_mee_queue_top:\t", mf_return);
+            print_addr("dram to mee:\t", mf_return);
             // mee to L2
             
             // META_fill(m_MACcache, mf_return, MAC_mask);
@@ -748,13 +749,15 @@ void mee::simple_cycle(unsigned cycle) {
         // if (mf->get_access_type() == 9)
                         // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 to mee:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
 
-        // print_addr("L2 to mee: ", mf);
+        
         // mee to dram
         assert(mf->is_raw());
         // printf("TTTTTTTTTTTTTTTT\n");
         
         if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(8)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
             && !m_MAC_queue->full() && !m_Ciphertext_queue->full()) {
+            print_addr("L2 to mee: ", mf);
+            DL_CNT = 0;
             // assert(!mf->is_write());
             if (mf->is_write()) { // write
                 assert(mf->is_raw());
@@ -814,6 +817,10 @@ void mee::simple_cycle(unsigned cycle) {
                 m_unit->L2_mee_queue_pop(cycle&1);
             }
         } else {
+            DL_CNT++;
+            if (DL_CNT >= 10000) {
+                printf("DEAD LOCK! \n");
+            }
             // if (m_unit->get_mpid() == 0){
             //     if (m_CTR_RET_queue->full())
             //         printf("AAAAAAAAAAAAAAAAAAAAAA");
@@ -902,3 +909,7 @@ void mee::cycle(unsigned cycle) {
 //CTR_counter <= BMT_counter 
 //CT_counter  < OTP_counter
 //MAC_counter < CT_counter
+
+
+//实现一个中间类，bridge
+//

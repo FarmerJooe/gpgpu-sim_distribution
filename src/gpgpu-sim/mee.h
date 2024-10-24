@@ -122,5 +122,6 @@ class mee {
         unsigned CTR_counter = 0;
         unsigned BMT_counter = 0;
         int var;
+        unsigned DL_CNT = 0;
 
 };

@@ -93,7 +93,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   m_dram_mee_queue[TOT] = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, 1);
   for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
     m_mee_dram_queue[i] = new fifo_pipeline<mem_fetch>("mee-to-dram", 0, L2_dram);
-    m_dram_mee_queue[i] = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, dram_L2);
+    m_dram_mee_queue[i] = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, 256);
   }
 
   char CTRc_name[32];
@@ -289,6 +289,7 @@ void memory_partition_unit::mee_to_dram_cycle() {
   for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
     unsigned dtype = i;
     if (m_mee_dram_queue[dtype]->get_n_element() >= send_trigger_threshold) {
+      if (m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
       m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
       m_mee_dram_queue[dtype]->pop();
       return;
