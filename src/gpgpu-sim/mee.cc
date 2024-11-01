@@ -37,23 +37,33 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) {
-    if (m_unit->get_mpid() == 1) {
-        // printf("%s\t", s);
-        // if (mf->get_original_mf())
-        //     printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
-        // printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
-    }
+    // if (m_unit->get_mpid() == 14) {
+    //     printf("%s\t", s);
+    //     if (mf->get_original_mf())
+    //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
+    //     printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
+    // }
+}
+
+void mee::print_status(class meta_cache *m_METAcache, mem_fetch *mf) {
+    // if (m_unit->get_mpid() == 14) {
+    //     unsigned idx = m_METAcache->m_config.set_index(mf->get_addr());
+    //     enum cache_request_status status = m_METAcache->m_tag_array->probe(mf->get_addr(), idx, mf->get_access_sector_mask(), mf->is_write());
+    //     printf("idx is %u\t", idx);
+    //     printf("sector mask is %u\n", mf->get_access_sector_mask().to_ulong());
+    //     m_METAcache->m_tag_array->m_lines[idx]->print_status();
+    // }
 }
 
 void mee::print_tag() {
     // if (get_sub_partition_id(mf) == 0) {
         // for (unsigned i = 0; i < m_config->m_META_config.get_num_lines(); i++) {
         for (unsigned i = 188; i < 192; i++) {
-            printf("line %d:\t", i);
-            for (unsigned j = 0; j < SECTOR_CHUNCK_SIZE; j++)
-                // printf("%d\t", 
-                m_CTRcache->m_tag_array->m_lines[i]->print_status();
-            printf("\n");
+            // printf("line %d:\t", i);
+            // for (unsigned j = 0; j < SECTOR_CHUNCK_SIZE; j++)
+            //     // printf("%d\t", 
+            //     m_CTRcache->m_tag_array->m_lines[i]->print_status();
+            // printf("\n");
         }
     // }
 }
@@ -314,14 +324,10 @@ void mee::MAC_CHECK_cycle() {
     if (!m_MAC_CHECK_queue->empty()) {
         // printf("AAAAAAAAAAAAA\n");
         mem_fetch *mf = m_MAC_CHECK_queue->top();
-        // print_addr("waiting for MAC Check:\t", mf);
-        new_addr_type REQ_addr = (new_addr_type) mf->get_original_mf();    //MAC Cache的值
         unsigned HASH_id = mf->get_id();    //MAC Hash值
-        // if (mf->get_sub_partition_id() == 0) 
-        //     printf("%x\n", OTP_addr);
         assert(HASH_id);
         if (m_MAC_set[HASH_id]) { //得到了MAC与Hash值，MAC Check完成
-            if (m_unit->get_mpid() == 12)
+            // if (m_unit->get_mpid() == 12)
             // printf("MAC check: id %d sid %d\n", HASH_id, mf->get_sub_partition_id());
             m_MAC_set[HASH_id]--;
             // m_MAC_table[REQ_addr] = 0;
@@ -342,7 +348,7 @@ void mee::MAC_CHECK_cycle() {
             //     printf("type:%d HASH :%d\n", mf->first, mf->get_id());
             if (mf->first == MAC)
                 m_MAC_set[mf->second]++; //MAC Hash计算完成
-            if (mf->first >= BMT)
+            if (mf->first == BMT)
                 m_BMT_set[mf->second]++; //BMT Hash计算完成
             m_HASH_queue->pop();
         }
@@ -362,7 +368,7 @@ void mee::BMT_CHECK_cycle() {
         // if (mf->get_sub_partition_id() == 0) 
         //     printf("%x\n", OTP_addr);
         // assert(mf);
-        if (m_BMT_set[HASH_id] && ((m_config->m_META_config.m_cache_type == SECTOR && !m_BMT_queue->full(5)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_BMT_queue->full(2)))) { //得到了BMT与Hash值，BMT Check完成, 计算下一层BMT
+        if (m_BMT_set[HASH_id] && ((m_config->m_META_config.m_cache_type == SECTOR && !m_BMT_queue->full(2)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_BMT_queue->full(2)))) { //得到了BMT与Hash值，BMT Check完成, 计算下一层BMT
             m_BMT_set[HASH_id]--;
             m_BMT_CHECK_queue->pop();
             print_addr("BMT Hash:\t", mf);
@@ -370,6 +376,7 @@ void mee::BMT_CHECK_cycle() {
             if (mf->get_BMT_Layer() == BMT_L4) {
                 // printf("AAAAAAAAAAAA\n");
                 BMT_busy = false;
+                m_n_reqs_in_BMT--;
                 if (mf->get_id())
                     BMT_counter++;
             } else {
@@ -391,6 +398,8 @@ void mee::BMT_CHECK_cycle() {
                     }
                 }
             }
+            // if (m_unit->get_mpid() == 13)
+            //     printf("BMT_queue size = %d\n", m_BMT_queue->get_n_element());
         }
     }
 
@@ -407,14 +416,18 @@ void mee::BMT_CHECK_cycle() {
     // }
 
     // CTR to BMT
-    if (!m_CTR_BMT_Buffer->empty() && !m_BMT_CHECK_queue->full() && !m_HASH_queue->full()) {
+    if (!m_CTR_BMT_Buffer->empty() && m_n_reqs_in_BMT < 64 && !m_HASH_queue->full()) {
         // assert(cnt);
         mem_fetch *mf = m_CTR_BMT_Buffer->top();
             // gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, mf->get_id());
-            m_BMT_CHECK_queue->push(mf);
-            m_HASH_queue->push(new hash(BMT, mf->get_id()));
-            m_CTR_BMT_Buffer->pop();
-            BMT_busy = true;
+        print_addr("CTR to BMT:\t", mf);
+        // if (m_unit->get_mpid() == 13)
+        //     printf("BMT_CHECK_queue size = %d\n", m_BMT_CHECK_queue->get_n_element());
+        m_n_reqs_in_BMT++;
+        m_BMT_CHECK_queue->push(mf);
+        m_HASH_queue->push(new hash(BMT, mf->get_id()));
+        m_CTR_BMT_Buffer->pop();
+        BMT_busy = true;
     }
 }
 
@@ -537,12 +550,15 @@ void mee::MAC_cycle() {
             } else {
                 m_MAC_CHECK_queue->push(mf);    //MAC读HIT，得到MAC值，发往MAC Check
             }
+            print_addr("MAC cycle access HIT:\t", mf);
+            print_status(m_MACcache, mf);
             m_MAC_queue->pop();
             MAC_counter++;
             // }
         } else if (status != RESERVATION_FAIL) {
             // set wating for CTR fill
-            print_addr("MAC cycle access MISS:\t\t", mf);
+            print_addr("MAC cycle access MISS:\t", mf);
+            print_status(m_MACcache, mf);
             if (mf->is_write()) {   //MAC写MISS，则MAC Hash值使用结束
                 // m_MAC_set[mf->get_id()]--;
             }
@@ -550,7 +566,8 @@ void mee::MAC_cycle() {
             MAC_counter++;
         } else {
             print_addr("MAC cycle RESERVATION_FAIL:\t", mf);
-            m_MACcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
+            print_status(m_MACcache, mf);
+            // m_MACcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
             // if (get_sub_partition_id(mf) == 0)
             //     enum cache_request_status status = m_CTRcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
             // print_addr("MAC cycle RESERVATION_FAIL:\t", mf);
@@ -642,9 +659,8 @@ void mee::META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
     
     if (!m_unit->dram_mee_queue_empty(m_data_type)) {
         mem_fetch *mf_return = m_unit->dram_mee_queue_top(m_data_type);
-        print_addr("fill: \t", mf_return);
         #ifdef BMT_Enable
-        if (m_data_type == CTR)
+        if (m_data_type == CTR && mf_return->get_access_type() == META_ACC)
             if (!m_META_RET_queue->full()) 
                 m_META_RET_queue->push(mf_return);
             else
@@ -654,8 +670,11 @@ void mee::META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
             // print_addr("wating for fill:\t\t", mf); 
             if (m_METAcache->fill_port_free()) {
                 // assert(mf->get_access_type() != META_WR_ALLOC_R);
+                print_addr("fill: \t\t", mf_return);
                 m_METAcache->fill(mf_return, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
                                         m_memcpy_cycle_offset);
+                if (m_METAcache == m_MACcache)
+                    print_status(m_METAcache, mf_return);
                 //     print_addr("MAC fill:\t", mf);
                 assert(!mf_return->is_write());
                 // if (m_METAcache == m_BMTcache)
@@ -819,7 +838,7 @@ void mee::simple_cycle(unsigned cycle) {
         } else {
             DL_CNT++;
             if (DL_CNT >= 10000) {
-                printf("DEAD LOCK! \n");
+                printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
             }
             // if (m_unit->get_mpid() == 0){
             //     if (m_CTR_RET_queue->full())

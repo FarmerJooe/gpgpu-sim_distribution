@@ -16,6 +16,7 @@ class mee {
         void cycle(unsigned cycle);
         void simple_cycle(unsigned cycle);
         void print_addr(char s[], mem_fetch *mf);
+        void print_status(class meta_cache *m_METAcache, mem_fetch *mf);
         void print_tag();
         void meta_access(fifo_pipeline<mem_fetch> *m_META_queue, new_addr_type addr, mem_access_type type, 
             unsigned size, bool wr, unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc, 
@@ -121,6 +122,7 @@ class mee {
         unsigned MAC_counter = 0;
         unsigned CTR_counter = 0;
         unsigned BMT_counter = 0;
+        unsigned m_n_reqs_in_BMT = 0;
         int var;
         unsigned DL_CNT = 0;
 

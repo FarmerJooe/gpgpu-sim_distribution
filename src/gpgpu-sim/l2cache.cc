@@ -93,7 +93,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   m_dram_mee_queue[TOT] = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, 1);
   for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
     m_mee_dram_queue[i] = new fifo_pipeline<mem_fetch>("mee-to-dram", 0, L2_dram);
-    m_dram_mee_queue[i] = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, 256);
+    m_dram_mee_queue[i] = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, 128);
   }
 
   char CTRc_name[32];
@@ -289,8 +289,11 @@ void memory_partition_unit::mee_to_dram_cycle() {
   for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
     unsigned dtype = i;
     if (m_mee_dram_queue[dtype]->get_n_element() >= send_trigger_threshold) {
-      if (m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
+      if (m_n_mf[dtype] + m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
       m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
+      m_n_mf[dtype]++;
+      // if (get_mpid() == 14)
+      //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
       m_mee_dram_queue[dtype]->pop();
       return;
     }
@@ -300,8 +303,11 @@ void memory_partition_unit::mee_to_dram_cycle() {
     unsigned dtype = (i + last_send + 1) % NUM_DATA_TYPE;
     if (dtype == 0) continue;
     if (m_mee_dram_queue[dtype]->empty()) continue;
-    if (m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
+    if (m_n_mf[dtype] + m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
     m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
+    m_n_mf[dtype]++;
+    // if (get_mpid() == 14)
+    //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
     m_mee_dram_queue[dtype]->pop();
     last_send = dtype;
     return;
@@ -309,10 +315,14 @@ void memory_partition_unit::mee_to_dram_cycle() {
 }
 
 void memory_partition_unit::dram_to_mee_cycle() {
+  //L2_WRBK_ACC在DRAM中被Delete，不会发往mee
   if (m_dram_mee_queue[TOT]->empty()) return;
   mem_fetch *mf_return = m_dram_mee_queue[TOT]->top();
   if (!m_dram_mee_queue[mf_return->get_data_type()]->full()) {
     m_dram_mee_queue[mf_return->get_data_type()]->push(mf_return);
+    m_n_mf[mf_return->get_data_type()]--;
+    // if (get_mpid() == 14)
+    //   printf("mpid: %d m_n_mf[%d]=%d pop %x acc_type: %d\n", get_mpid(), mf_return->get_data_type(), m_n_mf[mf_return->get_data_type()], mf_return->get_addr(), mf_return->get_access_type());
     m_dram_mee_queue[TOT]->pop();
   }
 }
@@ -487,6 +497,7 @@ void memory_partition_unit::set_done(mem_fetch *mf) {
   assert(m_sub_partition[spid]->get_id() == global_spid);
   if (mf->get_access_type() == L1_WRBK_ACC ||
       mf->get_access_type() == L2_WRBK_ACC) {
+    m_n_mf[mf->get_data_type()]--;
     m_arbitration_metadata.return_credit(spid);
     MEMPART_DPRINTF(
         "mem_fetch request %p return from dram to sub partition %d\n", mf,

@@ -944,7 +944,7 @@ class tag_array {
                                    unsigned &idx, mem_fetch *mf);
   enum cache_request_status access(new_addr_type addr, unsigned time,
                                    unsigned &idx, bool &wb,
-                                   evicted_block_info &evicted, mem_fetch *mf);
+                                   evicted_block_info &evicted, mem_fetch *mf, bool mshr_hit_avail);
 
   void fill(new_addr_type addr, unsigned time, mem_fetch *mf, bool is_write);
   void fill(unsigned idx, unsigned time, mem_fetch *mf);
@@ -1004,7 +1004,7 @@ class tag_array {
   typedef tr1_hash_map<new_addr_type, unsigned> line_table;
   line_table pending_lines;
 
-  friend class basline_cache;
+  friend class baseline_cache;
   friend class l2_cache;
   friend class mee;
 };

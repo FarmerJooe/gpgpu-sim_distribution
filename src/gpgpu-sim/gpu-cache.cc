@@ -335,7 +335,7 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
                                             unsigned &idx, mem_fetch *mf) {
   bool wb = false;
   evicted_block_info evicted;
-  enum cache_request_status result = access(addr, time, idx, wb, evicted, mf);
+  enum cache_request_status result = access(addr, time, idx, wb, evicted, mf, false);
   assert(!wb);
   return result;
 }
@@ -343,11 +343,13 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
 enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
                                             unsigned &idx, bool &wb,
                                             evicted_block_info &evicted,
-                                            mem_fetch *mf) {
+                                            mem_fetch *mf, bool mshr_hit_avail) {
   m_access++;
   is_used = true;
   shader_cache_access_log(m_core_id, m_type_id, 0);  // log accesses to cache
   enum cache_request_status status = probe(addr, idx, mf, mf->is_write());
+  if (mshr_hit_avail && status == MISS && !mf->get_is_write())
+    status = HIT_RESERVED;
   switch (status) {
     case HIT_RESERVED:
       m_pending_hit++;
@@ -1163,7 +1165,7 @@ void baseline_cache::send_read_request(new_addr_type addr,
     if (read_only)
       m_tag_array->access(block_addr, time, cache_index, mf);
     else
-      m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf);
+      m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf, mshr_hit & mshr_avail);
 
     m_mshrs.add(mshr_addr, mf);
     m_stats.inc_stats(mf->get_access_type(), MSHR_HIT);
@@ -1174,7 +1176,7 @@ void baseline_cache::send_read_request(new_addr_type addr,
     if (read_only)
       m_tag_array->access(block_addr, time, cache_index, mf);
     else
-      m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf);
+      m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf, mshr_hit & mshr_avail);
 
     m_mshrs.add(mshr_addr, mf);
     m_extra_mf_fields[mf] = extra_mf_fields(
@@ -1414,7 +1416,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
     evicted_block_info evicted;
 
     cache_request_status status =
-        m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf);
+        m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf, false);
     assert(status != HIT);
     cache_block_t *block = m_tag_array->get_block(cache_index);
     if (!block->is_modified_line()) {
@@ -1547,7 +1549,7 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
   evicted_block_info evicted;
 
   cache_request_status m_status =
-      m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf);
+      m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf, false);
   assert(m_status != HIT);
   cache_block_t *block = m_tag_array->get_block(cache_index);
   if (!block->is_modified_line()) {
