@@ -42,7 +42,7 @@
 -gpgpu_ptx_instruction_classification 0
 -gpgpu_ptx_sim_mode 0
 -gpgpu_ptx_force_max_capability 70 
--gpgpu_max_cycle 4000000
+-gpgpu_max_cycle 2000000
 
 # Device Limits
 -gpgpu_stack_size_limit 1024
@@ -150,7 +150,7 @@
 # L1 cache configuration
 -gpgpu_l1_banks 4
 #-gpgpu_cache:dl1  S:4:128:64,L:T:m:L:L,A:512:8,16:0,32
--gpgpu_cache:dl1  N:4:128:64,L:T:m:L:L,S:512:8,16:0,32
+-gpgpu_cache:dl1  S:4:128:64,L:T:m:L:L,A:512:8,16:0,32
 -gpgpu_l1_cache_write_ratio 25
 -gpgpu_l1_latency 20
 -gpgpu_gmem_skip_L1D 0

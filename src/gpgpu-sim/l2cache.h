@@ -163,8 +163,8 @@ class memory_partition_unit {
   fifo_pipeline<mem_fetch> *m_mee_dram_queue[5]; 
   fifo_pipeline<mem_fetch> *m_dram_mee_queue[5]; 
   unsigned m_n_mf[5] = {0, 0, 0, 0, 0};
-  const unsigned send_trigger_threshold = 16;
-  const unsigned receive_stop_threshold = 16;
+  const unsigned send_trigger_threshold = 64;
+  const unsigned receive_stop_threshold = 64;
   unsigned last_send = 0;
   // fifo_pipeline<mem_fetch> *m_NORM_dram_queue; 
   // fifo_pipeline<mem_fetch> *m_CTR_dram_queue; 

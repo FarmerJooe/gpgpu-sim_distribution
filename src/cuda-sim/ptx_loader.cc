@@ -354,7 +354,7 @@ void gpgpu_context::gpgpu_ptx_info_load_from_filename(const char *filename,
     snprintf(extra_flags, 1024, "--compile-only --gpu-name=sm_%u", sm_version);
   snprintf(
       buff, 1024,
-      "$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
+      "$CUDA_INSTALL_PATH/bin/ptxas -w %s -v %s --output-file  /dev/null 2> %s",
       extra_flags, filename, ptxas_filename.c_str());
   int result = system(buff);
   if (result != 0) {
@@ -441,7 +441,7 @@ void gpgpu_context::gpgpu_ptxinfo_load_from_string(const char *p_for_info,
 #endif
 
     snprintf(commandline, 1024,
-             "$PTXAS_CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  "
+             "$PTXAS_CUDA_INSTALL_PATH/bin/ptxas -w %s -v %s --output-file  "
              "/dev/null 2> %s",
              extra_flags, fname2, tempfile_ptxinfo);
     printf("GPGPU-Sim PTX: generating ptxinfo using \"%s\"\n", commandline);
@@ -460,7 +460,7 @@ void gpgpu_context::gpgpu_ptxinfo_load_from_string(const char *p_for_info,
 
         fix_duplicate_errors(fname2);
         snprintf(commandline, 1024,
-                 "$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  "
+                 "$CUDA_INSTALL_PATH/bin/ptxas -w %s -v %s --output-file  "
                  "/dev/null 2> %s",
                  extra_flags, fname2, tempfile_ptxinfo);
         printf("GPGPU-Sim PTX: regenerating ptxinfo using \"%s\"\n",
@@ -524,7 +524,7 @@ void gpgpu_context::gpgpu_ptxinfo_load_from_string(const char *p_for_info,
 
     snprintf(
         commandline, 1024,
-        "$CUDA_INSTALL_PATH/bin/ptxas %s -v %s --output-file  /dev/null 2> %s",
+        "$CUDA_INSTALL_PATH/bin/ptxas -w %s -v %s --output-file  /dev/null 2> %s",
         extra_flags, fname2, tempfile_ptxinfo);
     printf("GPGPU-Sim PTX: generating ptxinfo using \"%s\"\n", commandline);
     fflush(stdout);
