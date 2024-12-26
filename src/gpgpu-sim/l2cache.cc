@@ -570,6 +570,8 @@ void memory_partition_unit::get_METAcache_sub_stats(
   }
 }
 
+counterMap *memory_partition_unit::get_ctrModificationCount() { return m_mee->get_ctrModCount(); }
+
 
 memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,
                                            const memory_config *config,

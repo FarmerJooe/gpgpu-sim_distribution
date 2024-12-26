@@ -31,6 +31,8 @@ mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class me
     m_BMT_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_CTR_BMT_Buffer = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
 
+    m_ctrModCount = new counterMap;
+
     BMT_busy = false;
 }
 int decode(int addr) {
@@ -114,6 +116,8 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 
     new_addr_type CTR_addr  = get_addr(sub_partition_id, partition_addr);
     CTR_addr |= CTR_base;
+    if (wr)
+        (*m_ctrModCount)[CTR_addr]++;
 
     // if (meta_acc == META_ACC && res)
     //     size <<= 1;
@@ -127,7 +131,7 @@ void mee::gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
     new_addr_type partition_addr = get_partition_addr(mf);
     new_addr_type sub_partition_id = get_sub_partition_id(mf);
     if (m_config->m_META_config.m_cache_type == SECTOR)
-        partition_addr = partition_addr >> 5 << 1;
+        partition_addr = partition_addr >> 6 << 2;
     else
         partition_addr = partition_addr >> 7 << 3;
     new_addr_type MAC_addr  = get_addr(sub_partition_id, partition_addr);
@@ -803,7 +807,7 @@ void mee::simple_cycle(unsigned cycle) {
 
                 #ifdef MAC_Enable
                 if (m_config->m_META_config.m_cache_type == SECTOR)
-                    gen_MAC_mf(mf, true, META_ACC, 2, mf_counter);
+                    gen_MAC_mf(mf, true, META_ACC, 4, mf_counter);
                 else
                     gen_MAC_mf(mf, true, META_ACC, 8, mf_counter);
                 #endif
@@ -829,7 +833,7 @@ void mee::simple_cycle(unsigned cycle) {
                 // gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);
                 #ifdef MAC_Enable
                 if (m_config->m_META_config.m_cache_type == SECTOR)
-                    gen_MAC_mf(mf, false, META_ACC, 2, mf_counter);
+                    gen_MAC_mf(mf, false, META_ACC, 4, mf_counter);
                 else
                     gen_MAC_mf(mf, false, META_ACC, 8, mf_counter);
                 #endif

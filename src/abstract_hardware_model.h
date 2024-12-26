@@ -1495,6 +1495,8 @@ class register_set {
   const char *m_name;
 };
 
+typedef std::map<unsigned, short> counterMap;
+
 #endif  // #ifdef __cplusplus
 
 #endif  // #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED

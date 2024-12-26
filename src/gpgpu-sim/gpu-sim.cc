@@ -1443,6 +1443,26 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
   printf("m_cache_tot_meta_wb = %lld\n", m_cache_tot_meta_wb);
 
 }
+void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
+  printf("\n========= ctr modification Count breakdown =========\n");
+
+  int ctrModificationCountBreakdown[20];
+  memset(ctrModificationCountBreakdown, 0, sizeof(ctrModificationCountBreakdown));
+  counterMap *m_count;
+  counterMap::iterator it;
+
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+    m_count = m_memory_partition_unit[i]->get_ctrModificationCount();
+    
+    for (it = m_count->begin(); it != m_count->end(); it++) {
+      ctrModificationCountBreakdown[max(0, (int)floor(log2(it->second)))]++;// - 6
+    }
+  }
+
+  for (int i = 0; i < 10; i++) {
+    printf("ctrModificationCountBreakdown[%d] = %d\n", 1 << (i), ctrModificationCountBreakdown[i]); // + 7
+  }
+}
 
 void gpgpu_sim::gpu_print_stat() {
   FILE *statfout = stdout;
@@ -1603,6 +1623,7 @@ void gpgpu_sim::gpu_print_stat() {
   
   // mf data type breakdown
   gpu_print_METACache_data_type_breakdown();
+  gpu_print_ctrModCount_breakdown();
 
   if (m_config.gpgpu_cflog_interval != 0) {
     spill_log_to_file(stdout, 1, gpu_sim_cycle);

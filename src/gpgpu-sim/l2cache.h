@@ -217,6 +217,8 @@ class memory_partition_unit {
 
   class gpgpu_sim *m_gpu;
 
+ public:
+  counterMap *get_ctrModificationCount();
   friend class mee;
 };
 

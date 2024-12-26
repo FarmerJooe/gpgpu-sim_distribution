@@ -126,4 +126,9 @@ class mee {
         int var;
         unsigned DL_CNT = 0;
 
+        
+    
+    public:
+        counterMap *m_ctrModCount;
+        counterMap* get_ctrModCount() { return m_ctrModCount; }
 };
