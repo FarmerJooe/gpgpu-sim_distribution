@@ -81,6 +81,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
       m_arbitration_metadata(config),
       m_gpu(gpu) {
   m_dram = new dram_t(m_id, m_config, m_stats, this, gpu);
+  m_ecc = new ECCEngine(0, 0);
 
   m_sub_partition = new memory_sub_partition
       *[m_config->m_n_sub_partition_per_memory_channel];
@@ -314,6 +315,9 @@ void memory_partition_unit::dram_cycle() {
         m_sub_partition[dest_spid]->set_done(mf_return);
         delete mf_return;
       } else {
+        if (!mf_return->is_write()) {
+          m_ecc->checkECC(); // todo
+        }
         m_sub_partition[dest_spid]->dram_L2_queue_push(mf_return);
         mf_return->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,
                               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -346,6 +350,8 @@ void memory_partition_unit::dram_cycle() {
       if (m_dram->full(mf->is_write())) break;
 
       m_sub_partition[spid]->L2_dram_queue_pop();
+      if (mf->is_write())
+        m_ecc->generateECC();
       MEMPART_DPRINTF(
           "Issue mem_fetch request %p from sub partition %d to dram\n", mf,
           spid);
@@ -413,6 +419,35 @@ void memory_partition_unit::print(FILE *fp) const {
       fprintf(fp, " <NULL mem_fetch?>\n");
   }
   m_dram->print(fp);
+}
+
+ECCEngine::ECCEngine(float p_1bit_err, float p_2bit_err) {
+  m_status_correctECC = 0;
+  m_status_checkECC = 0;
+  m_status_generateECC = 0;
+  m_p_1bit_err = p_1bit_err;
+  m_p_2bit_err = p_2bit_err;
+}
+
+void ECCEngine::correctECC() {
+  m_status_correctECC++;
+}
+
+bool ECCEngine::checkECC() {
+  m_status_checkECC++;
+  float rand_num = (float)rand() / (float)RAND_MAX;
+  if (rand_num < m_p_1bit_err) {  // 1-bit error
+    correctECC();
+    return true;
+  } else if (rand_num < m_p_1bit_err + m_p_2bit_err) { // 2-bit error
+    return false;
+  } else { // no error
+    return true;
+  }
+}
+
+void ECCEngine::generateECC() {
+  m_status_generateECC++;
 }
 
 memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,

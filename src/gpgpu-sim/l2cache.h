@@ -153,6 +153,7 @@ class memory_partition_unit {
   };
   std::list<dram_delay_t> m_dram_latency_queue;
 
+  class ECCEngine *m_ecc;
   class gpgpu_sim *m_gpu;
 };
 
@@ -261,6 +262,20 @@ class L2interface : public mem_fetch_interface {
 
  private:
   memory_sub_partition *m_unit;
+};
+
+class ECCEngine{
+public:
+  ECCEngine(float p_1bit_err, float p_2bit_err);
+  void correctECC();
+  bool checkECC();
+  void generateECC();
+private:
+  unsigned m_status_correctECC;
+  unsigned m_status_checkECC;
+  unsigned m_status_generateECC;
+  float m_p_1bit_err;
+  float m_p_2bit_err;
 };
 
 #endif
