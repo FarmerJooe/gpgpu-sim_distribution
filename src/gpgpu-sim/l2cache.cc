@@ -81,7 +81,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
       m_arbitration_metadata(config),
       m_gpu(gpu) {
   m_dram = new dram_t(m_id, m_config, m_stats, this, gpu);
-  m_ecc = new ECCEngine(0.00007204, 0.00002202, gpu);
+  m_ecc = new ECCEngine(0.00007204 / 32, 0.00002202 / 32, gpu);
 
   unsigned int icnt_L2;
   unsigned int L2_dram;
@@ -584,7 +584,7 @@ void memory_partition_unit::get_ecc_stats(
 }
 
 bool memory_partition_unit::hasECCError() {
-  return m_ecc->hasGlobalECCError();
+  return m_ecc->hasECCError();
 }
 
 counterMap *memory_partition_unit::get_ctrModificationCount() { return m_mee->get_ctrModCount(); }

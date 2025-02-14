@@ -1470,6 +1470,7 @@ bool gpgpu_sim::hasGlobalECCError() {
     if (m_memory_partition_unit[i]->hasECCError())
       return true;
   }
+  return false;
 }
 
 void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
