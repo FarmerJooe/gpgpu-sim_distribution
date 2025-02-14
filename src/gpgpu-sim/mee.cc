@@ -1,18 +1,20 @@
 #include "mee.h"
 #include <list>
 #define BMT_Enable
-#define MAC_Enable
+// #define MAC_Enable
 
-mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu) : 
+mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu, class ECCEngine *ecc) : 
     m_unit(unit), 
     m_CTRcache(CTRcache),
     m_MACcache(MACcache),
     m_BMTcache(BMTcache),
     m_config(config),
-    m_gpu(gpu) {
+    m_gpu(gpu),
+    m_ecc(ecc) {
     unsigned len = 64;
     m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_mee_dram_sync_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 20);
     m_MAC_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_BMT_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
 
@@ -39,7 +41,7 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) {
-    // if (m_unit->get_mpid() == 14) {
+    // if (m_unit->get_mpid() == 1) {
     //     printf("%s\t", s);
     //     if (mf->get_original_mf())
     //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
@@ -215,7 +217,29 @@ void mee::meta_access(
 }
 
 void mee::CT_cycle() {
-    if (!m_Ciphertext_RET_queue->empty()) {
+
+    //MEE向DRAM发送访存请求
+    if (!m_mee_dram_sync_queue->empty() && !m_unit->mee_dram_queue_full(NORM)) {
+        mem_fetch *mf = m_mee_dram_sync_queue->top();
+        assert(mf->get_addr());
+        if (mf->is_write()) {
+            if (m_MAC_set[mf->get_id()]) {
+                m_unit->mee_dram_queue_push(mf, NORM);
+                m_MAC_set[mf->get_id()]--;  //生成的MAC与写密文一起写入DRAM
+                m_mee_dram_sync_queue->pop();
+            }
+        } else {
+            m_unit->mee_dram_queue_push(mf, NORM);
+            // m_MAC_set[mf->get_id()]--;  //此时还没读到MAC
+            m_mee_dram_sync_queue->pop();
+        }
+    }
+
+    //DRAM向MEE传回数据
+    if (!m_Ciphertext_RET_queue->empty() && !m_gpu->hasGlobalECCError()) {
+        //ECC纠错时，为保证访存一致性，不接受新的密文
+        //ECC纠错完成后，需要重新对密文进行解密，增加20周期延迟
+        //TODO：理论上，应该将发生错误的请求，以及在这之前的请求，都重新加密
         mem_fetch *mf_return = m_Ciphertext_RET_queue->top();
         int spid = m_unit->global_sub_partition_id_to_local_id(mf_return->get_sub_partition_id());
         // if (mf_return->get_access_type() != L1_WR_ALLOC_R && mf_return->get_access_type() != L2_WR_ALLOC_R) {
@@ -236,7 +260,7 @@ void mee::CT_cycle() {
             // assert(m_MAC_table[(new_addr_type)mf_return]);
             // if (m_unit->get_mpid() == 0)
             //     printf("HASH :%d\n", mf_return->get_id());
-            m_HASH_queue->push(new hash(MAC, mf_return->get_id()));         //从DRAM中取到密文，对密文进行MAC Hash
+            m_HASH_queue->push(new hash{MAC, mf_return->get_id(), mf_return->is_write()});         //从DRAM中取到密文，对密文进行MAC Hash
             m_Ciphertext_RET_queue->pop();
         }
     }
@@ -263,8 +287,9 @@ void mee::CT_cycle() {
                     // printf("SSSSSSSSSSSSSSSSSSS");
                 }
             }
-        } else if (!m_unit->mee_dram_queue_full(NORM)) {              // read
-            m_unit->mee_dram_queue_push(mf, NORM);    //读密文请求，发往DRAM中读密文
+        } else if (!m_mee_dram_sync_queue->full()) {              // read
+            // m_unit->mee_dram_queue_push(mf, NORM);    //读密文请求，发往DRAM中读密文
+            m_mee_dram_sync_queue->push(mf);
             m_Ciphertext_queue->pop();
             CT_counter++;
         }
@@ -287,11 +312,12 @@ void mee::AES_cycle() {
             if (mf->is_write()) {   //加密
             // assert(!mf->is_write());
                 // printf("OOOOOOOOOOOOOOOOOOOOOO\n");
-                if (!m_unit->mee_dram_queue_full(NORM) && !m_HASH_queue->full()) {
+                if (!m_mee_dram_sync_queue->full() && !m_HASH_queue->full()) {
                     m_OTP_set[OTP_id]--;
-                    m_unit->mee_dram_queue_push(mf, NORM);    //加密完后更新DRAM中的密文
+                    // m_unit->mee_dram_queue_push(mf, NORM);    //加密完后更新DRAM中的密文
+                    m_mee_dram_sync_queue->push(mf);
                     CT_counter++;
-                    m_HASH_queue->push(new hash(MAC, mf->get_id()));          //加密完后得到密文，对密文进行MAC Hash
+                    m_HASH_queue->push(new hash{MAC, mf->get_id(), mf->is_write()});          //加密完后得到密文，对密文进行MAC Hash
                     m_AES_queue->pop();
                     m_Ciphertext_queue->pop();  //写密文发往DRAM
                 }
@@ -324,6 +350,34 @@ void mee::AES_cycle() {
     }
 }
 
+void mee::HASH_cycle() {
+    if (m_gpu->hasGlobalECCError()) {
+        m_ecc->correctECC();
+    }
+    else if (!m_HASH_queue->empty() ) {
+        // printf("BBBBBBBBBBBBBBB\n");
+        hash *mf = m_HASH_queue->top();
+        if (mf) {
+            // if (m_unit->get_mpid() == 0)
+            //     printf("type:%d HASH :%d\n", mf->first, mf->get_id());
+            if (mf->type == MAC) {
+                // m_MAC_set[mf->id]++; //MAC Hash计算完成
+                if (mf->wr) {
+                    m_ecc->generateECC();
+                } else {
+                    m_ecc->checkECC();
+                }
+            }
+            if (mf->type == BMT)
+                m_BMT_set[mf->id]++; //BMT Hash计算完成
+            m_HASH_queue->pop();
+        }
+        // delete mf;
+        else 
+            m_HASH_queue->pop();
+    }
+}
+
 void mee::MAC_CHECK_cycle() {
     if (!m_MAC_CHECK_queue->empty()) {
         // printf("AAAAAAAAAAAAA\n");
@@ -344,23 +398,11 @@ void mee::MAC_CHECK_cycle() {
         }
     }
 
-    if (!m_HASH_queue->empty()) {
-        // printf("BBBBBBBBBBBBBBB\n");
-        hash *mf = m_HASH_queue->top();
-        if (mf) {
-            // if (m_unit->get_mpid() == 0)
-            //     printf("type:%d HASH :%d\n", mf->first, mf->get_id());
-            if (mf->first == MAC)
-                m_MAC_set[mf->second]++; //MAC Hash计算完成
-            if (mf->first == BMT)
-                m_BMT_set[mf->second]++; //BMT Hash计算完成
-            m_HASH_queue->pop();
-        }
-        // delete mf;
-        else 
-            m_HASH_queue->pop();
-    }
 }
+
+// void mee::ECC_CHECK_cycle() {
+
+// }
 
 void mee::BMT_CHECK_cycle() {
     if (!m_BMT_CHECK_queue->empty()) {
@@ -429,7 +471,7 @@ void mee::BMT_CHECK_cycle() {
         //     printf("BMT_CHECK_queue size = %d\n", m_BMT_CHECK_queue->get_n_element());
         m_n_reqs_in_BMT++;
         m_BMT_CHECK_queue->push(mf);
-        m_HASH_queue->push(new hash(BMT, mf->get_id()));
+        m_HASH_queue->push(new hash{BMT, mf->get_id(), mf->is_write()});
         m_CTR_BMT_Buffer->pop();
         BMT_busy = true;
     }
@@ -588,7 +630,7 @@ void mee::BMT_cycle() {
         if (mf_return->get_id() && !mf_return->is_write()) {
             if (!m_BMT_CHECK_queue->full() && !m_HASH_queue->full()) {
                 m_BMT_CHECK_queue->push(mf_return);
-                m_HASH_queue->push(new hash(BMT, mf_return->get_id()));
+                m_HASH_queue->push(new hash{BMT, mf_return->get_id(), mf_return->is_write()});
                 m_BMT_RET_queue->pop();
             }
         } else {
@@ -627,7 +669,7 @@ void mee::BMT_cycle() {
             // print_addr("BMT access HIT:\t", mf);
             if (mf->get_id() && !mf->is_write()) {
                 m_BMT_CHECK_queue->push(mf);
-                m_HASH_queue->push(new hash(BMT, mf->get_id()));
+                m_HASH_queue->push(new hash{BMT, mf->get_id(), mf->is_write()});
             }
             m_BMT_queue->pop();
         } else if (status != RESERVATION_FAIL) {
@@ -863,13 +905,14 @@ void mee::simple_cycle(unsigned cycle) {
     } else {
         // printf("GGGGGGGGGGGGGG\n");
     }
-    MAC_CHECK_cycle();
-    MAC_cycle();
+    // MAC_CHECK_cycle();
+    // MAC_cycle();
     BMT_CHECK_cycle();
     BMT_cycle();
+    HASH_cycle();
     AES_cycle();
     CTR_cycle();
-    // CT_cycle();
+    CT_cycle();
 }
 
 void mee::cycle(unsigned cycle) {

@@ -1443,6 +1443,35 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
   printf("m_cache_tot_meta_wb = %lld\n", m_cache_tot_meta_wb);
 
 }
+
+void gpgpu_sim::gpu_print_ECC_status() {
+
+  printf("\n========= ecc =========\n");
+  unsigned m_status_generateECC = 0;
+  unsigned m_status_checkECC = 0;
+  unsigned m_cache_tot_ecc_correct_1b_ECC = 0;
+  unsigned m_cache_tot_ecc_correct_2b_ECC = 0;
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+    // m_cache_tot_ecc_correct_1b_ECC += m_memory_partition_unit[i]->m_ecc->m_cache_ecc_correct_1b_ECC;
+    // m_cache_tot_ecc_correct_2b_ECC += m_memory_partition_unit[i]->m_ecc->m_cache_ecc_correct_2b_ECC;
+    // m_status_generateECC += m_memory_partition_unit[i]->m_ecc->m_status_generateECC;
+    // m_status_checkECC += m_memory_partition_unit[i]->m_ecc->m_status_checkECC;
+    m_memory_partition_unit[i]->get_ecc_stats(m_status_generateECC, m_status_checkECC, m_cache_tot_ecc_correct_1b_ECC, m_cache_tot_ecc_correct_2b_ECC);
+  }
+  printf("m_status_generateECC = %lld\n", m_status_generateECC);
+  printf("m_status_checkECC = %lld\n", m_status_checkECC);
+  printf("m_cache_tot_ecc_correct_1b_ECC = %lld\n", m_cache_tot_ecc_correct_1b_ECC);
+  printf("m_cache_tot_ecc_correct_2b_ECC = %lld\n", m_cache_tot_ecc_correct_2b_ECC);
+
+}
+
+bool gpgpu_sim::hasGlobalECCError() {
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+    if (m_memory_partition_unit[i]->hasECCError())
+      return true;
+  }
+}
+
 void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
   printf("\n========= ctr modification Count breakdown =========\n");
 
@@ -1455,7 +1484,7 @@ void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
     m_count = m_memory_partition_unit[i]->get_ctrModificationCount();
     
     for (it = m_count->begin(); it != m_count->end(); it++) {
-      ctrModificationCountBreakdown[max(0, (int)floor(log2(it->second)))]++;// - 6
+      ctrModificationCountBreakdown[max(0, (int)ceil(log2(it->second)))]++;// - 6
     }
   }
 
@@ -1623,6 +1652,8 @@ void gpgpu_sim::gpu_print_stat() {
   
   // mf data type breakdown
   gpu_print_METACache_data_type_breakdown();
+  // ecc status
+  gpu_print_ECC_status();
   gpu_print_ctrModCount_breakdown();
 
   if (m_config.gpgpu_cflog_interval != 0) {

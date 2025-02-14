@@ -91,6 +91,9 @@ class memory_partition_unit {
   void print(FILE *fp) const;
   void accumulate_METAcache_stats(class cache_stats &l2_stats, char META[]) const;
   void get_METAcache_sub_stats(struct cache_sub_stats &css, char META[]) const;
+  void get_ecc_stats(unsigned &m_status_generateECC, unsigned &m_status_checkECC, 
+    unsigned &m_cache_tot_ecc_correct_1b_ECC, unsigned & m_cache_tot_ecc_correct_2b_ECC) const;
+  bool hasECCError();
   void handle_memcpy_to_gpu(size_t dst_start_addr, unsigned subpart_id,
                             mem_access_sector_mask_t mask);
 
@@ -219,6 +222,7 @@ class memory_partition_unit {
 
  public:
   counterMap *get_ctrModificationCount();
+  class ECCEngine *m_ecc;
   friend class mee;
 };
 

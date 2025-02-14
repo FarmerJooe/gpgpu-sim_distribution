@@ -81,6 +81,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
       m_arbitration_metadata(config),
       m_gpu(gpu) {
   m_dram = new dram_t(m_id, m_config, m_stats, this, gpu);
+  m_ecc = new ECCEngine(0.00007204, 0.00002202, gpu);
 
   unsigned int icnt_L2;
   unsigned int L2_dram;
@@ -120,7 +121,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
   }
   
-  m_mee = new mee(this, m_CTRcache, m_MACcache, m_BMTcache, m_config, m_gpu);
+  m_mee = new mee(this, m_CTRcache, m_MACcache, m_BMTcache, m_config, m_gpu, m_ecc);
 
   m_sub_partition = new memory_sub_partition
       *[m_config->m_n_sub_partition_per_memory_channel];
@@ -447,6 +448,8 @@ void memory_partition_unit::dram_cycle() {
 
       if (m_dram->full(mf->is_write())) break;
 
+      assert(mf->get_addr());
+
       mee_dram_queue_pop();
       MEMPART_DPRINTF(
           "Issue mem_fetch request %p from sub partition %d to dram\n", mf,
@@ -471,6 +474,7 @@ void memory_partition_unit::dram_cycle() {
       !m_dram->full(m_dram_latency_queue.front().req->is_write())) {
     mem_fetch *mf = m_dram_latency_queue.front().req;
     m_dram_latency_queue.pop_front();
+    assert(mf->get_addr());
     m_dram->push(mf);
 
     if (mf->get_access_type() == META_WRBK_ACC) 
@@ -568,6 +572,19 @@ void memory_partition_unit::get_METAcache_sub_stats(
   if (!m_config->m_META_config.disabled()) {
     m_METAcache->get_sub_stats(css);
   }
+}
+
+void memory_partition_unit::get_ecc_stats(
+    unsigned &m_status_generateECC, unsigned &m_status_checkECC, 
+    unsigned &m_cache_tot_ecc_correct_1b_ECC, unsigned & m_cache_tot_ecc_correct_2b_ECC) const {
+  m_status_generateECC += m_ecc->m_status_generateECC;
+  m_status_checkECC += m_ecc->m_status_checkECC;
+  m_cache_tot_ecc_correct_1b_ECC += m_ecc->m_status_correct_1b_ECC;
+  m_cache_tot_ecc_correct_2b_ECC += m_ecc->m_status_correct_2b_ECC;
+}
+
+bool memory_partition_unit::hasECCError() {
+  return m_ecc->hasGlobalECCError();
 }
 
 counterMap *memory_partition_unit::get_ctrModificationCount() { return m_mee->get_ctrModCount(); }

@@ -9,10 +9,11 @@
 #include "l2cache.h"
 #include "shader.h"
 #include "gpu-sim.h"
+#include "ecc.h"
 
 class mee {
     public:
-        mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu);
+        mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu, class ECCEngine *ecc);
         void cycle(unsigned cycle);
         void simple_cycle(unsigned cycle);
         void print_addr(char s[], mem_fetch *mf);
@@ -22,11 +23,13 @@ class mee {
             unsigned size, bool wr, unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc, 
             mem_fetch *original_mf, unsigned mf_id, enum data_type m_data_type, enum BMT_Layer m_Layer) const;
         void CTR_cycle();
+        void HASH_cycle();
         void MAC_cycle();
         void BMT_cycle();
         void AES_cycle();
         void CT_cycle();
         void MAC_CHECK_cycle();
+        void ECC_CHECK_cycle();
         void BMT_CHECK_cycle();
         new_addr_type get_partition_addr(mem_fetch *mf);
         new_addr_type get_sub_partition_id(mem_fetch *mf);
@@ -49,15 +52,22 @@ class mee {
 
         
     private:
-        typedef std::pair<enum data_type, int> hash;
+        // typedef std::pair<enum data_type, int> hash;
+        struct hash{
+            enum data_type type;
+            int id;
+            bool wr;
+        };
         class meta_cache *m_CTRcache;
         class meta_cache *m_MACcache;
         class meta_cache *m_BMTcache;
         class memory_partition_unit *m_unit;
         const memory_config *m_config;
         class gpgpu_sim *m_gpu;
+        class ECCEngine *m_ecc;
         fifo_pipeline<mem_fetch> *m_CTR_queue;
         fifo_pipeline<mem_fetch> *m_Ciphertext_queue;
+        fifo_pipeline<mem_fetch> *m_mee_dram_sync_queue;
         fifo_pipeline<mem_fetch> *m_MAC_queue;
         fifo_pipeline<mem_fetch> *m_BMT_queue;
 
