@@ -6,6 +6,7 @@ public:
   void correctECC();
   bool checkECC();
   void generateECC();
+  void accumulateError();
 public:
   class gpgpu_sim *m_gpu;
 

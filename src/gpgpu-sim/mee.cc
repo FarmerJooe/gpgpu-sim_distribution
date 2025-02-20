@@ -41,12 +41,12 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) {
-    // if (m_unit->get_mpid() == 1) {
-    //     printf("%s\t", s);
-    //     if (mf->get_original_mf())
-    //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
-    //     printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
-    // }
+    if (m_unit->get_mpid() == 1) {
+        printf("%s\t", s);
+        if (mf->get_original_mf())
+            printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
+        printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
+    }
 }
 
 void mee::print_status(class meta_cache *m_METAcache, mem_fetch *mf) {
@@ -351,7 +351,10 @@ void mee::AES_cycle() {
 }
 
 void mee::HASH_cycle() {
+    m_ecc->accumulateError();
     if (m_gpu->hasGlobalECCError()) {
+        if (m_ecc->hasECCError())
+            printf("correctECC mpid:%d \n", m_unit->get_mpid());
         m_ecc->correctECC();
     }
     else if (!m_HASH_queue->empty() ) {
@@ -361,7 +364,7 @@ void mee::HASH_cycle() {
             // if (m_unit->get_mpid() == 0)
             //     printf("type:%d HASH :%d\n", mf->first, mf->get_id());
             if (mf->type == MAC) {
-                // m_MAC_set[mf->id]++; //MAC Hash计算完成
+                m_MAC_set[mf->id]++; //MAC Hash计算完成
                 if (mf->wr) {
                     m_ecc->generateECC();
                 } else {

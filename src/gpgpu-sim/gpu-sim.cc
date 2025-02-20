@@ -1485,7 +1485,7 @@ void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
     m_count = m_memory_partition_unit[i]->get_ctrModificationCount();
     
     for (it = m_count->begin(); it != m_count->end(); it++) {
-      ctrModificationCountBreakdown[max(0, (int)ceil(log2(it->second)))]++;// - 6
+      ctrModificationCountBreakdown[max(0, (int)floor(log2(it->second)))]++;// - 6
     }
   }
 
