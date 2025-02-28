@@ -283,6 +283,10 @@ class memory_config {
   char *gpgpu_dram_timing_opt;
   char *gpgpu_L2_queue_config;
   bool l2_ideal;
+
+  float m_ecc_1bit_err;
+  float m_ecc_2bit_err;
+
   unsigned gpgpu_frfcfs_dram_sched_queue_size;
   unsigned gpgpu_dram_return_queue_size;
   enum dram_ctrl_t scheduler_type;

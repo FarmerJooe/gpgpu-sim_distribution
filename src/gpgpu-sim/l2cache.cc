@@ -81,7 +81,8 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
       m_arbitration_metadata(config),
       m_gpu(gpu) {
   m_dram = new dram_t(m_id, m_config, m_stats, this, gpu);
-  m_ecc = new ECCEngine(0.00007204 / 32, 0.00002202 / 32, gpu);
+  // m_ecc = new ECCEngine(0.00007204 / 32, 0.00002202 / 32, gpu);
+  m_ecc = new ECCEngine(config->m_ecc_1bit_err, config->m_ecc_2bit_err, gpu);
 
   unsigned int icnt_L2;
   unsigned int L2_dram;

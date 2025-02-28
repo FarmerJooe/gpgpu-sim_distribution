@@ -135,6 +135,7 @@ class mee {
         unsigned m_n_reqs_in_BMT = 0;
         int var;
         unsigned DL_CNT = 0;
+        new_addr_type m_ctr_ret_addr = 0;
 
         
     
