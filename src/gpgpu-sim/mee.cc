@@ -41,7 +41,7 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) {
-    // if (m_unit->get_mpid() == 12) {
+    // if (m_unit->get_mpid() == 23) {
     //     printf("%s\t", s);
     //     if (mf->get_original_mf())
     //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
@@ -495,9 +495,9 @@ void mee::CTR_cycle() {
             // delete mf_return;//删除1
         } else {    //CTR读MISS返回，CTR写一定命中
             // assert(!mf_return->is_write());
-                print_addr("MISS OTP:\t\t", mf_return);
+            print_addr("CTR MISS return:\t\t", mf_return);
             if (!m_OTP_queue->full()) { //CTR读MISS，则应生成CTR to BMT任务
-                m_ctr_ret_addr = mf_return->get_addr();
+                m_ctr_rdret_addr = mf_return->get_addr();
                 m_OTP_queue->push(new unsigned(mf_return->get_id()));   //得到CTR值，计算OTP用于解密
                 m_CTR_RET_queue->pop();
             }
@@ -515,7 +515,10 @@ void mee::CTR_cycle() {
         print_addr("CTR cycle access:\t\t", mf);
 
         if (mf->is_write()) {
-            if (m_ctr_ret_addr != mf->get_addr()) {//读到CTR后，才可以CTR++，然后写CTR
+            // if (m_unit->get_mpid() == 23)
+            //     printf("ctr write access:\tm_pid:%d\tOTP_id:%d\tctr_rdhit_addr: %x\tctr_rdret_addr: %x\tctr_write_addr: %x\n", 
+            //         m_unit->get_mpid(), mf->get_id(), m_ctr_rdhit_addr, m_ctr_rdret_addr, mf->get_addr());
+            if (m_ctr_rdret_addr != mf->get_addr() && m_ctr_rdhit_addr != mf->get_addr()) {//读到CTR后，才可以CTR++，然后写CTR
                 return;
             }
         }
@@ -541,7 +544,7 @@ void mee::CTR_cycle() {
                     m_OTP_queue->push(new unsigned(mf->get_id()));  //CTR HIT后计算OTP用于加密/解密
                 if (mf->get_id())
                     OTP_counter++;
-                m_ctr_ret_addr = mf->get_addr();
+                m_ctr_rdhit_addr = mf->get_addr();
             }
             // }
         } else if (status != RESERVATION_FAIL) {
