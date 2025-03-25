@@ -1485,6 +1485,7 @@ void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
   int ctrModificationCountBreakdown[20];
   memset(ctrModificationCountBreakdown, 0, sizeof(ctrModificationCountBreakdown));
   counterMap *m_count;
+  counterSet *m_ctrSet;
   counterMap::iterator it;
 
   for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
@@ -1498,6 +1499,23 @@ void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
   for (int i = 0; i < 10; i++) {
     printf("ctrModificationCountBreakdown[%d] = %d\n", 1 << (i), ctrModificationCountBreakdown[i]); // + 7
   }
+
+  std::string kernel_info_str = executed_kernel_info_string() + "_ctrModificationCountStat.log";
+  FILE *log = fopen(kernel_info_str.c_str(), "w+");
+
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+    m_count = m_memory_partition_unit[i]->get_ctrModificationCount();
+    m_ctrSet = m_memory_partition_unit[i]->get_ctrSet();
+    
+    for (counterSet::iterator it = m_ctrSet->begin(); it != m_ctrSet->end(); it++) {
+      unsigned index = (*it);
+      for (unsigned offset = 0; offset < 32; offset++) {
+        fprintf(log, "%x,%d\n", index + offset, (*m_count)[index + offset]);// - 6
+      }
+    }
+  }
+  fclose(log);
+
 }
 
 void gpgpu_sim::gpu_print_stat() {

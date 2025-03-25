@@ -288,18 +288,18 @@ void memory_partition_unit::mee_to_dram_cycle() {
   // mee to dram 队列满了就停止发送
   if (m_mee_dram_queue[TOT]->full()) return;
   //发送队列高于阈值优先发送
-  for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
-    unsigned dtype = i;
-    if (m_mee_dram_queue[dtype]->get_n_element() >= send_trigger_threshold) {
-      if (m_n_mf[dtype] + m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
-      m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
-      m_n_mf[dtype]++;
-      // if (get_mpid() == 14)
-      //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
-      m_mee_dram_queue[dtype]->pop();
-      return;
-    }
-  }
+  // for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
+  //   unsigned dtype = i;
+  //   if (m_mee_dram_queue[dtype]->get_n_element() >= send_trigger_threshold) {
+  //     if (m_n_mf[dtype] + m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
+  //     m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
+  //     m_n_mf[dtype]++;
+  //     // if (get_mpid() == 14)
+  //     //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
+  //     m_mee_dram_queue[dtype]->pop();
+  //     return;
+  //   }
+  // }
   //返回队列高于阈值停止发送
   for (unsigned i = 0; i < NUM_DATA_TYPE; i++) {
     unsigned dtype = (i + last_send + 1) % NUM_DATA_TYPE;
@@ -589,6 +589,7 @@ bool memory_partition_unit::hasECCError() {
 }
 
 counterMap *memory_partition_unit::get_ctrModificationCount() { return m_mee->get_ctrModCount(); }
+counterSet *memory_partition_unit::get_ctrSet() { return m_mee->get_ctrSet(); }
 
 
 memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,

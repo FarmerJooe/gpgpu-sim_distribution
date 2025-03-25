@@ -137,10 +137,13 @@ class mee {
         unsigned DL_CNT = 0;
         new_addr_type m_ctr_rdhit_addr = 0;
         new_addr_type m_ctr_rdret_addr = 0;
+        unsigned last_issued_partition = 0;
 
         
     
     public:
         counterMap *m_ctrModCount;
         counterMap* get_ctrModCount() { return m_ctrModCount; }
+        counterSet *m_ctrSet;
+        counterSet* get_ctrSet() { return m_ctrSet; }
 };

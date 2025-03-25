@@ -222,6 +222,7 @@ class memory_partition_unit {
 
  public:
   counterMap *get_ctrModificationCount();
+  counterSet *get_ctrSet();
   class ECCEngine *m_ecc;
   friend class mee;
 };

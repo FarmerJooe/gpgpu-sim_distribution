@@ -1496,6 +1496,7 @@ class register_set {
 };
 
 typedef std::map<unsigned, short> counterMap;
+typedef std::set<unsigned> counterSet;
 
 #endif  // #ifdef __cplusplus
 
