@@ -115,9 +115,9 @@ class memory_partition_unit {
     return m_gpu;
   }
 
-  bool L2_mee_queue_empty(unsigned spid) const;
-  class mem_fetch *L2_mee_queue_top(unsigned spid) const;
-  void L2_mee_queue_pop(unsigned spid);
+  bool L2_mee_queue_empty(unsigned spid, enum data_type dtype) const;
+  class mem_fetch *L2_mee_queue_top(unsigned spid, enum data_type dtype) const;
+  void L2_mee_queue_pop(unsigned spid, enum data_type dtype);
 
   bool mee_dram_queue_empty() const;
   class mem_fetch *mee_dram_queue_top() const;
@@ -165,6 +165,8 @@ class memory_partition_unit {
  private:
   fifo_pipeline<mem_fetch> *m_mee_dram_queue[5]; 
   fifo_pipeline<mem_fetch> *m_dram_mee_queue[5]; 
+  fifo_pipeline<mem_fetch> *m_ctr_L2_bundle_queue;
+  fifo_pipeline<mem_fetch> *m_L2_ctr_bundle_queue;
   unsigned m_n_mf[5] = {0, 0, 0, 0, 0};
   const unsigned send_trigger_threshold = 64;
   const unsigned receive_stop_threshold = 64;
@@ -294,11 +296,13 @@ class memory_sub_partition {
   std::vector<mem_fetch *> breakdown_request_to_sector_requests(mem_fetch *mf);
 
   // these are various FIFOs between units within a memory partition
+  fifo_pipeline<mem_fetch> *m_ctr_L2_queue;
   fifo_pipeline<mem_fetch> *m_icnt_L2_queue;
-  fifo_pipeline<mem_fetch> *m_L2_mee_queue;
+  fifo_pipeline<mem_fetch> *m_L2_mee_queue[NUM_DATA_TYPE];
   // fifo_pipeline<mem_fetch> *m_mee_dram_queue; 
   // fifo_pipeline<mem_fetch> *m_dram_mee_queue; 
   fifo_pipeline<mem_fetch> *m_mee_L2_queue;
+  fifo_pipeline<mem_fetch> *m_L2_ctr_queue;
   fifo_pipeline<mem_fetch> *m_L2_icnt_queue;  // L2 cache hit response queue
   
  private:
@@ -347,15 +351,17 @@ class L2interface : public mem_fetch_interface {
  public:
   L2interface(memory_sub_partition *unit) { m_unit = unit; }
   virtual ~L2interface() {}
-  virtual bool full(unsigned size, bool write) const {
+  virtual bool full(unsigned size, bool write) const {}
+  virtual bool full(unsigned size, bool write, enum data_type dtype) const override{
     // assume read and write packets all same size
-    return m_unit->m_L2_mee_queue->full();
+    return m_unit->m_L2_mee_queue[dtype]->full();
   }
   virtual void push(mem_fetch *mf) {
+    assert(!m_unit->m_L2_mee_queue[mf->get_data_type()]->full());
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
-    m_unit->m_L2_mee_queue->push(mf);
-    // if (mf->get_access_type() == 9)
-    // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\twr: %d\taccess type:%d\n", "L2 to mee:", mf->get_addr(), mf->get_sid(), mf->get_is_write(), mf->get_partition_addr(), mf->get_access_type());
+    m_unit->m_L2_mee_queue[mf->get_data_type()]->push(mf);
+    // if (mf->get_sub_partition_id() >> 1 == 17)
+    // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\twr: %d\taccess type:%ddata type:%dmf_id:%d\n", "L2 to mee interface push:", mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(), mf->get_data_type(), mf->get_id());
 
     // printf("l2 to mee access type: %d\n",mf->get_access_type());
   }

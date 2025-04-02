@@ -43,6 +43,15 @@ class gpgpu_context;
 #define MAX_INPUT_VALUES 24
 #define MAX_OUTPUT_VALUES 8
 
+enum data_type {
+  TOT = 0,
+  BMT,
+  CTR,
+  NORM,
+  MAC,
+  NUM_DATA_TYPE
+};
+
 enum _memory_space_t {
   undefined_space = 0,
   reg_space,
@@ -891,6 +900,7 @@ class mem_fetch;
 
 class mem_fetch_interface {
  public:
+  virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
   virtual bool full(unsigned size, bool write) const = 0;
   virtual void push(mem_fetch *mf) = 0;
 };

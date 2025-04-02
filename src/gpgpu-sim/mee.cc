@@ -1,6 +1,6 @@
 #include "mee.h"
 #include <list>
-#define BMT_Enable
+// #define BMT_Enable
 // #define MAC_Enable
 
 mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu, class ECCEngine *ecc) : 
@@ -41,8 +41,8 @@ mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class me
 int decode(int addr) {
     return (addr & 16128) >> 8;
 }
-void mee::print_addr(char s[], mem_fetch *mf) {
-    // if (m_unit->get_mpid() == 23) {
+void mee::print_addr(char s[], mem_fetch *mf) const{
+    // if (m_unit->get_mpid() == 17) {
     //     printf("%s\t", s);
     //     if (mf->get_original_mf())
     //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
@@ -183,6 +183,7 @@ void mee::meta_access(
     mem_access_sector_mask_t sector_mask;
     unsigned data_size = 0;
     if (size == 128) {
+        assert(m_config->m_META_config.m_cache_type == SECTOR);
         for (unsigned i = 0; i < size / 32; i++) 
             sector_mask.set(i);
         addr = addr >> 7 << 7;
@@ -211,7 +212,7 @@ void mee::meta_access(
     assert(m_data_type != MAC || reqs.size() == 1);
 
     for (unsigned i = 0; i < reqs.size(); ++i) {
-        // assert(reqs.size() == 1);
+        assert(reqs.size() == 1);
         mem_fetch *req = reqs[i];
         // req->set_id(mf_id);
         req->set_data_type(m_data_type);
@@ -222,6 +223,8 @@ void mee::meta_access(
             req->set_id(0);
         assert(!m_META_queue->full());
         m_META_queue->push(req);
+        if (m_data_type == CTR)
+            print_addr("gen CTR mf:", req);
     }
 }
 
@@ -329,7 +332,7 @@ void mee::AES_cycle() {
                 // printf("OOOOOOOOOOOOOOOOOOOOOO\n");
                 if (!m_mee_dram_sync_queue->full() && !m_HASH_queue->full()) {
                     print_addr("AES Wdata to sync:\t", mf);
-                    m_OTP_set[OTP_id]--;
+                    // m_OTP_set[OTP_id]--;
                     // m_unit->mee_dram_queue_push(mf, NORM);    //加密完后更新DRAM中的密文
                     m_mee_dram_sync_queue->push(mf);
                     CT_counter++;
@@ -350,7 +353,7 @@ void mee::AES_cycle() {
                 // printf("IIIIIIIIIIIIIIII\n");
             }
         } else {
-            print_addr("waiting for AES:\t", mf);
+            // print_addr("waiting for AES:\t", mf);
             // if (mf->is_write()) 
             //     printf("%p %d AES waiting for OTP %d\n", mf, mf->get_sub_partition_id(), OTP_id);
         }
@@ -516,7 +519,7 @@ void mee::CTR_cycle() {
     m_CTRcache->cycle();
     CT_cycle();
     
-    bool output_full = m_OTP_queue->full() || m_CTR_RET_queue->full() || m_CTR_BMT_Buffer->full();
+    bool output_full = m_OTP_queue->full() || m_CTR_RET_queue->full() || m_CTR_BMT_Buffer->full() || m_unit->m_ctr_L2_bundle_queue->full();
     bool port_free = m_unit->m_CTRcache->data_port_free();
 
     if (!m_CTR_queue->empty() && !m_unit->mee_dram_queue_full(CTR) && !output_full && port_free) {
@@ -527,7 +530,8 @@ void mee::CTR_cycle() {
             // if (m_unit->get_mpid() == 23)
             //     printf("ctr write access:\tm_pid:%d\tOTP_id:%d\tctr_rdhit_addr: %x\tctr_rdret_addr: %x\tctr_write_addr: %x\n", 
             //         m_unit->get_mpid(), mf->get_id(), m_ctr_rdhit_addr, m_ctr_rdret_addr, mf->get_addr());
-            if (m_ctr_rdret_addr != mf->get_addr() && m_ctr_rdhit_addr != mf->get_addr()) {//读到CTR后，才可以CTR++，然后写CTR
+            if (!m_OTP_set[mf->get_id()] && m_ctr_rdret_addr != mf->get_addr() && m_ctr_rdhit_addr != mf->get_addr()) {//读到CTR后，才可以CTR++，然后写CTR
+                // todo: CTR更新需要先读后写，需要完善读完成的检测
                 return;
             }
         }
@@ -540,6 +544,7 @@ void mee::CTR_cycle() {
             m_CTR_queue->pop();
             if (mf->is_write()) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
                 print_addr("CTR Write Hit:\t", mf);
+                // m_OTP_set[mf->get_id()]--;
                 #ifdef BMT_Enable
                 if (mf->get_id())
                     m_CTR_BMT_Buffer->push(mf);
@@ -725,11 +730,65 @@ void mee::META_fill_responses(class meta_cache *m_METAcache, fifo_pipeline<mem_f
     }
 }
 
+void mee::CTR_fill() {
+    // if (m_METAcache == m_BMTcache) printf("%llx & %llx == %llx\n", mf->get_addr(), BASE, mf->get_addr() & BASE);
+    
+    if (!m_unit->m_L2_ctr_bundle_queue->empty()) {
+        mem_fetch *mf_return = m_unit->m_L2_ctr_bundle_queue->top();
+        assert(mf_return->get_data_type() == CTR);
+        
+        #ifdef BMT_Enable
+        assert(mf_return->get_access_type() == META_ACC);
+        if (mf_return->get_access_type() == META_ACC)
+            if (!m_CTR_BMT_Buffer->full()) 
+                m_CTR_BMT_Buffer->push(mf_return);
+            else
+                return;
+        #endif
+        if (m_CTRcache->waiting_for_fill(mf_return)) {
+            // print_addr("wating for fill:\t\t", mf); 
+            if (m_CTRcache->fill_port_free()) {
+                // assert(mf->get_access_type() != META_WR_ALLOC_R);
+                print_addr("ctr fill: \t\t", mf_return);
+                m_CTRcache->fill(mf_return, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
+                                        m_memcpy_cycle_offset);
+                //     print_addr("MAC fill:\t", mf);
+                assert(!mf_return->is_write());
+                // if (m_METAcache == m_BMTcache)
+                //     print_addr("fill:\t\t\t\t", mf);
+                    // printf("%llx & %llx == %llx\n", mf->get_addr(), BASE, mf->get_addr() & BASE); 
+                // if (mf->get_sub_partition_id() == 1) { 
+                //     printf("CTR Fill: %p\n", mf);
+                //     // printf("CTR Next: %p\n", m_CTR_queue->top());
+                // }
+                m_unit->m_L2_ctr_bundle_queue->pop();
+            } else {
+                // print_addr("fill ERROR:\t", mf_return);
+            }
+        } else {
+            if (mf_return->is_write() && mf_return->get_type() == WRITE_ACK)
+                mf_return->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
+                            m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+            //   m_META_RET_queue->push(mf);
+            m_unit->m_L2_ctr_bundle_queue->pop();
+        }
+    }
+}
+
 void mee::META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type) {
     // if (m_METAcache == m_BMTcache) printf("%llx & %llx == %llx\n", mf->get_addr(), BASE, mf->get_addr() & BASE);
     
     if (!m_unit->dram_mee_queue_empty(m_data_type)) {
-        mem_fetch *mf_return = m_unit->dram_mee_queue_top(m_data_type);
+        mem_fetch *mf_return;
+        if (m_data_type == CTR) {
+            if (!m_unit->m_L2_ctr_bundle_queue->empty())
+                mf_return = m_unit->m_L2_ctr_bundle_queue->top();
+            else
+                return;
+        } else {
+            mf_return = m_unit->dram_mee_queue_top(m_data_type);
+        }
+        
         #ifdef BMT_Enable
         if (m_data_type == CTR && mf_return->get_access_type() == META_ACC)
             if (!m_META_RET_queue->full()) 
@@ -779,15 +838,33 @@ void mee::simple_cycle(unsigned cycle) {
     // META Cache fill responses
     META_fill_responses(m_CTRcache, m_CTR_RET_queue, CTR_mask);
     META_fill_responses(m_MACcache, m_MAC_RET_queue, MAC_mask);
-    // for (int layer = 1; layer <= 4; layer++){
+    // for (int layer = 1; layer <= 4; layer++){    
     META_fill_responses(m_BMTcache, m_BMT_RET_queue, BMT_mask[1]);
     // }
     // META_fill_responses(m_BMTcache);
-    META_fill(m_CTRcache, m_CTR_BMT_Buffer, NULL, CTR_mask, CTR_base, CTR);
+    CTR_fill(); // todo: CTR L1 cache fill
     META_fill(m_MACcache, m_MAC_RET_queue, NULL, MAC_mask, MAC_base, MAC);
     META_fill(m_BMTcache, m_BMT_RET_queue, NULL, BMT_mask[1], BMT_base[1], BMT);
 
-    // dram to mee
+    // dram ctr to mee
+    if (!m_unit->dram_mee_queue_empty(CTR)) {
+        mem_fetch *mf_return = m_unit->dram_mee_queue_top(CTR);
+        int spid = m_unit->global_sub_partition_id_to_local_id(mf_return->get_sub_partition_id());
+        // assert(mf_return->get_access_type() < META_ACC);
+        if (!m_unit->mee_L2_queue_full(spid)) {
+            print_addr("dram to mee ctr:\t", mf_return);
+            m_unit->mee_L2_queue_push(spid, mf_return);
+            // m_Ciphertext_RET_queue->push(mf_return);
+            m_unit->dram_mee_queue_pop(CTR);
+            // printf("HHHHHHHHHHHHHHHH");
+        } else {
+            // printf("HHHHHHHHHHHHHHHH");
+        }
+    } else if (!m_unit->mee_dram_queue_empty()) {
+        // printf("SSSSSSSSSSSSSSS %d\n", );
+    }
+
+    // dram data to mee
     if (!m_unit->dram_mee_queue_empty(NORM)) {
         mem_fetch *mf_return = m_unit->dram_mee_queue_top(NORM);
         // assert(!mf_return->is_write());
@@ -805,7 +882,7 @@ void mee::simple_cycle(unsigned cycle) {
             m_unit->dram_mee_queue_pop(NORM);
         } else {
         
-            print_addr("dram to mee:\t", mf_return);
+            print_addr("dram to mee data:\t", mf_return);
             // mee to L2
             
             // META_fill(m_MACcache, mf_return, MAC_mask);
@@ -833,24 +910,40 @@ void mee::simple_cycle(unsigned cycle) {
     }
     // printf("L2 to mee queue: %d %d\n", m_unit->m_sub_partition[0]->m_L2_mee_queue->empty(), m_unit->m_sub_partition[0]->m_L2_mee_queue->empty());
     // L2 to mee
+    DL_CNT++;
+    if (DL_CNT >= 10000) {
+        printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
+    }
     for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
         p++) {
         int spid = (p + last_issued_partition + 1) %
                 m_config->m_n_sub_partition_per_memory_channel;
-        if (!m_unit->L2_mee_queue_empty(spid)) {
-            mem_fetch *mf = m_unit->L2_mee_queue_top(spid);
-            // print_addr("waiting for access:\t", mf);
-            // if (mf->get_access_type() == 9)
-                            // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 to mee:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
-
-            
-            // mee to dram
+        if (!m_unit->L2_mee_queue_empty(spid, CTR)) {
+            mem_fetch *mf = m_unit->L2_mee_queue_top(spid, CTR);
+            if (mf->get_data_type() == CTR) {
+                if (!m_unit->mee_dram_queue_full(CTR)) {
+                    DL_CNT = 0;
+                    last_issued_partition = spid;
+                    print_addr("L2 ctr to mee: ", mf);
+                    m_unit->mee_dram_queue_push(mf, CTR);
+                    m_unit->L2_mee_queue_pop(spid, CTR);
+                    break;
+                } else {
+                    // DL_CNT++;
+                    continue;
+                }
+            }
+        } else if (!m_unit->L2_mee_queue_empty((spid + 1) % m_config->m_n_sub_partition_per_memory_channel, CTR)) {
+            continue;
+        }
+        if (!m_unit->L2_mee_queue_empty(spid, NORM)) {
+            mem_fetch *mf = m_unit->L2_mee_queue_top(spid, NORM);
             assert(mf->is_raw());
             // printf("TTTTTTTTTTTTTTTT\n");
-            
+            // mee to dram
             if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(8)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
                 && !m_MAC_queue->full() && !m_Ciphertext_queue->full()) {
-                print_addr("L2 to mee: ", mf);
+                last_issued_partition = spid;
                 DL_CNT = 0;
                 // assert(!mf->is_write());
                 if (mf->is_write()) { // write
@@ -859,7 +952,7 @@ void mee::simple_cycle(unsigned cycle) {
                     // if (!m_Ciphertext_queue->full()) {
                     mf_counter++;
                     mf->set_id(mf_counter);
-
+                    print_addr("L2 to mee Write: ", mf);
                     // gen_CTR_mf(mf, false, META_RBW, 16, mf_counter);//Lazy_ftech_on_read
                     // gen_CTR_mf(mf, false, META_ACC,  1, mf_counter);//Lazy_ftech_on_read
                     // gen_CTR_mf(mf, true,  META_RBW, 16, mf_counter);
@@ -885,15 +978,16 @@ void mee::simple_cycle(unsigned cycle) {
 
                     // m_AES_queue->push(mf);  //写密文请求，将明文送入AES中解密
                     m_Ciphertext_queue->push(mf);
-                    m_unit->L2_mee_queue_pop(spid);
+                    m_unit->L2_mee_queue_pop(spid, NORM);
                     // mf->set_cooked_status();
                     // printf("BBBBBBBBBBBBBBBBB");
                     // }
-                } else if (!m_unit->mee_dram_queue_full(NORM)) {              // read
+                } else if (!m_unit->mee_dram_queue_full(2, NORM)) {              // read
                     // printf("CCCCCCCCCCCCCCCC");
                     // m_unit->mee_dram_queue_push(mf);    //读密文请求，发往DRAM中读密文
                     mf_counter++;
                     mf->set_id(mf_counter);
+                    print_addr("L2 to mee Read: ", mf);
                     m_Ciphertext_queue->push(mf);
                     if (m_config->m_META_config.m_cache_type == SECTOR) {
                         gen_CTR_mf(mf, false, META_ACC, 32, mf_counter);
@@ -908,13 +1002,12 @@ void mee::simple_cycle(unsigned cycle) {
                     else
                         gen_MAC_mf(mf, false, META_ACC, 8, mf_counter);
                     #endif
-                    m_unit->L2_mee_queue_pop(spid);
+                    m_unit->L2_mee_queue_pop(spid, NORM);
                 }
+                break;
             } else {
-                DL_CNT++;
-                if (DL_CNT >= 10000) {
-                    printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
-                }
+                // DL_CNT++;
+                
                 // if (m_unit->get_mpid() == 0){
                 //     if (m_CTR_RET_queue->full())
                 //         printf("AAAAAAAAAAAAAAAAAAAAAA");
@@ -946,35 +1039,35 @@ void mee::simple_cycle(unsigned cycle) {
 }
 
 void mee::cycle(unsigned cycle) {
-    if (!m_unit->dram_mee_queue_empty(NORM)) {
-        mem_fetch *mf_return = m_unit->dram_mee_queue_top(NORM);
-        int spid = m_unit->global_sub_partition_id_to_local_id(mf_return->get_sub_partition_id());
-         if (false
-            // mf_return->get_is_write() ||
-            // mf_return->get_access_type() == L1_WR_ALLOC_R || 
-            // mf_return->get_access_type() == L2_WR_ALLOC_R ||
-            // mf_return->get_access_type() == L1_WRBK_ACC || 
-            // mf_return->get_access_type() == L2_WRBK_ACC
-            ) {
-                // assert(mf_return->get_access_type() == 4 && !mf_return->is_write());
-            m_unit->dram_mee_queue_pop(NORM);
-        } else {
-            if (!m_unit->mee_L2_queue_full(spid)) { 
-                // m_OTP_table[REQ_addr] = 0;
-                // print_addr("mee to L2 R:\t", mf);
-                m_unit->mee_L2_queue_push(spid, mf_return);
-                m_unit->dram_mee_queue_pop(NORM);
+    // if (!m_unit->dram_mee_queue_empty(NORM)) {
+    //     mem_fetch *mf_return = m_unit->dram_mee_queue_top(NORM);
+    //     int spid = m_unit->global_sub_partition_id_to_local_id(mf_return->get_sub_partition_id());
+    //      if (false
+    //         // mf_return->get_is_write() ||
+    //         // mf_return->get_access_type() == L1_WR_ALLOC_R || 
+    //         // mf_return->get_access_type() == L2_WR_ALLOC_R ||
+    //         // mf_return->get_access_type() == L1_WRBK_ACC || 
+    //         // mf_return->get_access_type() == L2_WRBK_ACC
+    //         ) {
+    //             // assert(mf_return->get_access_type() == 4 && !mf_return->is_write());
+    //         m_unit->dram_mee_queue_pop(NORM);
+    //     } else {
+    //         if (!m_unit->mee_L2_queue_full(spid)) { 
+    //             // m_OTP_table[REQ_addr] = 0;
+    //             // print_addr("mee to L2 R:\t", mf);
+    //             m_unit->mee_L2_queue_push(spid, mf_return);
+    //             m_unit->dram_mee_queue_pop(NORM);
                 
-            }
-        }
-    }
-    if (!m_unit->L2_mee_queue_empty(cycle&1)) {
-        mem_fetch *mf = m_unit->L2_mee_queue_top(cycle&1);
-        if (!m_unit->mee_dram_queue_full(NORM)) {              
-            m_unit->mee_dram_queue_push(mf, NORM);
-            m_unit->L2_mee_queue_pop(cycle&1);
-        }
-    }
+    //         }
+    //     }
+    // }
+    // if (!m_unit->L2_mee_queue_empty(cycle&1)) {
+    //     mem_fetch *mf = m_unit->L2_mee_queue_top(cycle&1);
+    //     if (!m_unit->mee_dram_queue_full(NORM)) {              
+    //         m_unit->mee_dram_queue_push(mf, NORM);
+    //         m_unit->L2_mee_queue_pop(cycle&1);
+    //     }
+    // }
 }
 
 //BMT next Layer

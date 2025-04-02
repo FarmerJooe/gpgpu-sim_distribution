@@ -16,7 +16,7 @@ class mee {
         mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu, class ECCEngine *ecc);
         void cycle(unsigned cycle);
         void simple_cycle(unsigned cycle);
-        void print_addr(char s[], mem_fetch *mf);
+        void print_addr(char s[], mem_fetch *mf) const;
         void print_status(class meta_cache *m_METAcache, mem_fetch *mf);
         void print_tag();
         void meta_access(fifo_pipeline<mem_fetch> *m_META_queue, new_addr_type addr, mem_access_type type, 
@@ -42,6 +42,7 @@ class mee {
         bool META_queue_empty();
 
         void META_fill_responses(class meta_cache *m_METAcache,  fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK);
+        void CTR_fill();
         void META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type);
 
         bool CTR_busy();

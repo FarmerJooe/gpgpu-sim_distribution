@@ -1809,6 +1809,7 @@ enum cache_request_status l1_cache::access(new_addr_type addr, mem_fetch *mf,
 // The l2 cache access function calls the base data_cache access
 // implementation.  When the L2 needs to diverge from L1, L2 specific
 // changes should be made here.
+
 enum cache_request_status l2_cache::access(new_addr_type addr, mem_fetch *mf,
                                            unsigned time,
                                            std::list<cache_event> &events) {
@@ -1817,6 +1818,22 @@ enum cache_request_status l2_cache::access(new_addr_type addr, mem_fetch *mf,
 
 enum cache_request_status l2_cache::probe(new_addr_type addr, mem_fetch *mf) const {
   return data_cache::probe(addr, mf);
+}
+
+void l2_cache::cycle() {
+  if (!m_miss_queue.empty()) {
+    mem_fetch *mf = m_miss_queue.front();
+    // if (mf->get_sub_partition_id() >> 1 == 17)
+    // printf("%s cache cycle: data size: %d\taccess size:%d\n", m_name.c_str(), mf->get_data_size(), mf->get_access_size());
+    if (!m_memport->full(mf->size(), mf->get_is_write(), mf->get_data_type())) {
+      m_miss_queue.pop_front();
+      m_memport->push(mf);
+    }
+  }
+  bool data_port_busy = !m_bandwidth_management.data_port_free();
+  bool fill_port_busy = !m_bandwidth_management.fill_port_free();
+  m_stats.sample_cache_port_utility(data_port_busy, fill_port_busy);
+  m_bandwidth_management.replenish_port_bandwidth();
 }
 
 // The l2 cache access function calls the base data_cache access

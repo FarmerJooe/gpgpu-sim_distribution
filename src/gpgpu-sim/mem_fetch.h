@@ -33,14 +33,6 @@
 #include "../abstract_hardware_model.h"
 #include "addrdec.h"
 
-enum data_type {
-  TOT = 0,
-  BMT,
-  CTR,
-  NORM,
-  MAC,
-  NUM_DATA_TYPE
-};
 
 enum BMT_Layer {
   DEFAULT = 0,
