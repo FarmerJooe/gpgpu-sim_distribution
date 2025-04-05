@@ -19,6 +19,7 @@ class mee {
         void print_addr(char s[], mem_fetch *mf) const;
         void print_status(class meta_cache *m_METAcache, mem_fetch *mf);
         void print_tag();
+        void print_ctr(new_addr_type sub_partition_id, new_addr_type partition_addr);
         void meta_access(fifo_pipeline<mem_fetch> *m_META_queue, new_addr_type addr, mem_access_type type, 
             unsigned size, bool wr, unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc, 
             mem_fetch *original_mf, unsigned mf_id, enum data_type m_data_type, enum BMT_Layer m_Layer) const;
@@ -145,6 +146,8 @@ class mee {
     public:
         counterMap *m_ctrModCount;
         counterMap* get_ctrModCount() { return m_ctrModCount; }
+        counterMap *m_ctrMajor;
+        // counterMap* get_ctrModCount() { return m_ctrModCount; }
         counterSet *m_ctrSet;
         counterSet* get_ctrSet() { return m_ctrSet; }
 };

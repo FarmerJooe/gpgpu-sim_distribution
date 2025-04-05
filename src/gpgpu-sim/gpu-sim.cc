@@ -1679,7 +1679,7 @@ void gpgpu_sim::gpu_print_stat() {
   gpu_print_METACache_data_type_breakdown();
   // ecc status
   gpu_print_ECC_status();
-  gpu_print_ctrModCount_breakdown();
+  // gpu_print_ctrModCount_breakdown();
 
   if (m_config.gpgpu_cflog_interval != 0) {
     spill_log_to_file(stdout, 1, gpu_sim_cycle);

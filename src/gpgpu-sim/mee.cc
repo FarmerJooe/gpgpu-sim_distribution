@@ -1,6 +1,6 @@
 #include "mee.h"
 #include <list>
-// #define BMT_Enable
+#define BMT_Enable
 // #define MAC_Enable
 
 mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu, class ECCEngine *ecc) : 
@@ -34,6 +34,7 @@ mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class me
     m_CTR_BMT_Buffer = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
 
     m_ctrModCount = new counterMap;
+    m_ctrMajor = new counterMap;
     m_ctrSet = new counterSet;
 
     BMT_busy = false;
@@ -71,6 +72,27 @@ void mee::print_tag() {
             // printf("\n");
         }
     // }
+}
+
+void mee::print_ctr(new_addr_type sub_partition_id, new_addr_type partition_addr) {
+    new_addr_type ctr_sector_addr = CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5);
+    new_addr_type ctr_minor_addr = (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31);
+    
+    if ((*m_ctrModCount)[ctr_minor_addr] == 128) {
+        (*m_ctrMajor)[ctr_sector_addr]++;
+        for (int offset = 0; offset < 32; offset++) {
+            (*m_ctrModCount)[ctr_sector_addr + offset] = 0;
+        }
+    }
+    
+    std::string kernel_info_str = "ctrModificationCountStat.log";
+    FILE *log = fopen(kernel_info_str.c_str(), "a");
+    fprintf(log, "%x,%d,%d,%d", ctr_sector_addr, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, (*m_ctrMajor)[ctr_sector_addr], (*m_ctrModCount)[ctr_sector_addr]);// - 6
+    for (unsigned offset = 1; offset < 32; offset++) {
+        fprintf(log, ",%d", (*m_ctrModCount)[ctr_sector_addr + offset]);// - 6
+    }
+    fprintf(log, "\n");
+    fclose(log);
 }
 
 new_addr_type mee::get_partition_addr(mem_fetch *mf) {
@@ -123,6 +145,7 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
         (*m_ctrModCount)[CTR_addr]++;
         assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
         (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
+        print_ctr(sub_partition_id, partition_addr);
     } else {
         // (*m_ctrModCount)[CTR_addr] += 0;
         (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
@@ -738,7 +761,7 @@ void mee::CTR_fill() {
         assert(mf_return->get_data_type() == CTR);
         
         #ifdef BMT_Enable
-        assert(mf_return->get_access_type() == META_ACC);
+        // assert(mf_return->get_access_type() == META_ACC);
         if (mf_return->get_access_type() == META_ACC)
             if (!m_CTR_BMT_Buffer->full()) 
                 m_CTR_BMT_Buffer->push(mf_return);
@@ -912,7 +935,7 @@ void mee::simple_cycle(unsigned cycle) {
     // L2 to mee
     DL_CNT++;
     if (DL_CNT >= 10000) {
-        printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
+        // printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
     }
     for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
         p++) {
