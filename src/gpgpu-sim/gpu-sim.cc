@@ -217,9 +217,6 @@ void power_config::reg_options(class OptionParser *opp) {
 }
 
 void memory_config::reg_options(class OptionParser *opp) {
-  option_parser_register(opp, "-gpgpu_crypto_latency", OPT_INT32,
-                         &m_crypto_latency, "gpgpu secmem crypto latency",
-                         "40");
   option_parser_register(opp, "-gpgpu_perf_sim_memcpy", OPT_BOOL,
                          &m_perf_sim_memcpy, "Fill the L2 cache on memcpy",
                          "1");
@@ -237,12 +234,6 @@ void memory_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR,
                          &m_L2_config.m_config_string,
                          "unified banked L2 data cache config "
-                         " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
-                         "alloc>,<mshr>:<N>:<merge>,<mq>}",
-                         "64:128:8,L:B:m:N,A:16:4,4");
-  option_parser_register(opp, "-gpgpu_cache:dmeta", OPT_CSTR,
-                         &m_META_config.m_config_string,
-                         "unified banked META data cache config "
                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                          "alloc>,<mshr>:<N>:<merge>,<mq>}",
                          "64:128:8,L:B:m:N,A:16:4,4");
@@ -1354,116 +1345,6 @@ void gpgpu_sim::clear_executed_kernel_info() {
   m_executed_kernel_names.clear();
   m_executed_kernel_uids.clear();
 }
-
-void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
-  if (!m_memory_config->m_META_config.disabled()) {
-    cache_stats l2_stats;
-    struct cache_sub_stats l2_css;
-    struct cache_sub_stats total_l2_css;
-    l2_stats.clear();
-    l2_css.clear();
-    total_l2_css.clear();
-
-    printf("\n========= %s cache stats =========\n", META);
-    
-    for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
-      m_memory_partition_unit[i]->accumulate_METAcache_stats(l2_stats, META);
-      m_memory_partition_unit[i]->get_METAcache_sub_stats(l2_css, META);
-
-      fprintf(stdout,
-              "%s_cache_bank[%d]: Access = %llu, Miss = %llu, Miss_rate = "
-              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu\n",
-              META, i, l2_css.accesses, l2_css.misses,
-              (double)l2_css.misses / (double)l2_css.accesses,
-              l2_css.pending_hits, l2_css.res_fails);
-
-      total_l2_css += l2_css;
-    }
-    
-    if (!m_memory_config->m_META_config.disabled() &&
-        m_memory_config->m_META_config.get_num_lines()) {
-      // L2c_print_cache_stat();
-      printf("%s_total_cache_accesses = %llu\n", META, total_l2_css.accesses);
-      printf("%s_total_cache_misses = %llu\n", META, total_l2_css.misses);
-      if (total_l2_css.accesses > 0)
-        printf("%s_total_cache_miss_rate = %.4lf\n",
-               META, (double)total_l2_css.misses / (double)total_l2_css.accesses);
-      //secondary MISS
-      printf("%s_total_cache_secondary_misses = %llu\n", META, l2_stats.m_stats[META_ACC][MSHR_HIT]);
-      //secondary MISS rate
-      if (total_l2_css.misses > 0)
-        printf("%s_total_cache_secondary_miss_rate = %.4lf\n", META, (double)l2_stats.m_stats[META_ACC][MSHR_HIT] / ((double)total_l2_css.misses + (double)l2_stats.m_stats[META_ACC][MSHR_HIT]));
-      printf("%s_total_cache_pending_hits = %llu\n", META, total_l2_css.pending_hits);
-      printf("%s_total_cache_reservation_fails = %llu\n",
-             META, total_l2_css.res_fails);
-      printf("%s_total_cache_breakdown:\n", META);
-
-      char META_cache_stats_breakdown[128];
-      strcpy(META_cache_stats_breakdown, META);
-      strcat(META_cache_stats_breakdown, "_cache_stats_breakdown");
-      l2_stats.print_stats(stdout, META_cache_stats_breakdown);
-      
-      printf("%s_total_cache_reservation_fail_breakdown:\n", META);
-      
-      char META_cache_stats_fail_breakdown[128];
-      strcpy(META_cache_stats_fail_breakdown, META);
-      strcat(META_cache_stats_fail_breakdown, "_cache_stats_fail_breakdown");
-      l2_stats.print_fail_stats(stdout, META_cache_stats_fail_breakdown);
-
-      char META_cache[128];
-      strcpy(META_cache, META);
-      strcat(META_cache, "_cache");
-      total_l2_css.print_port_stats(stdout, META_cache);
-    }
-  }
-}
-
-void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
-
-  printf("\n========= meta cache data type breakdown =========\n");
-  
-  unsigned long long m_cache_tot_NORM_acc = 0;
-  unsigned long long m_cache_tot_CTR_acc = 0;
-  unsigned long long m_cache_tot_MAC_acc = 0;
-  unsigned long long m_cache_tot_BMT_acc = 0;
-  unsigned long long m_cache_tot_meta_wb = 0;
-  
-  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
-    m_cache_tot_NORM_acc += m_memory_partition_unit[i]->m_cache_NORM_acc;
-    m_cache_tot_CTR_acc += m_memory_partition_unit[i]->m_cache_CTR_acc;
-    m_cache_tot_MAC_acc += m_memory_partition_unit[i]->m_cache_MAC_acc;
-    m_cache_tot_BMT_acc += m_memory_partition_unit[i]->m_cache_BMT_acc;
-    m_cache_tot_meta_wb += m_memory_partition_unit[i]->m_cache_meta_wb;
-  }
-
-  printf("m_cache_tot_NORM_acc = %lld\n", m_cache_tot_NORM_acc);
-  printf("m_cache_tot_CTR_acc = %lld\n", m_cache_tot_CTR_acc);
-  printf("m_cache_tot_MAC_acc = %lld\n", m_cache_tot_MAC_acc);
-  printf("m_cache_tot_BMT_acc = %lld\n", m_cache_tot_BMT_acc);
-  printf("m_cache_tot_meta_wb = %lld\n", m_cache_tot_meta_wb);
-
-}
-void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
-  printf("\n========= ctr modification Count breakdown =========\n");
-
-  int ctrModificationCountBreakdown[20];
-  memset(ctrModificationCountBreakdown, 0, sizeof(ctrModificationCountBreakdown));
-  counterMap *m_count;
-  counterMap::iterator it;
-
-  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
-    m_count = m_memory_partition_unit[i]->get_ctrModificationCount();
-    
-    for (it = m_count->begin(); it != m_count->end(); it++) {
-      ctrModificationCountBreakdown[max(0, (int)floor(log2(it->second)))]++;// - 6
-    }
-  }
-
-  for (int i = 0; i < 10; i++) {
-    printf("ctrModificationCountBreakdown[%d] = %d\n", 1 << (i), ctrModificationCountBreakdown[i]); // + 7
-  }
-}
-
 void gpgpu_sim::gpu_print_stat() {
   FILE *statfout = stdout;
 
@@ -1607,6 +1488,8 @@ void gpgpu_sim::gpu_print_stat() {
       printf("L2_total_cache_pending_hits = %llu\n", total_l2_css.pending_hits);
       printf("L2_total_cache_reservation_fails = %llu\n",
              total_l2_css.res_fails);
+      printf("L2_total_cache_util = %.4lf\n",
+        (double)(total_l2_css.accesses - total_l2_css.res_fails) /  (64 * (gpu_tot_sim_cycle + gpu_sim_cycle)));
       printf("L2_total_cache_breakdown:\n");
       l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
       printf("L2_total_cache_reservation_fail_breakdown:\n");
@@ -1614,16 +1497,6 @@ void gpgpu_sim::gpu_print_stat() {
       total_l2_css.print_port_stats(stdout, "L2_cache");
     }
   }
-  // CTR cache stats
-  gpu_print_METACache_stat("CTR");
-  // MAC cache stats
-  gpu_print_METACache_stat("MAC");
-  // BMT cache stats
-  gpu_print_METACache_stat("BMT");
-  
-  // mf data type breakdown
-  gpu_print_METACache_data_type_breakdown();
-  gpu_print_ctrModCount_breakdown();
 
   if (m_config.gpgpu_cflog_interval != 0) {
     spill_log_to_file(stdout, 1, gpu_sim_cycle);
@@ -2061,8 +1934,6 @@ void gpgpu_sim::cycle() {
         m_memory_sub_partition[i]->push(mf, gpu_sim_cycle + gpu_tot_sim_cycle);
         if (mf) partiton_reqs_in_parallel_per_cycle++;
       }
-      if (i & 1)
-        m_memory_partition_unit[i >> 1]->cache_cycle(gpu_sim_cycle + gpu_tot_sim_cycle);
       m_memory_sub_partition[i]->cache_cycle(gpu_sim_cycle + gpu_tot_sim_cycle);
       m_memory_sub_partition[i]->accumulate_L2cache_stats(
           m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX]);
@@ -2155,7 +2026,7 @@ void gpgpu_sim::cycle() {
         if (m_memory_config->m_L2_config.get_num_lines()) {
           int dlc = 0;
           for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
-            dlc = m_memory_sub_partition[i]->flushL2();//TODO
+            dlc = m_memory_sub_partition[i]->flushL2();
             assert(dlc == 0);  // TODO: need to model actual writes to DRAM here
             printf("Dirty lines flushed from L2 %d is %d\n", i, dlc);
           }
