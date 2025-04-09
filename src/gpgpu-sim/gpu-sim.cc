@@ -1402,6 +1402,8 @@ void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
       printf("%s_total_cache_pending_hits = %llu\n", META, total_l2_css.pending_hits);
       printf("%s_total_cache_reservation_fails = %llu\n",
              META, total_l2_css.res_fails);
+      printf("%s_total_cache_util = %.4lf\n",
+             META, (double)(total_l2_css.accesses - total_l2_css.res_fails) /  (32 * (gpu_tot_sim_cycle + gpu_sim_cycle)));
       printf("%s_total_cache_breakdown:\n", META);
 
       char META_cache_stats_breakdown[128];
@@ -1661,6 +1663,8 @@ void gpgpu_sim::gpu_print_stat() {
       printf("L2_total_cache_pending_hits = %llu\n", total_l2_css.pending_hits);
       printf("L2_total_cache_reservation_fails = %llu\n",
              total_l2_css.res_fails);
+      printf("L2_total_cache_util = %.4lf\n",
+               (double)(total_l2_css.accesses - total_l2_css.res_fails) /  (64 * (gpu_tot_sim_cycle + gpu_sim_cycle)));
       printf("L2_total_cache_breakdown:\n");
       l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
       printf("L2_total_cache_reservation_fail_breakdown:\n");
