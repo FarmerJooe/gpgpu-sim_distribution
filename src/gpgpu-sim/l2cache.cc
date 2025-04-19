@@ -652,6 +652,9 @@ memory_sub_partition::~memory_sub_partition() {
 }
 
 void memory_sub_partition::cache_cycle(unsigned cycle) {
+  if (get_id() == 0 && (m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle) % 10000 == 0) {
+    m_L2cache->print_tag_status();
+  }
   // printf("memory_partition_unit cycle: %d\n", cycle);
   // L2 fill responses
   if (!m_config->m_L2_config.disabled()) {

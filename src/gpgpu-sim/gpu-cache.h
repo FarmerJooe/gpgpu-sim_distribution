@@ -960,6 +960,7 @@ class tag_array {
 
   void print(FILE *stream, unsigned &total_access,
              unsigned &total_misses) const;
+  void print_tag_status();
   float windowed_miss_rate() const;
   void get_stats(unsigned &total_access, unsigned &total_misses,
                  unsigned &total_hit_res, unsigned &total_res_fail) const;
@@ -1003,6 +1004,9 @@ class tag_array {
 
   typedef tr1_hash_map<new_addr_type, unsigned> line_table;
   line_table pending_lines;
+
+  // typedef tr1_hash_map<cache_block_state, unsigned> tag_status;
+  unsigned m_tag_status[10] = {0, 0, 0, 0, 0, 0};
 
   friend class baseline_cache;
   friend class l2_cache;
@@ -1305,6 +1309,7 @@ class baseline_cache : public cache_t {
   void flush() { m_tag_array->flush(); }
   void invalidate() { m_tag_array->invalidate(); }
   void print(FILE *fp, unsigned &accesses, unsigned &misses) const;
+  void print_tag_status() { m_tag_array->print_tag_status(); }
   void display_state(FILE *fp) const;
 
   // Stat collection

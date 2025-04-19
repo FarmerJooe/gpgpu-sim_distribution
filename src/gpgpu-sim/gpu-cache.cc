@@ -497,6 +497,31 @@ void tag_array::print(FILE *stream, unsigned &total_access,
   total_access += m_access;
 }
 
+void tag_array::print_tag_status() {
+  // m_tag_status.clear();
+  m_tag_status[INVALID] = 0;
+  m_tag_status[RESERVED] = 0;
+  m_tag_status[MODIFIED] = 0;
+  m_tag_status[VALID] = 0;
+  for (unsigned i = 0; i < m_config.get_num_lines(); i++) {
+    cache_block_t *line = m_lines[i];
+    if (line->is_invalid_line()) {
+        m_tag_status[INVALID]++;
+    } else if (line->is_reserved_line()) {
+        m_tag_status[RESERVED]++;
+    } else if (line->is_modified_line()) {
+        m_tag_status[MODIFIED]++;
+    } else if (line->is_valid_line()) {
+        m_tag_status[VALID]++;
+    }
+  }
+
+  std::string kernel_info_str = "l2CacheStatusBreakdown.log";
+  FILE *log = fopen(kernel_info_str.c_str(), "a+");
+  fprintf(log, "%d,%d,%d,%d\n", m_tag_status[INVALID], m_tag_status[RESERVED], m_tag_status[MODIFIED], m_tag_status[VALID]);
+  fclose(log);
+}
+
 void tag_array::get_stats(unsigned &total_access, unsigned &total_misses,
                           unsigned &total_hit_res,
                           unsigned &total_res_fail) const {
