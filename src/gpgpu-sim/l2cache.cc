@@ -727,7 +727,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
     //   printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\tdata_type:%d\tmf_id:%d\t\n", "L2 fill:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id());
 
     // assert(mf_return->get_access_type() != 4);
-    if (!m_config->m_L2_config.disabled() && m_L2cache->waiting_for_fill(mf)) {
+    if (!m_config->m_L2_config.disabled() && (m_L2cache->waiting_for_fill(mf) && mf->get_data_type() != CTR)) {
       assert(mf->get_access_type() != 4);
       if (m_L2cache->fill_port_free()) {
         assert(mf->get_access_type() != 4);
@@ -738,7 +738,14 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
                                 m_memcpy_cycle_offset);
         m_mee_L2_queue->pop();
       }
-    } else if (!m_L2_icnt_queue->full()) {
+    }
+    else if (mf->get_data_type() == CTR) {
+      if (!m_L2_ctr_queue->full()) {
+        m_L2_ctr_queue->push(mf);
+        m_mee_L2_queue->pop();
+      }
+    } 
+    else if (!m_L2_icnt_queue->full()) {
       assert(mf->get_data_type() != CTR);
       if (mf->is_write() && mf->get_type() == WRITE_ACK)
         mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
@@ -763,7 +770,12 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
       // L2 is enabled and access is for L2
       bool output_full = m_L2_ctr_queue->full();
       bool port_free = m_L2cache->data_port_free();
-      if (!output_full && port_free) {
+      enum cache_request_status probe_status = m_L2cache->probe(mf->get_addr(), mf);
+      if (!output_full && port_free && probe_status != RESERVATION_FAIL) {
+        m_L2_mee_queue[CTR]->push(mf);
+        m_ctr_L2_queue->pop();
+      }
+      else if (!output_full && port_free) {
         std::list<cache_event> events;
         enum cache_request_status status =
             m_L2cache->access(mf->get_addr(), mf,
