@@ -246,6 +246,12 @@ void memory_config::reg_options(class OptionParser *opp) {
                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                          "alloc>,<mshr>:<N>:<merge>,<mq>}",
                          "64:128:8,L:B:m:N,A:16:4,4");
+  option_parser_register(opp, "-gpgpu_cache:ctr", OPT_CSTR,
+                          &m_CTR_config.m_config_string,
+                          "unified banked CTR data cache config "
+                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
+                          "alloc>,<mshr>:<N>:<merge>,<mq>}",
+                          "64:128:8,L:B:m:N,A:16:4,4");
   option_parser_register(opp, "-gpgpu_ecc_1bit_err", OPT_FLOAT,
                          &m_ecc_1bit_err,
                          "unified ecc 1bit error rate config ", "0");

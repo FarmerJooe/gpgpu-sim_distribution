@@ -278,6 +278,7 @@ class memory_config {
   bool m_valid;
   mutable l2_cache_config m_L2_config;
   mutable l2_cache_config m_META_config;
+  mutable l2_cache_config m_CTR_config;
   bool m_L2_texure_only;
 
   char *gpgpu_dram_timing_opt;
