@@ -110,7 +110,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
 
   if (!m_config->m_META_config.disabled()) {
     m_CTRcache =
-        new meta_cache(CTRc_name, m_config->m_META_config, -1, -1, m_CTRinterface,
+        new meta_cache(CTRc_name, m_config->m_CTR_config, -1, -1, m_CTRinterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
     m_MACcache =
         new meta_cache(MACc_name, m_config->m_META_config, -1, -1, m_MACinterface,

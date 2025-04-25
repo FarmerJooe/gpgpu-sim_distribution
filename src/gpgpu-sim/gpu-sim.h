@@ -266,6 +266,7 @@ class memory_config {
     m_address_mapping.init(m_n_mem, m_n_sub_partition_per_memory_channel);
     m_L2_config.init(&m_address_mapping);
     m_META_config.init(&m_address_mapping);
+    m_CTR_config.init(&m_address_mapping);
 
     m_valid = true;
 
@@ -278,6 +279,7 @@ class memory_config {
   bool m_valid;
   mutable l2_cache_config m_L2_config;
   mutable l2_cache_config m_META_config;
+  mutable l2_cache_config m_CTR_config;
   bool m_L2_texure_only;
 
   char *gpgpu_dram_timing_opt;
