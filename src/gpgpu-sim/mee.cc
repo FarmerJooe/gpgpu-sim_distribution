@@ -766,102 +766,108 @@ void mee::simple_cycle(unsigned cycle) {
     }
     // printf("L2 to mee queue: %d %d\n", m_unit->m_sub_partition[0]->m_L2_mee_queue->empty(), m_unit->m_sub_partition[0]->m_L2_mee_queue->empty());
     // L2 to mee
-    if (!m_unit->L2_mee_queue_empty(cycle&1)) {
-        mem_fetch *mf = m_unit->L2_mee_queue_top(cycle&1);
-        // print_addr("waiting for access:\t", mf);
-        // if (mf->get_access_type() == 9)
-                        // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 to mee:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
-
         
-        // mee to dram
-        assert(mf->is_raw());
-        // printf("TTTTTTTTTTTTTTTT\n");
-        
-        if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(8)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
-            && !m_MAC_queue->full() && !m_Ciphertext_queue->full()) {
-            print_addr("L2 to mee: ", mf);
-            DL_CNT = 0;
-            // assert(!mf->is_write());
-            if (mf->is_write()) { // write
-                assert(mf->is_raw());
-                // printf("LLLLLLLLLLLLLLLLLLL");
-                // if (!m_Ciphertext_queue->full()) {
-                mf_counter++;
-                mf->set_id(mf_counter);
+    for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
+        p++) {
+        int spid = (p + last_issued_partition + 1) %
+                m_config->m_n_sub_partition_per_memory_channel;
+        if (!m_unit->L2_mee_queue_empty(spid)) {
+            mem_fetch *mf = m_unit->L2_mee_queue_top(spid);
+            // print_addr("waiting for access:\t", mf);
+            // if (mf->get_access_type() == 9)
+                            // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 to mee:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
 
-                // gen_CTR_mf(mf, false, META_RBW, 16, mf_counter);//Lazy_ftech_on_read
-                // gen_CTR_mf(mf, false, META_ACC,  1, mf_counter);//Lazy_ftech_on_read
-                // gen_CTR_mf(mf, true,  META_RBW, 16, mf_counter);
-                // gen_CTR_mf(mf, true,  META_ACC,  1, mf_counter);
-                // gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);//Lazy_ftech_on_read
-                // gen_CTR_mf(mf, true,  META_ACC, 128, mf_counter);
+            
+            // mee to dram
+            assert(mf->is_raw());
+            // printf("TTTTTTTTTTTTTTTT\n");
+            
+            if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(8)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
+                && !m_MAC_queue->full() && !m_Ciphertext_queue->full()) {
+                print_addr("L2 to mee: ", mf);
+                DL_CNT = 0;
+                // assert(!mf->is_write());
+                if (mf->is_write()) { // write
+                    assert(mf->is_raw());
+                    // printf("LLLLLLLLLLLLLLLLLLL");
+                    // if (!m_Ciphertext_queue->full()) {
+                    mf_counter++;
+                    mf->set_id(mf_counter);
 
-                if (m_config->m_META_config.m_cache_type == SECTOR) {
-                    gen_CTR_mf(mf, false, META_ACC, 32, mf_counter);//Lazy_ftech_on_read
-                    gen_CTR_mf(mf, true,  META_ACC, 32, mf_counter);
+                    // gen_CTR_mf(mf, false, META_RBW, 16, mf_counter);//Lazy_ftech_on_read
+                    // gen_CTR_mf(mf, false, META_ACC,  1, mf_counter);//Lazy_ftech_on_read
+                    // gen_CTR_mf(mf, true,  META_RBW, 16, mf_counter);
+                    // gen_CTR_mf(mf, true,  META_ACC,  1, mf_counter);
+                    // gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);//Lazy_ftech_on_read
+                    // gen_CTR_mf(mf, true,  META_ACC, 128, mf_counter);
+
+                    if (m_config->m_META_config.m_cache_type == SECTOR) {
+                        gen_CTR_mf(mf, false, META_ACC, 32, mf_counter);//Lazy_ftech_on_read
+                        gen_CTR_mf(mf, true,  META_ACC, 32, mf_counter);
+                    }
+                    else {
+                        gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);//Lazy_ftech_on_read
+                        gen_CTR_mf(mf, true,  META_ACC, 128, mf_counter);
+                    }
+
+                    #ifdef MAC_Enable
+                    if (m_config->m_META_config.m_cache_type == SECTOR)
+                        gen_MAC_mf(mf, true, META_ACC, 4, mf_counter);
+                    else
+                        gen_MAC_mf(mf, true, META_ACC, 8, mf_counter);
+                    #endif
+
+                    // m_AES_queue->push(mf);  //写密文请求，将明文送入AES中解密
+                    m_Ciphertext_queue->push(mf);
+                    m_unit->L2_mee_queue_pop(spid);
+                    // mf->set_cooked_status();
+                    // printf("BBBBBBBBBBBBBBBBB");
+                    // }
+                } else if (!m_unit->mee_dram_queue_full(NORM)) {              // read
+                    // printf("CCCCCCCCCCCCCCCC");
+                    // m_unit->mee_dram_queue_push(mf);    //读密文请求，发往DRAM中读密文
+                    mf_counter++;
+                    mf->set_id(mf_counter);
+                    m_Ciphertext_queue->push(mf);
+                    if (m_config->m_META_config.m_cache_type == SECTOR) {
+                        gen_CTR_mf(mf, false, META_ACC, 32, mf_counter);
+                    }
+                    else {
+                        gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);
+                    }
+                    // gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);
+                    #ifdef MAC_Enable
+                    if (m_config->m_META_config.m_cache_type == SECTOR)
+                        gen_MAC_mf(mf, false, META_ACC, 4, mf_counter);
+                    else
+                        gen_MAC_mf(mf, false, META_ACC, 8, mf_counter);
+                    #endif
+                    m_unit->L2_mee_queue_pop(spid);
                 }
-                else {
-                    gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);//Lazy_ftech_on_read
-                    gen_CTR_mf(mf, true,  META_ACC, 128, mf_counter);
+            } else {
+                DL_CNT++;
+                if (DL_CNT >= 10000) {
+                    printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
                 }
-
-                #ifdef MAC_Enable
-                if (m_config->m_META_config.m_cache_type == SECTOR)
-                    gen_MAC_mf(mf, true, META_ACC, 4, mf_counter);
-                else
-                    gen_MAC_mf(mf, true, META_ACC, 8, mf_counter);
-                #endif
-
-                // m_AES_queue->push(mf);  //写密文请求，将明文送入AES中解密
-                m_Ciphertext_queue->push(mf);
-                m_unit->L2_mee_queue_pop(cycle&1);
-                // mf->set_cooked_status();
-                // printf("BBBBBBBBBBBBBBBBB");
+                // if (m_unit->get_mpid() == 0){
+                //     if (m_CTR_RET_queue->full())
+                //         printf("AAAAAAAAAAAAAAAAAAAAAA");
+                //     if (m_MAC_RET_queue->full())
+                //         printf("BBBBBBBBBBBBBBBBB");
+                //     if (m_BMT_RET_queue->full())
+                //         printf("CCCCCCCCCCCC");
+                //     if (m_AES_queue->full())
+                //         printf("DDDDDDDDDDDDDDDD");
+                //     if (m_AES_queue->full())
+                //         printf("EEEEEEEEEEEEEEEE");
+                //     if (m_unit->mee_dram_queue_empty())
+                //         printf("FFFFFFFFFFFFFFFFFF");
                 // }
-            } else if (!m_unit->mee_dram_queue_full(NORM)) {              // read
-                // printf("CCCCCCCCCCCCCCCC");
-                // m_unit->mee_dram_queue_push(mf);    //读密文请求，发往DRAM中读密文
-                mf_counter++;
-                mf->set_id(mf_counter);
-                m_Ciphertext_queue->push(mf);
-                if (m_config->m_META_config.m_cache_type == SECTOR) {
-                    gen_CTR_mf(mf, false, META_ACC, 32, mf_counter);
-                }
-                else {
-                    gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);
-                }
-                // gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);
-                #ifdef MAC_Enable
-                if (m_config->m_META_config.m_cache_type == SECTOR)
-                    gen_MAC_mf(mf, false, META_ACC, 4, mf_counter);
-                else
-                    gen_MAC_mf(mf, false, META_ACC, 8, mf_counter);
-                #endif
-                m_unit->L2_mee_queue_pop(cycle&1);
+                    
             }
         } else {
-            DL_CNT++;
-            if (DL_CNT >= 10000) {
-                printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
-            }
-            // if (m_unit->get_mpid() == 0){
-            //     if (m_CTR_RET_queue->full())
-            //         printf("AAAAAAAAAAAAAAAAAAAAAA");
-            //     if (m_MAC_RET_queue->full())
-            //         printf("BBBBBBBBBBBBBBBBB");
-            //     if (m_BMT_RET_queue->full())
-            //         printf("CCCCCCCCCCCC");
-            //     if (m_AES_queue->full())
-            //         printf("DDDDDDDDDDDDDDDD");
-            //     if (m_AES_queue->full())
-            //         printf("EEEEEEEEEEEEEEEE");
-            //     if (m_unit->mee_dram_queue_empty())
-            //         printf("FFFFFFFFFFFFFFFFFF");
-            // }
-                
+            // printf("GGGGGGGGGGGGGG\n");
         }
-    } else {
-        // printf("GGGGGGGGGGGGGG\n");
     }
     MAC_CHECK_cycle();
     MAC_cycle();
