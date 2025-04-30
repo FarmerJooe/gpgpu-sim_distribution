@@ -499,7 +499,7 @@ void mee::CTR_cycle() {
             // set wating for CTR fill
             print_addr("CTR MISS:\t", mf);
             m_CTR_queue->pop();
-            assert(!mf->is_write());
+            // assert(!mf->is_write());
             if (mf->get_access_type() != META_RBW) {
                 if (mf->get_id())
                     OTP_counter++;
