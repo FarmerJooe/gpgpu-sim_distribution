@@ -348,7 +348,7 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
   is_used = true;
   shader_cache_access_log(m_core_id, m_type_id, 0);  // log accesses to cache
   enum cache_request_status status = probe(addr, idx, mf, mf->is_write());
-  if (mshr_hit_avail && status == MISS && !mf->get_is_write())
+  if (mshr_hit_avail && (status == MISS || status == SECTOR_MISS) && !mf->get_is_write())
     status = HIT_RESERVED;
   switch (status) {
     case HIT_RESERVED:
