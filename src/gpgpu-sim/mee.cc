@@ -2,6 +2,7 @@
 #include <list>
 #define BMT_Enable
 #define MAC_Enable
+// #define AES_Enable
 
 mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu) : 
     m_unit(unit), 
@@ -225,12 +226,15 @@ void mee::CT_cycle() {
             if (!m_unit->mee_L2_queue_full(spid)){
                 // assert(!mf_return->is_write());
                 // assert(mf_return->get_access_type() != 4);
+                #ifdef AES_Enable
                 m_unit->mee_L2_queue_push(spid, mf_return); //写密文完成，返回L2
+                #endif
                 m_Ciphertext_RET_queue->pop();
             // } else  {
             //     assert(mf_return->get_access_type() != 4);
             }
         } else if (!m_AES_queue->full() && !m_HASH_queue->full()) {              // read
+            assert(mf_return->get_id());
             m_AES_queue->push(mf_return);   //密文从DRAM返回，送往AES解密
             // m_MAC_table[(new_addr_type)mf_return] = ++MAC_counter;
             // assert(m_MAC_table[(new_addr_type)mf_return]);
@@ -249,6 +253,7 @@ void mee::CT_cycle() {
             if (mf->is_raw() && !m_AES_queue->full()) {
                 // assert(!mf->is_write());
                 // printf("QQQQQQQQQQQQQQQQ\n");
+                assert(mf->get_id());
                 m_AES_queue->push(mf);  //写密文请求，将明文送入AES中解密
                 mf->set_cooked_status();
                 // m_MAC_table[(new_addr_type)mf] = ++MAC_counter;
@@ -264,7 +269,9 @@ void mee::CT_cycle() {
                 }
             }
         } else if (!m_unit->mee_dram_queue_full(NORM)) {              // read
+            #ifdef AES_Enable
             m_unit->mee_dram_queue_push(mf, NORM);    //读密文请求，发往DRAM中读密文
+            #endif
             m_Ciphertext_queue->pop();
             CT_counter++;
         }
@@ -289,7 +296,9 @@ void mee::AES_cycle() {
                 // printf("OOOOOOOOOOOOOOOOOOOOOO\n");
                 if (!m_unit->mee_dram_queue_full(NORM) && !m_HASH_queue->full()) {
                     m_OTP_set[OTP_id]--;
+                    #ifdef AES_Enable
                     m_unit->mee_dram_queue_push(mf, NORM);    //加密完后更新DRAM中的密文
+                    #endif
                     CT_counter++;
                     m_HASH_queue->push(new hash(MAC, mf->get_id()));          //加密完后得到密文，对密文进行MAC Hash
                     m_AES_queue->pop();
@@ -299,7 +308,9 @@ void mee::AES_cycle() {
                 m_OTP_set[OTP_id]--;
                 // m_OTP_table[REQ_addr] = 0;
                 // print_addr("mee to L2 R:\t", mf);
+                #ifdef AES_Enable
                 m_unit->mee_L2_queue_push(spid, mf);    //解密完后返回L2
+                #endif
                 print_addr("MEE to L2:\t", mf);
                 // printf("JJJJJJJJJJJJJJJJJJJJJJJJJ");
                 m_AES_queue->pop();
@@ -755,12 +766,17 @@ void mee::simple_cycle(unsigned cycle) {
             //m_unit->mee_L2_queue_push(m_unit->global_sub_partition_id_to_local_id(mf_return->get_sub_partition_id()), mf_return);
             int spid = m_unit->global_sub_partition_id_to_local_id(mf_return->get_sub_partition_id());
             assert(mf_return->get_access_type() < META_ACC);
-            if (!m_Ciphertext_RET_queue->full()) {              
+            if (!m_Ciphertext_RET_queue->full() && !m_unit->mee_L2_queue_full(spid)) {
                 // m_AES_queue->push(mf_return);   //密文从DRAM返回，送往AES解密
                 // m_MAC_table[(new_addr_type)mf_return] = ++MAC_counter;
                 // assert(m_MAC_table[(new_addr_type)mf_return]);
                 // m_HASH_queue->push(new unsigned(m_MAC_table[(new_addr_type)mf_return]));  //对密文进行hash，用于MAC Check
+                #ifndef AES_Enable
+                m_Ciphertext_RET_queue->push(mf_return->get_original_wr_mf());
+                m_unit->mee_L2_queue_push(spid, mf_return);
+                #else
                 m_Ciphertext_RET_queue->push(mf_return);
+                #endif
                 m_unit->dram_mee_queue_pop(NORM);
                 // printf("HHHHHHHHHHHHHHHH");
             } else {
@@ -778,7 +794,13 @@ void mee::simple_cycle(unsigned cycle) {
         int spid = (p + last_issued_partition + 1) %
                 m_config->m_n_sub_partition_per_memory_channel;
         if (!m_unit->L2_mee_queue_empty(spid)) {
+            #ifndef AES_Enable
+            mem_fetch *mf_original = m_unit->L2_mee_queue_top(spid);
+            mem_fetch *mf = new mem_fetch(*mf_original);
+            mf_original->original_wr_mf = mf;
+            #else
             mem_fetch *mf = m_unit->L2_mee_queue_top(spid);
+            #endif
             // print_addr("waiting for access:\t", mf);
             // if (mf->get_access_type() == 9)
                             // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 to mee:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
@@ -789,7 +811,7 @@ void mee::simple_cycle(unsigned cycle) {
             // printf("TTTTTTTTTTTTTTTT\n");
             
             if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(8)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
-                && !m_MAC_queue->full() && !m_Ciphertext_queue->full()) {
+                && !m_MAC_queue->full() && !m_Ciphertext_queue->full() && !m_unit->mee_dram_queue_full(NORM)) {
                 print_addr("L2 to mee: ", mf);
                 DL_CNT = 0;
                 // assert(!mf->is_write());
@@ -829,7 +851,7 @@ void mee::simple_cycle(unsigned cycle) {
                     // mf->set_cooked_status();
                     // printf("BBBBBBBBBBBBBBBBB");
                     // }
-                } else if (!m_unit->mee_dram_queue_full(NORM)) {              // read
+                } else {              // read
                     // printf("CCCCCCCCCCCCCCCC");
                     // m_unit->mee_dram_queue_push(mf);    //读密文请求，发往DRAM中读密文
                     mf_counter++;
@@ -850,6 +872,11 @@ void mee::simple_cycle(unsigned cycle) {
                     #endif
                     m_unit->L2_mee_queue_pop(spid);
                 }
+                assert(mf->get_id());
+                #ifndef AES_Enable
+                m_unit->mee_dram_queue_push(mf_original, NORM);
+                #endif
+                break;
             } else {
                 DL_CNT++;
                 if (DL_CNT >= 10000) {
