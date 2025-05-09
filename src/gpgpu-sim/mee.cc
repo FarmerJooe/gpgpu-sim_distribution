@@ -2,7 +2,7 @@
 #include <list>
 #define BMT_Enable
 #define MAC_Enable
-// #define AES_Enable
+#define AES_Enable
 
 mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu) : 
     m_unit(unit), 
@@ -228,6 +228,8 @@ void mee::CT_cycle() {
                 // assert(mf_return->get_access_type() != 4);
                 #ifdef AES_Enable
                 m_unit->mee_L2_queue_push(spid, mf_return); //写密文完成，返回L2
+                #else
+                delete mf_return;
                 #endif
                 m_Ciphertext_RET_queue->pop();
             // } else  {
@@ -310,6 +312,8 @@ void mee::AES_cycle() {
                 // print_addr("mee to L2 R:\t", mf);
                 #ifdef AES_Enable
                 m_unit->mee_L2_queue_push(spid, mf);    //解密完后返回L2
+                #else
+                delete mf;
                 #endif
                 print_addr("MEE to L2:\t", mf);
                 // printf("JJJJJJJJJJJJJJJJJJJJJJJJJ");
