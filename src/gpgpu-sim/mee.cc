@@ -849,7 +849,7 @@ void mee::simple_cycle(unsigned cycle) {
             // printf("TTTTTTTTTTTTTTTT\n");
             
             if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(8)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
-                && !m_MAC_queue->full() && !m_Ciphertext_queue->full()) {
+                && !m_MAC_queue->full() && !m_Ciphertext_queue->full() && !m_unit->mee_dram_queue_full(NORM)) {
                 print_addr("L2 to mee: ", mf);
                 DL_CNT = 0;
                 // assert(!mf->is_write());
@@ -889,7 +889,7 @@ void mee::simple_cycle(unsigned cycle) {
                     // mf->set_cooked_status();
                     // printf("BBBBBBBBBBBBBBBBB");
                     // }
-                } else if (!m_unit->mee_dram_queue_full(NORM)) {              // read
+                } else {              // read
                     // printf("CCCCCCCCCCCCCCCC");
                     // m_unit->mee_dram_queue_push(mf);    //读密文请求，发往DRAM中读密文
                     mf_counter++;
@@ -910,6 +910,7 @@ void mee::simple_cycle(unsigned cycle) {
                     #endif
                     m_unit->L2_mee_queue_pop(spid);
                 }
+                break;
             } else {
                 DL_CNT++;
                 if (DL_CNT >= 10000) {

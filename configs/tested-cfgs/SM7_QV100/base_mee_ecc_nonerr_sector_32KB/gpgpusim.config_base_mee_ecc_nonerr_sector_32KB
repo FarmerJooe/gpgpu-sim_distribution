@@ -166,7 +166,7 @@
 #-gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
 -gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
 #-gpgpu_cache:dmeta S:4:128:4,L:B:m:L:P,A:64:64,32:0,32
--gpgpu_cache:dmeta S:4:128:4,L:B:m:L:P,A:64:64,32:0,32
+-gpgpu_cache:dmeta S:4:128:2,L:B:m:L:P,A:64:64,32:0,32
 -gpgpu_cache:ctr S:4:128:32,L:B:m:L:P,A:64:64,32:0,32
 -gpgpu_ecc_1bit_err 0
 -gpgpu_ecc_2bit_err 0
