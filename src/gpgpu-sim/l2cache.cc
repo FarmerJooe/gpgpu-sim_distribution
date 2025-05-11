@@ -47,6 +47,8 @@
 #include "mem_latency_stat.h"
 #include "shader.h"
 
+#define ENC_EN
+
 mem_fetch *partition_mf_allocator::alloc(new_addr_type addr,
                                          mem_access_type type, unsigned size,
                                          bool wr,
@@ -719,7 +721,19 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
       }
     }
   }
-
+  #ifdef ENC_EN 
+  while(!m_mee_L2_queue->empty()) {
+    mem_fetch *mf = m_mee_L2_queue->top();
+    if (mf->get_data_type() == CTR) {
+      if (!m_L2_ctr_queue->full()) {
+        m_L2_ctr_queue->push(mf);
+        m_mee_L2_queue->pop();
+        continue;
+      }
+    } 
+    break;
+  }
+  #endif
   // DRAM to L2 (texture) and icnt (not texture)
   if (!m_mee_L2_queue->empty()) {
     mem_fetch *mf = m_mee_L2_queue->top();
@@ -728,6 +742,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
 
     // assert(mf_return->get_access_type() != 4);
     if (!m_config->m_L2_config.disabled() && m_L2cache->waiting_for_fill(mf)) {
+      assert(mf->get_data_type() != CTR);
       assert(mf->get_access_type() != 4);
       if (m_L2cache->fill_port_free()) {
         assert(mf->get_access_type() != 4);
@@ -738,7 +753,8 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
                                 m_memcpy_cycle_offset);
         m_mee_L2_queue->pop();
       }
-    } else if (!m_L2_icnt_queue->full()) {
+    }
+    else if (!m_L2_icnt_queue->full()) {
       assert(mf->get_data_type() != CTR);
       if (mf->is_write() && mf->get_type() == WRITE_ACK)
         mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
@@ -763,6 +779,13 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
       // L2 is enabled and access is for L2
       bool output_full = m_L2_ctr_queue->full();
       bool port_free = m_L2cache->data_port_free();
+      #ifdef ENC_EN
+      enum cache_request_status probe_status = m_L2cache->probe(mf->get_addr(), mf);
+      if (!output_full && port_free && probe_status != RESERVATION_FAIL && probe_status!= HIT) {
+        m_L2_mee_queue[CTR]->push(mf);
+        m_ctr_L2_queue->pop();
+      } else
+      #endif
       if (!output_full && port_free) {
         std::list<cache_event> events;
         enum cache_request_status status =

@@ -737,6 +737,7 @@ class gpgpu_sim : public gpgpu_t {
   }
 
   typedef std::map<unsigned, short> Count;
+  
 };
 
 class exec_gpgpu_sim : public gpgpu_sim {

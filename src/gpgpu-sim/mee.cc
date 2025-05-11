@@ -1,7 +1,7 @@
 #include "mee.h"
 #include <list>
 #define BMT_Enable
-// #define MAC_Enable
+#define MAC_Enable
 
 mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu, class ECCEngine *ecc) : 
     m_unit(unit), 
@@ -1051,8 +1051,10 @@ void mee::simple_cycle(unsigned cycle) {
             // printf("GGGGGGGGGGGGGG\n");
         }
     }
-    // MAC_CHECK_cycle();
-    // MAC_cycle();
+    #ifdef MAC_Enable
+    MAC_CHECK_cycle();
+    MAC_cycle();
+    #endif
     BMT_CHECK_cycle();
     BMT_cycle();
     HASH_cycle();
