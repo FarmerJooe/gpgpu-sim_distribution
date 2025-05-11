@@ -740,7 +740,9 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
 
     // assert(mf_return->get_access_type() != 4);
     if (!m_config->m_L2_config.disabled() && m_L2cache->waiting_for_fill(mf)) {
+      #ifdef ENC_EN
       assert(mf->get_data_type() != CTR);
+      #endif
       assert(mf->get_access_type() != 4);
       if (m_L2cache->fill_port_free()) {
         assert(mf->get_access_type() != 4);
