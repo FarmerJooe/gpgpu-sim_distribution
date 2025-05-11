@@ -1,7 +1,5 @@
 #include "mee.h"
 #include <list>
-#define BMT_Enable
-#define MAC_Enable
 
 mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu, class ECCEngine *ecc) : 
     m_unit(unit), 

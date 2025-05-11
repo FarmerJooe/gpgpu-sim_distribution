@@ -47,8 +47,6 @@
 #include "mem_latency_stat.h"
 #include "shader.h"
 
-#define ENC_EN
-
 mem_fetch *partition_mf_allocator::alloc(new_addr_type addr,
                                          mem_access_type type, unsigned size,
                                          bool wr,
