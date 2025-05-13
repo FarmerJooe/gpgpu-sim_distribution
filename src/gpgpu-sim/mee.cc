@@ -527,7 +527,7 @@ void mee::CTR_cycle() {
             // if (m_unit->get_mpid() == 23)
             //     printf("ctr write access:\tm_pid:%d\tOTP_id:%d\tctr_rdhit_addr: %x\tctr_rdret_addr: %x\tctr_write_addr: %x\n", 
             //         m_unit->get_mpid(), mf->get_id(), m_ctr_rdhit_addr, m_ctr_rdret_addr, mf->get_addr());
-            if (m_ctr_rdret_addr != mf->get_addr() && m_ctr_rdhit_addr != mf->get_addr()) {//读到CTR后，才可以CTR++，然后写CTR
+            if (!m_OTP_set[mf->get_id()] && m_ctr_rdret_addr != mf->get_addr() && m_ctr_rdhit_addr != mf->get_addr()) {//读到CTR后，才可以CTR++，然后写CTR
                 return;
             }
         }
