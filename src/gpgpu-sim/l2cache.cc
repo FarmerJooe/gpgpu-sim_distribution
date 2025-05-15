@@ -47,6 +47,10 @@
 #include "mem_latency_stat.h"
 #include "shader.h"
 
+void print_addr(char s[], mem_fetch *mf, unsigned cycle) {
+  // printf("%s:\taddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), cycle);
+}
+
 mem_fetch *partition_mf_allocator::alloc(new_addr_type addr,
                                          mem_access_type type, unsigned size,
                                          bool wr,
@@ -286,30 +290,41 @@ void memory_partition_unit::mee_to_dram_cycle() {
   // mee to dram 队列满了就停止发送
   if (m_mee_dram_queue[TOT]->full()) return;
   //发送队列高于阈值优先发送
-  for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
+
+  unsigned min_mf_id = 0x3fffffff;
+
+  for (unsigned i = 1; i < NUM_DATA_TYPE; i++) {
     unsigned dtype = i;
-    if (m_mee_dram_queue[dtype]->get_n_element() >= send_trigger_threshold) {
-      if (m_n_mf[dtype] + m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
-      m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
-      m_n_mf[dtype]++;
-      // if (get_mpid() == 14)
-      //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
-      m_mee_dram_queue[dtype]->pop();
-      return;
-    }
+    if (m_mee_dram_queue[dtype]->empty()) continue;
+    min_mf_id = std::min(min_mf_id, m_mee_dram_queue[dtype]->top()->get_id());
   }
+
+  assert(min_mf_id);
+
+  // for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
+  //   unsigned dtype = i;
+  //   if (m_mee_dram_queue[dtype]->get_n_element() >= send_trigger_threshold) {
+  //     if (m_n_mf[dtype] + m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
+  //     m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
+  //     m_n_mf[dtype]++;
+  //     // if (get_mpid() == 14)
+  //     //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
+  //     m_mee_dram_queue[dtype]->pop();
+  //     return;
+  //   }
+  // }
   //返回队列高于阈值停止发送
   for (unsigned i = 0; i < NUM_DATA_TYPE; i++) {
-    unsigned dtype = (i + last_send + 1) % NUM_DATA_TYPE;
+    unsigned dtype = i % NUM_DATA_TYPE;
     if (dtype == 0) continue;
     if (m_mee_dram_queue[dtype]->empty()) continue;
+    if (min_mf_id < m_mee_dram_queue[dtype]->top()->get_id()) continue;
     if (m_n_mf[dtype] + m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
     m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
     m_n_mf[dtype]++;
     // if (get_mpid() == 14)
     //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
     m_mee_dram_queue[dtype]->pop();
-    last_send = dtype;
     return;
   }
 }
@@ -667,6 +682,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
   // DRAM to L2 (texture) and icnt (not texture)
   if (!m_mee_L2_queue->empty()) {
     mem_fetch *mf = m_mee_L2_queue->top();
+    print_addr("L2 Fill", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
                 // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 fill:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type());
 
     // assert(mf_return->get_access_type() != 4);
@@ -698,7 +714,6 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
   // new L2 texture accesses and/or non-texture accesses
   if (!m_L2_mee_queue->full() && !m_icnt_L2_queue->empty()) {
     mem_fetch *mf = m_icnt_L2_queue->top();
-                // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\n", "L2 access\t", mf->get_addr(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type());
 
     if (!m_config->m_L2_config.disabled() &&
         ((m_config->m_L2_texure_only && mf->istexture()) ||
@@ -720,6 +735,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
                             mf->get_addr(), status);
 
         if (status == HIT) {
+          print_addr("L2 access HIT", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
           if (!write_sent) {
             // L2 cache replies
             assert(!read_sent);
@@ -738,6 +754,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
             m_icnt_L2_queue->pop();
           }
         } else if (status != RESERVATION_FAIL) {
+          print_addr("L2 access MISS", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
           if (mf->is_write() &&
               (m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE ||
                m_config->m_L2_config.m_write_alloc_policy ==
@@ -756,6 +773,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
           // L2 cache accepted request
           m_icnt_L2_queue->pop();
         } else {
+          print_addr("L2 access RESERVATION_FAIL", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
           assert(!write_sent);
           assert(!read_sent);
           // L2 cache lock-up: will try again next cycle
