@@ -48,7 +48,7 @@
 #include "shader.h"
 
 void print_addr(char s[], mem_fetch *mf, unsigned cycle) {
-  // printf("%s:\taddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), cycle);
+  printf("%s:\taddr: %x\tsp_id: %d\twid: %d\tsid: %d\tsp_addr: %x\taccess type: %d\tdata type: %d\tmf_id: %d\tmf_poniter: %p\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_wid(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id(), mf, cycle);
 }
 
 mem_fetch *partition_mf_allocator::alloc(new_addr_type addr,
@@ -321,6 +321,7 @@ void memory_partition_unit::mee_to_dram_cycle() {
     if (min_mf_id < m_mee_dram_queue[dtype]->top()->get_id()) continue;
     if (m_n_mf[dtype] + m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
     m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
+    print_addr("mee_to_dram", m_mee_dram_queue[dtype]->top(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     m_n_mf[dtype]++;
     // if (get_mpid() == 14)
     //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
@@ -336,6 +337,7 @@ void memory_partition_unit::dram_to_mee_cycle() {
   if (!m_dram_mee_queue[mf_return->get_data_type()]->full()) {
     m_dram_mee_queue[mf_return->get_data_type()]->push(mf_return);
     m_n_mf[mf_return->get_data_type()]--;
+    print_addr("dram_to_mee", mf_return, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     // if (get_mpid() == 14)
     //   printf("mpid: %d m_n_mf[%d]=%d pop %x acc_type: %d\n", get_mpid(), mf_return->get_data_type(), m_n_mf[mf_return->get_data_type()], mf_return->get_addr(), mf_return->get_access_type());
     m_dram_mee_queue[TOT]->pop();

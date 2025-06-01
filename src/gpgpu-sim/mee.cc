@@ -11,7 +11,7 @@ mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class me
     m_BMTcache(BMTcache),
     m_config(config),
     m_gpu(gpu) {
-    unsigned len = 64;
+    unsigned len = 1024;
     m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_MAC_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
