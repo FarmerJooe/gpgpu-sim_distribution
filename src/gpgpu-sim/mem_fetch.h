@@ -209,6 +209,24 @@ class mem_fetch {
   unsigned id;
   enum data_type m_data_type = NORM;
   enum BMT_Layer m_BMT_Layer = DEFAULT;
+  unsigned long long m_miss_cycle[10];
+  unsigned long long m_fill_cycle[10];
+  void set_miss_cycle(enum cache_form _cache_form, unsigned long long cycle) {
+    this->m_miss_cycle[_cache_form] = cycle;
+  }
+  
+  unsigned long long get_miss_cycle(enum cache_form _cache_form) {
+    return this->m_miss_cycle[_cache_form];
+  }
+  
+  void set_fill_cycle(enum cache_form _cache_form, unsigned long long cycle) {
+    this->m_fill_cycle[_cache_form] = cycle;
+  }
+
+  unsigned long long get_fill_cycle(enum cache_form _cache_form) {
+    return this->m_fill_cycle[_cache_form];
+  }
+
 };
 
 #endif

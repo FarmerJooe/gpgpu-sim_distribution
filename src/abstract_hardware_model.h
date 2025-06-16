@@ -43,6 +43,19 @@ class gpgpu_context;
 #define MAX_INPUT_VALUES 24
 #define MAX_OUTPUT_VALUES 8
 
+enum cache_form {
+  DEFAULT_CACHE = 0,
+  L1D_CACHE,
+  L1I_CACHE,
+  L1C_CACHE,
+  L1T_CACHE,
+  L2_CACHE,
+  CTR_CACHE,
+  MAC_CACHE,
+  BMT_CACHE,
+  NUM_CACHE_TYPES
+};
+
 enum _memory_space_t {
   undefined_space = 0,
   reg_space,

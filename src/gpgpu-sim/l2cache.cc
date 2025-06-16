@@ -48,7 +48,7 @@
 #include "shader.h"
 
 void print_addr(char s[], mem_fetch *mf, unsigned cycle) {
-  printf("%s:\taddr: %x\tsp_id: %d\twid: %d\tsid: %d\tsp_addr: %x\taccess type: %d\tdata type: %d\tmf_id: %d\tmf_poniter: %p\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_wid(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id(), mf, cycle);
+  // printf("%s:\taddr: %x\tsp_id: %d\twid: %d\tsid: %d\tsp_addr: %x\taccess type: %d\tdata type: %d\tmf_id: %d\tmf_poniter: %p\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_wid(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id(), mf, cycle);
 }
 
 mem_fetch *partition_mf_allocator::alloc(new_addr_type addr,
@@ -255,7 +255,8 @@ void memory_partition_unit::cache_cycle(unsigned cycle) {
   //   m_sub_partition[p]->cache_cycle(cycle);
   // }
   // printf("memory_partition_unit cycle: %d\n", cycle);
-  m_mee->simple_cycle(cycle);
+  // m_mee->simple_cycle(cycle);
+  m_mee->cycle(cycle);
 }
 
 void memory_partition_unit::visualizer_print(gzFile visualizer_file) const {
@@ -697,6 +698,8 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
                        m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         m_L2cache->fill(mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
                                 m_memcpy_cycle_offset);
+        // mf->set_l2_fill_cycle(m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+        // m_L2cache->inc_stall_cycles(1);
         m_mee_L2_queue->pop();
       }
     } else if (!m_L2_icnt_queue->full()) {
@@ -757,6 +760,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
           }
         } else if (status != RESERVATION_FAIL) {
           print_addr("L2 access MISS", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+          // mf->set_l2_miss_cycle(m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
           if (mf->is_write() &&
               (m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE ||
                m_config->m_L2_config.m_write_alloc_policy ==

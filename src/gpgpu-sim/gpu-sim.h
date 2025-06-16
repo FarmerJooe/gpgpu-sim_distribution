@@ -578,6 +578,7 @@ class gpgpu_sim : public gpgpu_t {
   void gpu_print_METACache_data_type_breakdown();
   void gpu_print_ctrModCount_breakdown();
   void gpu_print_stat();
+  void gpu_print_stat_pw();
   void dump_pipeline(int mask, int s, int m) const;
 
   void perf_memcpy_to_gpu(size_t dst_start_addr, size_t count);

@@ -1788,6 +1788,12 @@ void ldst_unit::get_cache_stats(cache_stats &cs) {
 void ldst_unit::get_L1D_sub_stats(struct cache_sub_stats &css) const {
   if (m_L1D) m_L1D->get_sub_stats(css);
 }
+void ldst_unit::get_L1D_sub_stats_pw(struct cache_sub_stats_pw &css) const {
+  if (m_L1D) m_L1D->get_sub_stats_pw(css);
+}
+void ldst_unit::clear_L1D_sub_stats_pw() {
+  if (m_L1D) m_L1D->clear_pw();
+}
 void ldst_unit::get_L1C_sub_stats(struct cache_sub_stats &css) const {
   if (m_L1C) m_L1C->get_sub_stats(css);
 }
@@ -1999,6 +2005,10 @@ mem_stage_stall_type ldst_unit::process_memory_access_queue_l1cache(
   }
 }
 
+void l1d_print_addr(char s[], mem_fetch *mf, unsigned cycle) {
+  // printf("%s:\taddr: %x\tsp_id: %d\twid: %d\tsid: %d\tsp_addr: %x\taccess type: %d\tdata type: %d\tmf_id: %d\tmf_poniter: %p\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_wid(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id(), mf, cycle);
+}
+
 void ldst_unit::L1_latency_queue_cycle() {
   for (int j = 0; j < m_config->m_L1D_config.l1_banks; j++) {
     if ((l1_latency_queue[j][0]) != NULL) {
@@ -2015,6 +2025,8 @@ void ldst_unit::L1_latency_queue_cycle() {
 
       if (status == HIT) {
         assert(!read_sent);
+        l1d_print_addr("L1D access HIT", mf_next, m_core->get_gpu()->gpu_sim_cycle +
+                            m_core->get_gpu()->gpu_tot_sim_cycle);
         l1_latency_queue[j][0] = NULL;
         if (mf_next->get_inst().is_load()) {
           for (unsigned r = 0; r < MAX_OUTPUT_VALUES; r++)
@@ -2049,10 +2061,14 @@ void ldst_unit::L1_latency_queue_cycle() {
         if (!write_sent) delete mf_next;
 
       } else if (status == RESERVATION_FAIL) {
+        l1d_print_addr("L1D access RESERVATION_FAIL", mf_next, m_core->get_gpu()->gpu_sim_cycle +
+                            m_core->get_gpu()->gpu_tot_sim_cycle);
         assert(!read_sent);
         assert(!write_sent);
       } else {
         assert(status == MISS || status == HIT_RESERVED);
+        l1d_print_addr("L1D access MISS", mf_next, m_core->get_gpu()->gpu_sim_cycle +
+                            m_core->get_gpu()->gpu_tot_sim_cycle);
         l1_latency_queue[j][0] = NULL;
         if (m_config->m_L1D_config.get_write_policy() != WRITE_THROUGH &&
             mf_next->get_inst().is_store() &&
@@ -2914,6 +2930,8 @@ void gpgpu_sim::shader_print_cache_stats(FILE *fout) const {
   // L1I
   struct cache_sub_stats total_css;
   struct cache_sub_stats css;
+  struct cache_sub_stats_pw css_pw;
+  struct cache_sub_stats_pw total_css_pw;
 
   if (!m_shader_config->m_L1I_config.disabled()) {
     total_css.clear();
@@ -2940,18 +2958,26 @@ void gpgpu_sim::shader_print_cache_stats(FILE *fout) const {
   if (!m_shader_config->m_L1D_config.disabled()) {
     total_css.clear();
     css.clear();
+    total_css_pw.clear();
+    css_pw.clear();
     fprintf(fout, "L1D_cache:\n");
     for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
       m_cluster[i]->get_L1D_sub_stats(css);
+      m_cluster[i]->get_L1D_sub_stats_pw(css_pw);
+      m_cluster[i]->clear_L1D_sub_stats_pw();
 
       fprintf(stdout,
               "\tL1D_cache_core[%d]: Access = %llu, Miss = %llu, Miss_rate = "
-              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu\n",
+              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu, "
+              "average_kernel_stall_cycles = %llu, average_stall_cycles = %llu\n",
               i, css.accesses, css.misses,
               (double)css.misses / (double)css.accesses, css.pending_hits,
-              css.res_fails);
+              css.res_fails,
+              css_pw.stall_cycles / std::max(1ull, css_pw.stall_count),
+              css.stall_cycles / std::max(1ull, css.stall_count));
 
       total_css += css;
+      total_css_pw += css_pw;
     }
     fprintf(fout, "\tL1D_total_cache_accesses = %llu\n", total_css.accesses);
     fprintf(fout, "\tL1D_total_cache_misses = %llu\n", total_css.misses);
@@ -2963,6 +2989,12 @@ void gpgpu_sim::shader_print_cache_stats(FILE *fout) const {
             total_css.pending_hits);
     fprintf(fout, "\tL1D_total_cache_reservation_fails = %llu\n",
             total_css.res_fails);
+    printf("L1D_total_average_cache_stall_cycles = %llu\n", total_css.stall_cycles / std::max(1ull, total_css.stall_count));
+    printf("L1D_kernel_cache_misses = %llu\n", (total_css_pw.read_misses + total_css_pw.write_misses));
+    if (total_css_pw.accesses > 0)
+      printf("L1D_kernel_cache_miss_rate = %.4lf\n",
+              (double)(total_css_pw.read_misses + total_css_pw.write_misses) / (double)total_css_pw.accesses);
+    printf("L1D_kernel_average_cache_stall_cycles = %llu\n", total_css_pw.stall_cycles / std::max(1ull, total_css_pw.stall_count));
     total_css.print_port_stats(fout, "\tL1D_cache");
   }
 
@@ -3884,6 +3916,12 @@ void shader_core_ctx::get_L1I_sub_stats(struct cache_sub_stats &css) const {
 void shader_core_ctx::get_L1D_sub_stats(struct cache_sub_stats &css) const {
   m_ldst_unit->get_L1D_sub_stats(css);
 }
+void shader_core_ctx::get_L1D_sub_stats_pw(struct cache_sub_stats_pw &css) const {
+  m_ldst_unit->get_L1D_sub_stats_pw(css);
+}
+void shader_core_ctx::clear_L1D_sub_stats_pw()  {
+  m_ldst_unit->clear_L1D_sub_stats_pw();
+}
 void shader_core_ctx::get_L1C_sub_stats(struct cache_sub_stats &css) const {
   m_ldst_unit->get_L1C_sub_stats(css);
 }
@@ -4577,6 +4615,25 @@ void simt_core_cluster::get_L1D_sub_stats(struct cache_sub_stats &css) const {
   }
   css = total_css;
 }
+
+void simt_core_cluster::get_L1D_sub_stats_pw(struct cache_sub_stats_pw &css) const {
+  struct cache_sub_stats_pw temp_css;
+  struct cache_sub_stats_pw total_css;
+  temp_css.clear();
+  total_css.clear();
+  for (unsigned i = 0; i < m_config->n_simt_cores_per_cluster; ++i) {
+    m_core[i]->get_L1D_sub_stats_pw(temp_css);
+    total_css += temp_css;
+  }
+  css = total_css;
+}
+
+void simt_core_cluster::clear_L1D_sub_stats_pw() {
+  for (unsigned i = 0; i < m_config->n_simt_cores_per_cluster; ++i) {
+    m_core[i]->clear_L1D_sub_stats_pw();
+  }
+}
+
 void simt_core_cluster::get_L1C_sub_stats(struct cache_sub_stats &css) const {
   struct cache_sub_stats temp_css;
   struct cache_sub_stats total_css;

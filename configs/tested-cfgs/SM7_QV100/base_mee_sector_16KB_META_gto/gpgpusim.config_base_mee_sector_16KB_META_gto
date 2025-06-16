@@ -131,7 +131,7 @@
 # Volta has four schedulers per core
 -gpgpu_num_sched_per_core 4
 # Greedy then oldest scheduler
--gpgpu_scheduler old
+-gpgpu_scheduler gto
 ## In Volta, a warp scheduler can issue 1 inst per cycle
 -gpgpu_max_insn_issue_per_warp 1
 -gpgpu_dual_issue_diff_exec_units 1
@@ -166,8 +166,8 @@
 #-gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
 -gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
 #-gpgpu_cache:dmeta N:4:128:4,L:B:m:W:P,A:64:4,32:0,32
--gpgpu_cache:dmeta S:4:128:32,L:B:m:L:P,A:64:64,32:0,32
--gpgpu_cache:ctr S:4:128:32,L:B:m:L:P,A:64:64,32:0,32
+-gpgpu_cache:dmeta S:4:128:16,L:B:m:L:P,A:64:64,32:0,32
+-gpgpu_cache:ctr S:4:128:16,L:B:m:L:P,A:64:64,32:0,32
 -gpgpu_cache:dl2_texture_only 0
 -gpgpu_dram_partition_queues 64:64:64:64
 -gpgpu_perf_sim_memcpy 0

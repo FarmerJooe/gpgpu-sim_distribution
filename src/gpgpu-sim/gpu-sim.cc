@@ -1470,6 +1470,25 @@ void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
   }
 }
 
+void gpgpu_sim::gpu_print_stat_pw() {
+  FILE *statfout = stdout;
+  fprintf(statfout, "cycle = %d\tipc = %12.4f\t", gpu_sim_cycle + gpu_tot_sim_cycle, 
+                          (float)(gpu_tot_sim_insn + gpu_sim_insn) / (gpu_tot_sim_cycle + gpu_sim_cycle));
+  unsigned m_tot_not_completed = 0, m_kernel_more_cta_left = 0;
+  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
+    m_tot_not_completed += m_cluster[i]->get_not_completed();
+  }
+  for (unsigned n = 0; n < m_running_kernels.size(); n++) {
+    m_kernel_more_cta_left += kernel_more_cta_left(m_running_kernels[n]);
+  }
+  fprintf(statfout, "not_completed = %d\ttot_cta = %d\n", m_tot_not_completed, m_tot_not_completed + m_kernel_more_cta_left);
+  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
+    m_cluster[i]->print_not_completed(statfout);
+  }
+  fprintf(statfout, "\n");
+  // print_not_completed(statfout);
+}
+
 void gpgpu_sim::gpu_print_stat() {
   FILE *statfout = stdout;
 
@@ -1584,23 +1603,33 @@ void gpgpu_sim::gpu_print_stat() {
     cache_stats l2_stats;
     struct cache_sub_stats l2_css;
     struct cache_sub_stats total_l2_css;
+    struct cache_sub_stats_pw l2_css_pw;
+    struct cache_sub_stats_pw total_l2_css_pw;
     l2_stats.clear();
     l2_css.clear();
     total_l2_css.clear();
+    l2_css_pw.clear();
+    total_l2_css_pw.clear();
 
     printf("\n========= L2 cache stats =========\n");
     for (unsigned i = 0; i < m_memory_config->m_n_mem_sub_partition; i++) {
       m_memory_sub_partition[i]->accumulate_L2cache_stats(l2_stats);
       m_memory_sub_partition[i]->get_L2cache_sub_stats(l2_css);
+      m_memory_sub_partition[i]->get_L2cache_sub_stats_pw(l2_css_pw);
+      m_memory_sub_partition[i]->clear_L2cache_stats_pw();
 
       fprintf(stdout,
               "L2_cache_bank[%d]: Access = %llu, Miss = %llu, Miss_rate = "
-              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu\n",
+              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu, "
+              "average_kernel_stall_cycles = %llu, average_stall_cycles = %llu\n",
               i, l2_css.accesses, l2_css.misses,
               (double)l2_css.misses / (double)l2_css.accesses,
-              l2_css.pending_hits, l2_css.res_fails);
+              l2_css.pending_hits, l2_css.res_fails,
+              l2_css_pw.stall_cycles / std::max(1ull, l2_css_pw.stall_count),
+              l2_css.stall_cycles / std::max(1ull, l2_css.stall_count));
 
       total_l2_css += l2_css;
+      total_l2_css_pw += l2_css_pw;
     }
     if (!m_memory_config->m_L2_config.disabled() &&
         m_memory_config->m_L2_config.get_num_lines()) {
@@ -1615,6 +1644,12 @@ void gpgpu_sim::gpu_print_stat() {
              total_l2_css.res_fails);
       printf("L2_total_cache_util = %.4lf\n",
                (double)(total_l2_css.accesses - total_l2_css.res_fails) /  (64 * (gpu_tot_sim_cycle + gpu_sim_cycle)));
+      printf("L2_total_average_cache_stall_cycles = %llu\n", total_l2_css.stall_cycles / std::max(1ull, total_l2_css.stall_count));
+      printf("L2_kernel_cache_misses = %llu\n", (total_l2_css_pw.read_misses + total_l2_css_pw.write_misses));
+      if (total_l2_css_pw.accesses > 0)
+        printf("L2_kernel_cache_miss_rate = %.4lf\n",
+               (double)(total_l2_css_pw.read_misses + total_l2_css_pw.write_misses) / (double)total_l2_css_pw.accesses);
+      printf("L2_kernel_average_cache_stall_cycles = %llu\n", total_l2_css_pw.stall_cycles / std::max(1ull, total_l2_css_pw.stall_count));
       printf("L2_total_cache_breakdown:\n");
       l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
       printf("L2_total_cache_reservation_fail_breakdown:\n");
@@ -2169,6 +2204,10 @@ void gpgpu_sim::cycle() {
           }
         }
       }
+    }
+
+    if ((gpu_sim_cycle + gpu_tot_sim_cycle) % 1000 == 0) {
+      gpu_print_stat_pw();
     }
 
     if (!(gpu_sim_cycle % m_config.gpu_stat_sample_freq)) {

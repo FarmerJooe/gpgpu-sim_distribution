@@ -880,6 +880,7 @@ void mee::simple_cycle(unsigned cycle) {
                 #ifndef AES_Enable
                 m_unit->mee_dram_queue_push(mf_original, NORM);
                 #endif
+                last_issued_partition = spid;
                 break;
             } else {
                 DL_CNT++;
@@ -938,11 +939,20 @@ void mee::cycle(unsigned cycle) {
             }
         }
     }
-    if (!m_unit->L2_mee_queue_empty(cycle&1)) {
-        mem_fetch *mf = m_unit->L2_mee_queue_top(cycle&1);
-        if (!m_unit->mee_dram_queue_full(NORM)) {              
-            m_unit->mee_dram_queue_push(mf, NORM);
-            m_unit->L2_mee_queue_pop(cycle&1);
+    for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
+        p++) {
+        int spid = (p + last_issued_partition + 1) %
+                m_config->m_n_sub_partition_per_memory_channel;
+        if (!m_unit->L2_mee_queue_empty(spid)) {
+            mem_fetch *mf = m_unit->L2_mee_queue_top(spid);
+            if (!m_unit->mee_dram_queue_full(NORM)) {      
+                mf_counter++;
+                mf->set_id(mf_counter);        
+                m_unit->mee_dram_queue_push(mf, NORM);
+                m_unit->L2_mee_queue_pop(spid);
+                last_issued_partition = spid;
+                break;
+            }
         }
     }
 }
