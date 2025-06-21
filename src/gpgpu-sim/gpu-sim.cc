@@ -2019,7 +2019,8 @@ int gpgpu_sim::next_clock_domain(void) {
 }
 
 void gpgpu_sim::issue_block2core() {
-  unsigned last_issued = m_last_cluster_issue;
+  // unsigned last_issued = m_last_cluster_issue;
+  unsigned last_issued = 0;
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
     unsigned idx = (i + last_issued + 1) % m_shader_config->n_simt_clusters;
     unsigned num = m_cluster[idx]->issue_block2core();

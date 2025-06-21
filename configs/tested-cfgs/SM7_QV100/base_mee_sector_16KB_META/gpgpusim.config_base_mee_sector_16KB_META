@@ -49,7 +49,7 @@
 -gpgpu_heap_size_limit 8388608
 -gpgpu_runtime_sync_depth_limit 2
 -gpgpu_runtime_pending_launch_count_limit 2048
--gpgpu_kernel_launch_latency 5000
+-gpgpu_kernel_launch_latency 0
 -gpgpu_TB_launch_latency 0
 
 # Compute Capability
@@ -131,7 +131,7 @@
 # Volta has four schedulers per core
 -gpgpu_num_sched_per_core 4
 # Greedy then oldest scheduler
--gpgpu_scheduler old
+-gpgpu_scheduler lrr
 ## In Volta, a warp scheduler can issue 1 inst per cycle
 -gpgpu_max_insn_issue_per_warp 1
 -gpgpu_dual_issue_diff_exec_units 1
@@ -202,7 +202,7 @@
 -dram_latency 100
 
 # dram model config
--gpgpu_dram_scheduler 1
+-gpgpu_dram_scheduler 0
 -gpgpu_frfcfs_dram_sched_queue_size 64
 -gpgpu_dram_return_queue_size 192
 

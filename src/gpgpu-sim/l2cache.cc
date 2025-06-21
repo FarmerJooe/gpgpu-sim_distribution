@@ -49,6 +49,7 @@
 
 void print_addr(char s[], mem_fetch *mf, unsigned cycle) {
   // printf("%s:\taddr: %x\tsp_id: %d\twid: %d\tsid: %d\tsp_addr: %x\taccess type: %d\tdata type: %d\tmf_id: %d\tmf_poniter: %p\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_wid(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id(), mf, cycle);
+  // printf("%s:\taddr: %x\tsp_id: %d\twid: %d\tsid: %d\tsp_addr: %x\taccess type: %d\tdata type: %d\tmf_id: %d\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_wid(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id(), cycle);
 }
 
 mem_fetch *partition_mf_allocator::alloc(new_addr_type addr,
@@ -255,8 +256,8 @@ void memory_partition_unit::cache_cycle(unsigned cycle) {
   //   m_sub_partition[p]->cache_cycle(cycle);
   // }
   // printf("memory_partition_unit cycle: %d\n", cycle);
-  // m_mee->simple_cycle(cycle);
-  m_mee->cycle(cycle);
+  m_mee->simple_cycle(cycle);
+  // m_mee->cycle(cycle);
 }
 
 void memory_partition_unit::visualizer_print(gzFile visualizer_file) const {
@@ -322,7 +323,7 @@ void memory_partition_unit::mee_to_dram_cycle() {
     if (min_mf_id < m_mee_dram_queue[dtype]->top()->get_id()) continue;
     if (m_n_mf[dtype] + m_dram_mee_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
     m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
-    print_addr("mee_to_dram", m_mee_dram_queue[dtype]->top(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+    // print_addr("mee_to_dram", m_mee_dram_queue[dtype]->top(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     m_n_mf[dtype]++;
     // if (get_mpid() == 14)
     //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
@@ -338,7 +339,7 @@ void memory_partition_unit::dram_to_mee_cycle() {
   if (!m_dram_mee_queue[mf_return->get_data_type()]->full()) {
     m_dram_mee_queue[mf_return->get_data_type()]->push(mf_return);
     m_n_mf[mf_return->get_data_type()]--;
-    print_addr("dram_to_mee", mf_return, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+    // print_addr("dram_to_mee", mf_return, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     // if (get_mpid() == 14)
     //   printf("mpid: %d m_n_mf[%d]=%d pop %x acc_type: %d\n", get_mpid(), mf_return->get_data_type(), m_n_mf[mf_return->get_data_type()], mf_return->get_addr(), mf_return->get_access_type());
     m_dram_mee_queue[TOT]->pop();
@@ -740,7 +741,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
                             mf->get_addr(), status);
 
         if (status == HIT) {
-          print_addr("L2 access HIT", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+          // print_addr("L2 access HIT", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
           if (!write_sent) {
             // L2 cache replies
             assert(!read_sent);
@@ -759,7 +760,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
             m_icnt_L2_queue->pop();
           }
         } else if (status != RESERVATION_FAIL) {
-          print_addr("L2 access MISS", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+          // print_addr("L2 access MISS", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
           // mf->set_l2_miss_cycle(m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
           if (mf->is_write() &&
               (m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE ||
@@ -779,7 +780,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
           // L2 cache accepted request
           m_icnt_L2_queue->pop();
         } else {
-          print_addr("L2 access RESERVATION_FAIL", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+          // print_addr("L2 access RESERVATION_FAIL", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
           assert(!write_sent);
           assert(!read_sent);
           // L2 cache lock-up: will try again next cycle
