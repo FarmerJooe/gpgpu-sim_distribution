@@ -1,0 +1,126 @@
+
+	Building GPGPU-Sim version 4.2.0 (build gpgpu-sim_git-commit-cd6391d6fe4973066cd34ad00b33890e0a8a6af1_modified_1.0) with CUDA version 11.1
+
+if [ ! -d lib/gcc-5.3.1/cuda-11010/debug ]; then mkdir -p lib/gcc-5.3.1/cuda-11010/debug; fi;
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda; fi;
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim; fi;
+Warning: gpgpu-sim is building without opencl support. Make sure NVOPENCL_LIBDIR and NVOPENCL_INCDIR are set
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/decuda_pred_table ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/decuda_pred_table; fi;
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim; fi;
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libopencl ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libopencl; fi;
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libopencl/bin ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libopencl/bin; fi;
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/intersim2 ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/intersim2; fi;
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuobjdump_to_ptxplus ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuobjdump_to_ptxplus; fi;
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch; fi;
+if [ ! -d /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/cacti ]; then mkdir -p /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/cacti; fi;
+make -C ./src/cuda-sim/ depend
+make -C /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/ depend
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/cuda-sim'
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch'
+make[2]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/ Ucache.cc XML_Parse.cc arbiter.cc area.cc array.cc bank.cc basic_circuit.cc basic_components.cc cacti_interface.cc component.cc core.cc crossbar.cc decoder.cc htree2.cc interconnect.cc io.cc iocontrollers.cc logic.cc main.cc mat.cc memoryctrl.cc noc.cc nuca.cc parameter.cc processor.cc router.cc sharedcache.cc subarray.cc technology.cc uca.cc wire.cc xmlParser.cc gpgpu_sim_wrapper.cc  2> /dev/null
+make -C ./cacti/ depend
+make[3]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/cacti'
+make[4]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/cacti'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/cacti/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/cacti/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/cacti/ area.cc bank.cc mat.cc main.cc Ucache.cc io.cc technology.cc basic_circuit.cc parameter.cc decoder.cc component.cc uca.cc subarray.cc wire.cc htree2.cc cacti_interface.cc router.cc nuca.cc crossbar.cc arbiter.cc  2> /dev/null
+make[4]: Nothing to be done for 'depend'.
+make[4]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/cacti'
+make[3]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/cacti'
+make[2]: Nothing to be done for 'depend'.
+make[2]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch'
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch'
+make -C /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/ dbg
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch'
+make[2]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/ Ucache.cc XML_Parse.cc arbiter.cc area.cc array.cc bank.cc basic_circuit.cc basic_components.cc cacti_interface.cc component.cc core.cc crossbar.cc decoder.cc htree2.cc interconnect.cc io.cc iocontrollers.cc logic.cc main.cc mat.cc memoryctrl.cc noc.cc nuca.cc parameter.cc processor.cc router.cc sharedcache.cc subarray.cc technology.cc uca.cc wire.cc xmlParser.cc gpgpu_sim_wrapper.cc  2> /dev/null
+make -C ./cacti/ depend
+make[3]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/cacti'
+make[4]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/cacti'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/cacti/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/cacti/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/cacti/ area.cc bank.cc mat.cc main.cc Ucache.cc io.cc technology.cc basic_circuit.cc parameter.cc decoder.cc component.cc uca.cc subarray.cc wire.cc htree2.cc cacti_interface.cc router.cc nuca.cc crossbar.cc arbiter.cc  2> /dev/null
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ cuda_device_printf.cc cuda_device_runtime.cc cuda-sim.cc instructions.cc memory.cc ptx_ir.cc ptx_loader.cc ptx_parser.cc ptx_sim.cc ptx-stats.cc 2> /dev/null
+make[4]: Nothing to be done for 'depend'.
+make[4]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/cacti'
+make[3]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch/cacti'
+make[2]: Nothing to be done for 'all'.
+make[2]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch'
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/accelwattch'
+make[1]: 'depend' is up to date.
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/cuda-sim'
+make -C ./src/cuda-sim/
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/cuda-sim'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ cuda_device_printf.cc cuda_device_runtime.cc cuda-sim.cc instructions.cc memory.cc ptx_ir.cc ptx_loader.cc ptx_parser.cc ptx_sim.cc ptx-stats.cc 2> /dev/null
+g++  -c -g3 -Wall  -Wno-unused-function -Wno-sign-compare -I/usr/local/cuda/include  -I/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ -I. -I/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug -fPIC  -DTRACING_ON=1 -DCUDART_VERSION=11010 -std=c++0x cuda-sim.cc -o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/cuda-sim.o
+ar rcs /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/libgpgpu_ptx_sim.a /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ptx.tab.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/lex.ptx_.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ptxinfo.tab.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/lex.ptxinfo_.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ptx_parser.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ptx_loader.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/cuda_device_printf.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/instructions.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/cuda-sim.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ptx_ir.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ptx_sim.o  /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/memory.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ptx-stats.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/decuda_pred_table/decuda_pred_table.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ptx.tab.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/lex.ptx_.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/ptxinfo.tab.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/lex.ptxinfo_.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/cuda_device_runtime.o
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/cuda-sim'
+make -C ./src/gpgpu-sim/ depend
+make -C ./libcuda/ depend
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/gpgpu-sim'
+make -C ./cuobjdump_to_ptxplus/ depend
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/libcuda'
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/cuobjdump_to_ptxplus'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuobjdump_to_ptxplus/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuobjdump_to_ptxplus/Makefile.makedepend cuobjdumpInst.cc cuobjdumpInstList.cc cuobjdump_to_ptxplus.cc 2> /dev/null
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/cuobjdump_to_ptxplus'
+make -C ./cuobjdump_to_ptxplus/
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/cuobjdump_to_ptxplus'
+:
+:
+:
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/cuobjdump_to_ptxplus'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/ cuda_runtime_api.cc 2> /dev/null
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/ addrdec.cc dram.cc dram_sched.cc gpu-cache.cc gpu-misc.cc gpu-sim.cc hashing.cc histogram.cc icnt_wrapper.cc l2cache.cc local_interconnect.cc mee.cc mem_fetch.cc mem_latency_stat.cc power_interface.cc power_stat.cc scoreboard.cc shader.cc stack.cc stat-tool.cc traffic_breakdown.cc visualizer.cc 2> /dev/null
+make[1]: 'depend' is up to date.
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/libcuda'
+make -C ./libcuda/
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/libcuda'
+make[1]: 'depend' is up to date.
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/gpgpu-sim'
+make -C ./src/gpgpu-sim/
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/gpgpu-sim'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/ cuda_runtime_api.cc 2> /dev/null
+:
+echo /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/cuda_runtime_api.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/cuobjdump_lexer.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/cuobjdump_parser.o
+/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/cuda_runtime_api.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/cuobjdump_lexer.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/cuobjdump_parser.o
+ar rcs /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/libcuda.a /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/cuda_runtime_api.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/cuobjdump_lexer.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/cuobjdump_parser.o
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/ addrdec.cc dram.cc dram_sched.cc gpu-cache.cc gpu-misc.cc gpu-sim.cc hashing.cc histogram.cc icnt_wrapper.cc l2cache.cc local_interconnect.cc mee.cc mem_fetch.cc mem_latency_stat.cc power_interface.cc power_stat.cc scoreboard.cc shader.cc stack.cc stat-tool.cc traffic_breakdown.cc visualizer.cc 2> /dev/null
+ar rcs  /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/libgpu_uarch_sim.a /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/addrdec.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/dram.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/dram_sched.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/gpu-cache.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/gpu-misc.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/gpu-sim.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/hashing.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/histogram.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/icnt_wrapper.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/l2cache.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/local_interconnect.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/mee.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/mem_fetch.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/mem_latency_stat.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/power_interface.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/power_stat.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/scoreboard.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/shader.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/stack.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/stat-tool.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/traffic_breakdown.o /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/visualizer.o
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/libcuda'
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/gpgpu-sim'
+make "CREATE_LIBRARY=1" "DEBUG=1" -C ./src/intersim2
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/intersim2'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/intersim2/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/intersim2/Makefile.makedepend -I-I. -Iarbiters -Iallocators -Irouters -Inetworks -Ipower -I/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src -I/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/gpgpu-sim/ -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/intersim2/ config_utils.cpp booksim_config.cpp module.cpp buffer.cpp vc.cpp routefunc.cpp traffic.cpp flitchannel.cpp trafficmanager.cpp batchtrafficmanager.cpp packet_reply_info.cpp buffer_state.cpp stats.cpp credit.cpp outputset.cpp flit.cpp injection.cpp misc_utils.cpp rng_wrapper.cpp rng_double_wrapper.cpp power_module.cpp switch_monitor.cpp buffer_monitor.cpp main.cpp gputrafficmanager.cpp intersim_config.cpp interconnect_interface.cpp allocators/allocator.cpp allocators/islip.cpp allocators/loa.cpp allocators/maxsize.cpp allocators/pim.cpp allocators/selalloc.cpp allocators/separable.cpp allocators/separable_input_first.cpp allocators/separable_output_first.cpp allocators/wavefront.cpp arbiters/arbiter.cpp arbiters/matrix_arb.cpp arbiters/prio_arb.cpp arbiters/roundrobin_arb.cpp arbiters/tree_arb.cpp networks/anynet.cpp networks/cmesh.cpp networks/dragonfly.cpp networks/fattree.cpp networks/flatfly_onchip.cpp networks/fly.cpp networks/kncube.cpp networks/network.cpp networks/qtree.cpp networks/tree4.cpp power/buffer_monitor.cpp power/power_module.cpp power/switch_monitor.cpp routers/chaos_router.cpp routers/event_router.cpp routers/iq_router.cpp routers/router.cpp 2> /dev/null
+make[1]: Nothing to be done for 'all'.
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src/intersim2'
+make -C ./src/ depend
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/ abstract_hardware_model.cc debug.cc gpgpusim_entrypoint.cc option_parser.cc statwrapper.cc stream_manager.cc trace.cc 2> /dev/null
+make[1]: 'depend' is up to date.
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src'
+make -C ./src/
+make[1]: Entering directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src'
+touch /mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/Makefile.makedepend
+makedepend -f/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/Makefile.makedepend -p/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/ abstract_hardware_model.cc debug.cc gpgpusim_entrypoint.cc option_parser.cc statwrapper.cc stream_manager.cc trace.cc 2> /dev/null
+NO std !!!!!!!!!!!!!!!
+-Wall -DDEBUG -DCUDART_VERSION=11010 -std=c++0x -DTRACING_ON=1 -I/usr/local/cuda/include
+make[1]: Leaving directory '/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/src'
+g++ -shared -Wl,-soname,libcudart.so -Wl,--version-script=linux-so-version.txt\
+		/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/libcuda/*.o \
+		/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/*.o \
+		/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/cuda-sim/decuda_pred_table/*.o \
+		/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/gpgpu-sim/*.o \
+		/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/intersim2/*.o \
+		/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/*.o -lm -lz -lGL -pthread \
+		/mnt/users/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/debug/accelwattch/*.o \
+		-o lib/gcc-5.3.1/cuda-11010/debug/libcudart.so

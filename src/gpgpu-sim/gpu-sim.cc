@@ -1632,6 +1632,9 @@ void gpgpu_sim::gpu_print_stat() {
     cache_stats l2_stats;
     struct cache_sub_stats l2_css;
     struct cache_sub_stats total_l2_css;
+    unsigned long long m_tot_ctr_acc = 0;
+    unsigned long long m_tot_ctr_miss = 0;
+    unsigned long long m_tot_ctr_lines = 0;
     l2_stats.clear();
     l2_css.clear();
     total_l2_css.clear();
@@ -1640,13 +1643,17 @@ void gpgpu_sim::gpu_print_stat() {
     for (unsigned i = 0; i < m_memory_config->m_n_mem_sub_partition; i++) {
       m_memory_sub_partition[i]->accumulate_L2cache_stats(l2_stats);
       m_memory_sub_partition[i]->get_L2cache_sub_stats(l2_css);
+      m_tot_ctr_acc += m_memory_sub_partition[i]->get_ctr_acc();
+      m_tot_ctr_miss += m_memory_sub_partition[i]->get_ctr_miss();
+      m_tot_ctr_lines += m_memory_sub_partition[i]->get_data_lines(CTR);
+      // printf("L2_total_ctr_cache_lines = %u\n", m_memory_sub_partition[i]->get_ctr_miss());
 
       fprintf(stdout,
               "L2_cache_bank[%d]: Access = %llu, Miss = %llu, Miss_rate = "
-              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu\n",
+              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu, ctr_lines = %llu\n",
               i, l2_css.accesses, l2_css.misses,
               (double)l2_css.misses / (double)l2_css.accesses,
-              l2_css.pending_hits, l2_css.res_fails);
+              l2_css.pending_hits, l2_css.res_fails, m_memory_sub_partition[i]->get_data_lines(CTR));
 
       total_l2_css += l2_css;
     }
@@ -1661,6 +1668,10 @@ void gpgpu_sim::gpu_print_stat() {
       printf("L2_total_cache_pending_hits = %llu\n", total_l2_css.pending_hits);
       printf("L2_total_cache_reservation_fails = %llu\n",
              total_l2_css.res_fails);
+      printf("L2_total_ctr_data_access = %llu\n", m_tot_ctr_acc);
+      printf("L2_total_ctr_data_misses = %llu\n", m_tot_ctr_miss);
+      printf("L2_total_ctr_data_misses_rate = %.4lf\n", 1.0 * m_tot_ctr_miss / (m_tot_ctr_acc + 0.00001));
+      printf("L2_total_ctr_lines = %llu\n", m_tot_ctr_lines / 64);
       printf("L2_total_cache_breakdown:\n");
       l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
       printf("L2_total_cache_reservation_fail_breakdown:\n");

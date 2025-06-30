@@ -279,6 +279,25 @@ class memory_sub_partition {
   void visualizer_print(gzFile visualizer_file);
   void print_cache_stat(unsigned &accesses, unsigned &misses) const;
   void print(FILE *fp) const;
+  void print_cache_status_breakdown() {
+    m_L2cache->print_cache_status_breakdown();
+  }
+
+  unsigned long long get_ctr_acc() {
+    return m_L2cache->get_ctr_acc();
+  }
+
+  unsigned long long get_ctr_miss() {
+    return m_L2cache->get_ctr_miss();
+  }
+
+  unsigned get_invalid_lines() {
+    return m_L2cache->get_invalid_lines();
+  }
+
+  unsigned get_data_lines(data_type m_data_type) {
+    return m_L2cache->get_data_lines(m_data_type);
+  }
 
   void accumulate_L2cache_stats(class cache_stats &l2_stats) const;
   void get_L2cache_sub_stats(struct cache_sub_stats &css) const;
@@ -288,8 +307,8 @@ class memory_sub_partition {
   void clear_L2cache_stats_pw();
 
   void force_l2_tag_update(new_addr_type addr, unsigned time,
-                           mem_access_sector_mask_t mask) {
-    m_L2cache->force_tag_access(addr, m_memcpy_cycle_offset + time, mask);
+                           mem_access_sector_mask_t mask, data_type mf_data_type) {
+    m_L2cache->force_tag_access(addr, m_memcpy_cycle_offset + time, mask, mf_data_type);
     m_memcpy_cycle_offset += 1;
   }
   // class l2_cache *m_CTRcache;

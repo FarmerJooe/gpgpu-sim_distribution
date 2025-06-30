@@ -152,7 +152,7 @@ void memory_partition_unit::handle_memcpy_to_gpu(
       "global_subpart=%u, sector_mask=%s \n",
       addr, p, global_subpart_id, mystring.c_str());
   m_sub_partition[p]->force_l2_tag_update(
-      addr, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, mask);
+      addr, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, mask, NORM);
 }
 
 memory_partition_unit::~memory_partition_unit() {
@@ -793,6 +793,8 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
                               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
                                   m_memcpy_cycle_offset,
                               events);
+        // m_L2cache->print_data_lines();
+        // printf("CTR access\n");
 
         bool write_sent = was_write_sent(events);
         bool read_sent = was_read_sent(events);
@@ -800,6 +802,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
                             mf->get_addr(), status);
 
         if (status == HIT) {
+          m_L2cache->inc_acc(mf);
           if (!write_sent) {
             // L2 cache replies
             assert(!read_sent);
@@ -818,6 +821,8 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
             m_ctr_L2_queue->pop();
           }
         } else if (status != RESERVATION_FAIL) {
+          m_L2cache->inc_acc(mf);
+          m_L2cache->inc_miss(mf);
           if (mf->is_write() &&
               (m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE ||
                m_config->m_L2_config.m_write_alloc_policy ==
@@ -875,6 +880,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
                             mf->get_addr(), status);
 
         if (status == HIT) {
+          m_L2cache->inc_acc(mf);
           if (!write_sent) {
             // L2 cache replies
             assert(!read_sent);
@@ -893,6 +899,8 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
             m_icnt_L2_queue->pop();
           }
         } else if (status != RESERVATION_FAIL) {
+          m_L2cache->inc_acc(mf);
+          m_L2cache->inc_miss(mf);
           if (mf->is_write() &&
               (m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE ||
                m_config->m_L2_config.m_write_alloc_policy ==

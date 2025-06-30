@@ -370,7 +370,7 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
           m_dirty--;
         }
         m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr),
-                               time, mf->get_access_sector_mask());
+                               time, mf->get_access_sector_mask(), mf->get_data_type());
       }
       break;
     case SECTOR_MISS:
@@ -403,12 +403,12 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
 void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf,
                      bool is_write) {
   fill(addr, time, mf->get_access_sector_mask(), mf->get_access_byte_mask(),
-       is_write);
+       is_write, mf->get_data_type());
 }
 
 void tag_array::fill(new_addr_type addr, unsigned time,
                      mem_access_sector_mask_t mask,
-                     mem_access_byte_mask_t byte_mask, bool is_write) {
+                     mem_access_byte_mask_t byte_mask, bool is_write, data_type mf_data_type) {
   // assert( m_config.m_alloc_policy == ON_FILL );
   unsigned idx;
   enum cache_request_status status = probe(addr, idx, mask, is_write);
@@ -417,7 +417,7 @@ void tag_array::fill(new_addr_type addr, unsigned time,
   // redundant memory request
   if (status == MISS) {
     m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr), time,
-                           mask);
+                           mask, mf_data_type);
   } else if (status == SECTOR_MISS) {
     assert(m_config.m_cache_type == SECTOR);
     ((sector_cache_block *)m_lines[idx])->allocate_sector(time, mask);
@@ -505,6 +505,38 @@ void tag_array::get_stats(unsigned &total_access, unsigned &total_misses,
   total_misses = (m_miss + m_sector_miss);
   total_hit_res = m_pending_hit;
   total_res_fail = m_res_fail;
+}
+
+unsigned tag_array::get_invalid_lines() {
+  unsigned m_invalid_lines = 0;
+  for (unsigned idx = 0; idx < m_config.get_num_lines(); idx++) {
+    cache_block_t *line = m_lines[idx];
+    if (line->is_invalid_line()) {
+      m_invalid_lines++;
+    }
+  }
+  return m_invalid_lines;
+}
+
+unsigned tag_array::get_data_lines(data_type m_data_type) {
+  unsigned m_data_lines = 0;
+  for (unsigned idx = 0; idx < m_config.get_num_lines(); idx++) {
+    cache_block_t *line = m_lines[idx];
+    if (line->get_data_type() == m_data_type && !line->is_invalid_line()) {
+      m_data_lines++;
+    }
+  }
+  return m_data_lines;
+}
+
+void tag_array::print_data_lines() {
+  for (unsigned idx = 0; idx < m_config.get_num_lines(); idx++) {
+    cache_block_t *line = m_lines[idx];
+    if (line->is_valid_line())
+      printf("invalid line [idx]: %d\n", line->get_data_type());
+    else
+      printf("valid line [idx]: %d\n", line->get_data_type());
+  }
 }
 
 bool was_write_sent(const std::list<cache_event> &events) {

@@ -117,11 +117,12 @@ struct cache_block_t {
   cache_block_t() {
     m_tag = 0;
     m_block_addr = 0;
+    m_data_type = NORM;
   }
 
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
                         unsigned time,
-                        mem_access_sector_mask_t sector_mask) = 0;
+                        mem_access_sector_mask_t sector_mask, data_type mf_data_type) = 0;
   virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask,
                     mem_access_byte_mask_t byte_mask) = 0;
 
@@ -156,8 +157,13 @@ struct cache_block_t {
   virtual void print_status() = 0;
   virtual ~cache_block_t() {}
 
+  enum data_type get_data_type() {
+    return m_data_type;
+  }
+
   new_addr_type m_tag;
   new_addr_type m_block_addr;
+  data_type m_data_type;
 };
 
 struct line_cache_block : public cache_block_t {
@@ -172,9 +178,10 @@ struct line_cache_block : public cache_block_t {
     m_readable = true;
   }
   void allocate(new_addr_type tag, new_addr_type block_addr, unsigned time,
-                mem_access_sector_mask_t sector_mask) {
+                mem_access_sector_mask_t sector_mask, data_type mf_data_type) {
     m_tag = tag;
     m_block_addr = block_addr;
+    m_data_type = mf_data_type;
     m_alloc_time = time;
     m_last_access_time = time;
     m_fill_time = 0;
@@ -294,17 +301,18 @@ struct sector_cache_block : public cache_block_t {
   }
 
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
-                        unsigned time, mem_access_sector_mask_t sector_mask) {
-    allocate_line(tag, block_addr, time, sector_mask);
+                        unsigned time, mem_access_sector_mask_t sector_mask, data_type mf_data_type) {
+    allocate_line(tag, block_addr, time, sector_mask, mf_data_type);
   }
 
   void allocate_line(new_addr_type tag, new_addr_type block_addr, unsigned time,
-                     mem_access_sector_mask_t sector_mask) {
+                     mem_access_sector_mask_t sector_mask, data_type mf_data_type) {
     // allocate a new line
     // assert(m_block_addr != 0 && m_block_addr != block_addr);
     init();
     m_tag = tag;
     m_block_addr = block_addr;
+    m_data_type = mf_data_type;
 
     unsigned sidx = get_sector_index(sector_mask);
 
@@ -949,7 +957,7 @@ class tag_array {
   void fill(new_addr_type addr, unsigned time, mem_fetch *mf, bool is_write);
   void fill(unsigned idx, unsigned time, mem_fetch *mf);
   void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask,
-            mem_access_byte_mask_t byte_mask, bool is_write);
+            mem_access_byte_mask_t byte_mask, bool is_write, data_type mf_data_type);
 
   unsigned size() const { return m_config.get_num_lines(); }
   cache_block_t *get_block(unsigned idx) { return m_lines[idx]; }
@@ -968,6 +976,12 @@ class tag_array {
   void add_pending_line(mem_fetch *mf);
   void remove_pending_line(mem_fetch *mf);
   void inc_dirty() { m_dirty++; }
+
+  unsigned get_invalid_lines();
+
+  unsigned get_data_lines(data_type m_data_type);
+
+  void print_data_lines();
 
  protected:
   // This constructor is intended for use only from derived classes that wish to
@@ -1339,10 +1353,12 @@ class baseline_cache : public cache_t {
   // L2 state after the memcopy - so just force the tag array to act as though
   // something is read or written without doing anything else.
   void force_tag_access(new_addr_type addr, unsigned time,
-                        mem_access_sector_mask_t mask) {
+                        mem_access_sector_mask_t mask, data_type mf_data_type) {
     mem_access_byte_mask_t byte_mask;
-    m_tag_array->fill(addr, time, mask, byte_mask, true);
+    m_tag_array->fill(addr, time, mask, byte_mask, true, mf_data_type);
   }
+
+  
 
  protected:
   // Constructor that can be used by derived classes with custom tag arrays
@@ -1564,6 +1580,47 @@ class data_cache : public baseline_cache {
   mem_access_type
       m_wrbk_type;  // Specifies type of writeback request (e.g., L1 or L2)
   class gpgpu_sim *m_gpu;
+  // unsigned 
+ public:
+  
+  unsigned long long m_tot_accesses[NUM_DATA_TYPE] = {0, 0, 0, 0, 0};
+  unsigned long long m_tot_misses[NUM_DATA_TYPE] = {0, 0, 0, 0, 0};
+  
+  void inc_acc(mem_fetch *mf) {
+    m_tot_accesses[mf->get_data_type()]++;
+  }
+
+  unsigned long long get_ctr_acc() {
+    return m_tot_accesses[CTR];
+  }
+
+  void inc_miss(mem_fetch *mf) {
+    m_tot_misses[mf->get_data_type()]++;
+  }
+
+  unsigned long long get_ctr_miss() {
+    return m_tot_misses[CTR];
+  }
+
+  void print_cache_status_breakdown() {
+    for (int i = 0; i < NUM_DATA_TYPE; i++) {
+      printf("[%d] data miss = %.5lf, data access = %d, data miss = %d\n", i, (double)(m_tot_misses[i]) / (double)(m_tot_accesses[i] + 0.00001), m_tot_accesses[i], m_tot_misses[i]);
+    }
+  }
+
+  unsigned get_invalid_lines() {
+    return m_tag_array->get_invalid_lines();
+  }
+
+  unsigned get_data_lines(data_type m_data_type) {
+    return m_tag_array->get_data_lines(m_data_type);
+  }
+
+  void print_data_lines() {
+    return m_tag_array->print_data_lines();
+  }
+
+ protected:
 
   //! A general function that takes the result of a tag_array probe
   //  and performs the correspding functions based on the cache configuration
