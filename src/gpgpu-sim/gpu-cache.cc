@@ -348,7 +348,7 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
   is_used = true;
   shader_cache_access_log(m_core_id, m_type_id, 0);  // log accesses to cache
   enum cache_request_status status = probe(addr, idx, mf, mf->is_write());
-  if (mshr_hit_avail && status == MISS && !mf->get_is_write())
+  if (mshr_hit_avail && (status == MISS || status == SECTOR_MISS) && !mf->get_is_write())
     status = HIT_RESERVED;
   switch (status) {
     case HIT_RESERVED:
@@ -673,6 +673,10 @@ cache_stats::cache_stats() {
   m_cache_port_available_cycles = 0;
   m_cache_data_port_busy_cycles = 0;
   m_cache_fill_port_busy_cycles = 0;
+  m_cache_stall_cycles = 0;
+  m_cache_stall_cycles_pw = 0;
+  m_cache_stall_count = 0;
+  m_cache_stall_count_pw = 0;
 }
 
 void cache_stats::clear() {
@@ -687,6 +691,10 @@ void cache_stats::clear() {
   m_cache_port_available_cycles = 0;
   m_cache_data_port_busy_cycles = 0;
   m_cache_fill_port_busy_cycles = 0;
+  m_cache_stall_cycles = 0;
+  m_cache_stall_cycles_pw = 0;
+  m_cache_stall_count = 0;
+  m_cache_stall_count_pw = 0;
 }
 
 void cache_stats::clear_pw() {
@@ -696,6 +704,8 @@ void cache_stats::clear_pw() {
   for (unsigned i = 0; i < NUM_MEM_ACCESS_TYPE; ++i) {
     std::fill(m_stats_pw[i].begin(), m_stats_pw[i].end(), 0);
   }
+  m_cache_stall_cycles_pw = 0;
+  m_cache_stall_count_pw = 0;
 }
 
 void cache_stats::inc_stats(int access_type, int access_outcome) {
@@ -722,6 +732,13 @@ void cache_stats::inc_fail_stats(int access_type, int fail_outcome) {
     assert(0 && "Unknown cache access type or access fail");
 
   m_fail_stats[access_type][fail_outcome]++;
+}
+
+void cache_stats::inc_stall_cycles(unsigned long long cycles) {
+  m_cache_stall_cycles += cycles;
+  m_cache_stall_cycles_pw += cycles;
+  m_cache_stall_count++;
+  m_cache_stall_count_pw++;
 }
 
 enum cache_request_status cache_stats::select_stats_status(
@@ -799,6 +816,12 @@ cache_stats cache_stats::operator+(const cache_stats &cs) {
       m_cache_data_port_busy_cycles + cs.m_cache_data_port_busy_cycles;
   ret.m_cache_fill_port_busy_cycles =
       m_cache_fill_port_busy_cycles + cs.m_cache_fill_port_busy_cycles;
+  ret.m_cache_stall_cycles = m_cache_stall_cycles + cs.m_cache_stall_cycles;
+  ret.m_cache_stall_cycles_pw =
+      m_cache_stall_cycles_pw + cs.m_cache_stall_cycles_pw;
+  ret.m_cache_stall_count = m_cache_stall_count + cs.m_cache_stall_count;
+  ret.m_cache_stall_count_pw =
+      m_cache_stall_count_pw + cs.m_cache_stall_count_pw;
   return ret;
 }
 
@@ -821,6 +844,10 @@ cache_stats &cache_stats::operator+=(const cache_stats &cs) {
   m_cache_port_available_cycles += cs.m_cache_port_available_cycles;
   m_cache_data_port_busy_cycles += cs.m_cache_data_port_busy_cycles;
   m_cache_fill_port_busy_cycles += cs.m_cache_fill_port_busy_cycles;
+  m_cache_stall_cycles += cs.m_cache_stall_cycles;
+  m_cache_stall_cycles_pw += cs.m_cache_stall_cycles_pw;
+  m_cache_stall_count += cs.m_cache_stall_count;
+  m_cache_stall_count_pw += cs.m_cache_stall_count_pw;
   return *this;
 }
 
@@ -929,6 +956,8 @@ void cache_stats::get_sub_stats(struct cache_sub_stats &css) const {
   t_css.port_available_cycles = m_cache_port_available_cycles;
   t_css.data_port_busy_cycles = m_cache_data_port_busy_cycles;
   t_css.fill_port_busy_cycles = m_cache_fill_port_busy_cycles;
+  t_css.stall_cycles = m_cache_stall_cycles;
+  t_css.stall_count = m_cache_stall_count;
 
   css = t_css;
 }
@@ -979,6 +1008,9 @@ void cache_stats::get_sub_stats_pw(struct cache_sub_stats_pw &css) const {
       }
     }
   }
+
+  t_css.stall_cycles = m_cache_stall_cycles_pw;
+  t_css.stall_count = m_cache_stall_count_pw;
 
   css = t_css;
 }
@@ -1105,6 +1137,8 @@ void baseline_cache::cycle() {
 /// in caller)
 void baseline_cache::fill(mem_fetch *mf, unsigned time) {
   // printf("%s cache fill: data size: %d\taccess size:%d\taccess type:%d\n", m_name.c_str(), mf->get_data_size(), mf->get_access_size(), mf->get_access_type());
+  mf->set_fill_cycle(get_cache_form(), time);
+  this->inc_stall_cycles(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
   if (m_config.m_mshr_type == SECTOR_ASSOC) {
     assert(mf->get_original_mf());
     extra_mf_fields_lookup::iterator e =
@@ -1753,6 +1787,8 @@ enum cache_request_status read_only_cache::access(
                     m_stats.select_stats_status(status, cache_status));
   m_stats.inc_stats_pw(mf->get_access_type(),
                        m_stats.select_stats_status(status, cache_status));
+  if (cache_status == MISS || cache_status == SECTOR_MISS)
+      mf->set_miss_cycle(get_cache_form(), time);
   return cache_status;
 }
 
@@ -1832,6 +1868,8 @@ enum cache_request_status data_cache::access(new_addr_type addr, mem_fetch *mf,
                     m_stats.select_stats_status(probe_status, access_status));
   m_stats.inc_stats_pw(mf->get_access_type(), m_stats.select_stats_status(
                                                   probe_status, access_status));
+  if (access_status == MISS || access_status == SECTOR_MISS)
+      mf->set_miss_cycle(get_cache_form(), time);                                              
   return access_status;
 }
 
@@ -1930,6 +1968,8 @@ enum cache_request_status tex_cache::access(new_addr_type addr, mem_fetch *mf,
                     m_stats.select_stats_status(status, cache_status));
   m_stats.inc_stats_pw(mf->get_access_type(),
                        m_stats.select_stats_status(status, cache_status));
+  // if (cache_status == MISS || cache_status == SECTOR_MISS)
+  //     mf->set_miss_cycle(get_cache_form(), time);
   return cache_status;
 }
 

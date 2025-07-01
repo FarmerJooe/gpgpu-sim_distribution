@@ -29,8 +29,9 @@
 
 #define BMT_Enable
 #define MAC_Enable
-// #define ENC_EN
-// #define AES_Enable
+#define CTR_HIERACHY
+#define ENC_EN
+#define AES_Enable
 
 
 #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED
@@ -56,6 +57,19 @@ enum data_type {
   NORM,
   MAC,
   NUM_DATA_TYPE
+};
+
+enum cache_form {
+  DEFAULT_CACHE = 0,
+  L1D_CACHE,
+  L1I_CACHE,
+  L1C_CACHE,
+  L1T_CACHE,
+  L2_CACHE,
+  CTR_CACHE,
+  MAC_CACHE,
+  BMT_CACHE,
+  NUM_CACHE_TYPES
 };
 
 enum _memory_space_t {

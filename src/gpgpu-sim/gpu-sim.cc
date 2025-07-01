@@ -252,6 +252,12 @@ void memory_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_ecc_2bit_err", OPT_FLOAT,
                          &m_ecc_2bit_err,
                          "unified ecc 2bit error rate config ", "0");
+  option_parser_register(opp, "-gpgpu_cache:ctr", OPT_CSTR,
+                          &m_CTR_config.m_config_string,
+                          "unified banked CTR data cache config "
+                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
+                          "alloc>,<mshr>:<N>:<merge>,<mq>}",
+                          "64:128:8,L:B:m:N,A:16:4,4");
   option_parser_register(opp, "-gpgpu_cache:dl2_texture_only", OPT_BOOL,
                          &m_L2_texure_only, "L2 cache used for texture only",
                          "1");
@@ -1518,6 +1524,25 @@ void gpgpu_sim::gpu_print_ctrModCount_breakdown() {
 
 }
 
+void gpgpu_sim::gpu_print_stat_pw() {
+  FILE *statfout = stdout;
+  fprintf(statfout, "cycle = %d\tipc = %12.4f\t", gpu_sim_cycle + gpu_tot_sim_cycle, 
+                          (float)(gpu_tot_sim_insn + gpu_sim_insn) / (gpu_tot_sim_cycle + gpu_sim_cycle));
+  unsigned m_tot_not_completed = 0, m_kernel_more_cta_left = 0;
+  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
+    m_tot_not_completed += m_cluster[i]->get_not_completed();
+  }
+  for (unsigned n = 0; n < m_running_kernels.size(); n++) {
+    m_kernel_more_cta_left += kernel_more_cta_left(m_running_kernels[n]);
+  }
+  fprintf(statfout, "not_completed = %d\ttot_cta = %d\n", m_tot_not_completed, m_tot_not_completed + m_kernel_more_cta_left);
+  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
+    m_cluster[i]->print_not_completed(statfout);
+  }
+  fprintf(statfout, "\n");
+  // print_not_completed(statfout);
+}
+
 void gpgpu_sim::gpu_print_stat() {
   FILE *statfout = stdout;
 
@@ -1635,9 +1660,13 @@ void gpgpu_sim::gpu_print_stat() {
     unsigned long long m_tot_ctr_acc = 0;
     unsigned long long m_tot_ctr_miss = 0;
     unsigned long long m_tot_ctr_lines = 0;
+    struct cache_sub_stats_pw l2_css_pw;
+    struct cache_sub_stats_pw total_l2_css_pw;
     l2_stats.clear();
     l2_css.clear();
     total_l2_css.clear();
+    l2_css_pw.clear();
+    total_l2_css_pw.clear();
 
     printf("\n========= L2 cache stats =========\n");
     for (unsigned i = 0; i < m_memory_config->m_n_mem_sub_partition; i++) {
@@ -1647,15 +1676,21 @@ void gpgpu_sim::gpu_print_stat() {
       m_tot_ctr_miss += m_memory_sub_partition[i]->get_ctr_miss();
       m_tot_ctr_lines += m_memory_sub_partition[i]->get_data_lines(CTR);
       // printf("L2_total_ctr_cache_lines = %u\n", m_memory_sub_partition[i]->get_ctr_miss());
+      m_memory_sub_partition[i]->get_L2cache_sub_stats_pw(l2_css_pw);
+      m_memory_sub_partition[i]->clear_L2cache_stats_pw();
 
       fprintf(stdout,
               "L2_cache_bank[%d]: Access = %llu, Miss = %llu, Miss_rate = "
-              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu, ctr_lines = %llu\n",
+              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu, ctr_lines = %llu, "
+              "average_kernel_stall_cycles = %llu, average_stall_cycles = %llu\n",
               i, l2_css.accesses, l2_css.misses,
               (double)l2_css.misses / (double)l2_css.accesses,
-              l2_css.pending_hits, l2_css.res_fails, m_memory_sub_partition[i]->get_data_lines(CTR));
+              l2_css.pending_hits, l2_css.res_fails, m_memory_sub_partition[i]->get_data_lines(CTR),
+              l2_css_pw.stall_cycles / std::max(1ull, l2_css_pw.stall_count),
+              l2_css.stall_cycles / std::max(1ull, l2_css.stall_count));
 
       total_l2_css += l2_css;
+      total_l2_css_pw += l2_css_pw;
     }
     if (!m_memory_config->m_L2_config.disabled() &&
         m_memory_config->m_L2_config.get_num_lines()) {
@@ -1672,6 +1707,14 @@ void gpgpu_sim::gpu_print_stat() {
       printf("L2_total_ctr_data_misses = %llu\n", m_tot_ctr_miss);
       printf("L2_total_ctr_data_misses_rate = %.4lf\n", 1.0 * m_tot_ctr_miss / (m_tot_ctr_acc + 0.00001));
       printf("L2_total_ctr_lines = %llu\n", m_tot_ctr_lines / 64);
+      printf("L2_total_cache_util = %.4lf\n",
+               (double)(total_l2_css.accesses - total_l2_css.res_fails) /  (64 * (gpu_tot_sim_cycle + gpu_sim_cycle)));
+      printf("L2_total_average_cache_stall_cycles = %llu\n", total_l2_css.stall_cycles / std::max(1ull, total_l2_css.stall_count));
+      printf("L2_kernel_cache_misses = %llu\n", (total_l2_css_pw.read_misses + total_l2_css_pw.write_misses));
+      if (total_l2_css_pw.accesses > 0)
+        printf("L2_kernel_cache_miss_rate = %.4lf\n",
+               (double)(total_l2_css_pw.read_misses + total_l2_css_pw.write_misses) / (double)total_l2_css_pw.accesses);
+      printf("L2_kernel_average_cache_stall_cycles = %llu\n", total_l2_css_pw.stall_cycles / std::max(1ull, total_l2_css_pw.stall_count));
       printf("L2_total_cache_breakdown:\n");
       l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
       printf("L2_total_cache_reservation_fail_breakdown:\n");
@@ -2043,7 +2086,8 @@ int gpgpu_sim::next_clock_domain(void) {
 }
 
 void gpgpu_sim::issue_block2core() {
-  unsigned last_issued = m_last_cluster_issue;
+  // unsigned last_issued = m_last_cluster_issue;
+  unsigned last_issued = 0;
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
     unsigned idx = (i + last_issued + 1) % m_shader_config->n_simt_clusters;
     unsigned num = m_cluster[idx]->issue_block2core();
@@ -2228,6 +2272,10 @@ void gpgpu_sim::cycle() {
           }
         }
       }
+    }
+
+    if ((gpu_sim_cycle + gpu_tot_sim_cycle) % 1000 == 0) {
+      gpu_print_stat_pw();
     }
 
     if (!(gpu_sim_cycle % m_config.gpu_stat_sample_freq)) {

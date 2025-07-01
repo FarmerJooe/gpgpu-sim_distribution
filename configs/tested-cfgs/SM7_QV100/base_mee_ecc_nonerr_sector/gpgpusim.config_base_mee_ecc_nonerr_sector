@@ -42,14 +42,14 @@
 -gpgpu_ptx_instruction_classification 0
 -gpgpu_ptx_sim_mode 0
 -gpgpu_ptx_force_max_capability 70 
--gpgpu_max_cycle 1000000
+# -gpgpu_max_cycle 1000000
 
 # Device Limits
 -gpgpu_stack_size_limit 1024
 -gpgpu_heap_size_limit 8388608
 -gpgpu_runtime_sync_depth_limit 2
 -gpgpu_runtime_pending_launch_count_limit 2048
--gpgpu_kernel_launch_latency 5000
+-gpgpu_kernel_launch_latency 0
 -gpgpu_TB_launch_latency 0
 
 # Compute Capability
@@ -164,9 +164,10 @@
 
 # 32 sets, each 128 bytes 24-way for each memory sub partition (96 KB per memory sub partition). This gives us 6MB L2 cache
 #-gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
--gpgpu_cache:dl2 S:32:128:24,L:B:m:F:P,A:192:4,32:0,32
-#-gpgpu_cache:dmeta S:4:128:4,L:B:m:L:P,A:64:64,32:0,32
--gpgpu_cache:dmeta S:4:128:4,L:B:m:F:P,A:64:64,32:0,32
+-gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
+#-gpgpu_cache:dmeta N:4:128:4,L:B:m:W:P,A:64:4,32:0,32
+-gpgpu_cache:dmeta S:4:128:2,L:B:m:L:P,A:64:64,32:0,32
+-gpgpu_cache:ctr S:4:128:2,L:B:m:L:P,A:64:64,32:0,32
 -gpgpu_ecc_1bit_err 0
 -gpgpu_ecc_2bit_err 0
 -gpgpu_cache:dl2_texture_only 0
@@ -203,7 +204,7 @@
 -dram_latency 100
 
 # dram model config
--gpgpu_dram_scheduler 1
+-gpgpu_dram_scheduler 0
 -gpgpu_frfcfs_dram_sched_queue_size 64
 -gpgpu_dram_return_queue_size 192
 
