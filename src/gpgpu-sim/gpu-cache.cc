@@ -1392,6 +1392,7 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
   n_mf->set_data_type(mf->get_data_type());
   n_mf->set_chip(mf->get_tlx_addr().chip);
   n_mf->set_parition(mf->get_tlx_addr().sub_partition);
+  n_mf->set_id(mf->get_id());
   assert(n_mf->get_sub_partition_id() == mf->get_sub_partition_id());
   bool do_miss = false;
   bool wb = false;
@@ -1419,6 +1420,7 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
       wb->set_data_type(mf->get_data_type());
       wb->set_chip(mf->get_tlx_addr().chip);
       wb->set_parition(mf->get_tlx_addr().sub_partition);
+      wb->set_id(mf->get_id());
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                          time, events);
     }
@@ -1473,6 +1475,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         wb->set_data_type(mf->get_data_type());
         wb->set_chip(mf->get_tlx_addr().chip);
         wb->set_parition(mf->get_tlx_addr().sub_partition);
+        wb->set_id(mf->get_id());
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                            time, events);
       }
@@ -1523,6 +1526,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
     n_mf->set_data_type(mf->get_data_type());
     n_mf->set_chip(mf->get_tlx_addr().chip);
     n_mf->set_parition(mf->get_tlx_addr().sub_partition);
+    n_mf->set_id(mf->get_id());
     new_addr_type block_addr = m_config.block_addr(addr);
     bool do_miss = false;
     bool wb = false;
@@ -1550,6 +1554,7 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         wb->set_data_type(mf->get_data_type());
         wb->set_chip(mf->get_tlx_addr().chip);
         wb->set_parition(mf->get_tlx_addr().sub_partition);
+        wb->set_id(mf->get_id());
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                            time, events);
       }
@@ -1618,6 +1623,7 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
       wb->set_data_type(mf->get_data_type());
       wb->set_chip(mf->get_tlx_addr().chip);
       wb->set_parition(mf->get_tlx_addr().sub_partition);
+      wb->set_id(mf->get_id());
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                          time, events);
     }
@@ -1701,6 +1707,7 @@ enum cache_request_status data_cache::rd_miss_base(
       // used, so set the right chip address from the original mf
       wb->set_chip(mf->get_tlx_addr().chip);
       wb->set_parition(mf->get_tlx_addr().sub_partition);
+      wb->set_id(mf->get_id());
       send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
     }
     return MISS;
