@@ -115,7 +115,11 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   m_L2_ctr_bundle_queue = new fifo_pipeline<mem_fetch>("L2-ctr-bundle", 0, 128);
   #endif
   m_BMTinterface = new metainterface(m_mee_dram_queue[BMT]);
+  #ifdef CTR_HIERACHY
   m_CTRinterface = new metainterface(m_ctr_L2_bundle_queue);
+  #else
+  m_CTRinterface = new metainterface(m_mee_dram_queue[CTR]);
+  #endif
   m_MACinterface = new metainterface(m_mee_dram_queue[MAC]);
   m_mf_allocator = new partition_mf_allocator(config);
 
@@ -330,7 +334,7 @@ void memory_partition_unit::mee_to_dram_cycle() {
     min_mf_id = std::min(min_mf_id, m_mee_dram_queue[dtype]->top()->get_id());
   }
 
-  assert(min_mf_id);
+  // assert(min_mf_id);
 
   // for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
   //   unsigned dtype = i;
@@ -757,7 +761,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
     }
   }
   #ifdef CTR_HIERACHY
-  #ifdef ENC_EN 
+  #ifdef EXC_EN 
   while(!m_mee_L2_queue->empty()) {
     mem_fetch *mf = m_mee_L2_queue->top();
     if (mf->get_data_type() == CTR) {
@@ -779,7 +783,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
     // assert(mf_return->get_access_type() != 4);
     if (!m_config->m_L2_config.disabled() && m_L2cache->waiting_for_fill(mf)) {
       #ifdef CTR_HIERACHY
-      #ifdef ENC_EN
+      #ifdef EXC_EN
       assert(mf->get_data_type() != CTR);
       #endif
       #endif
@@ -824,7 +828,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
       // L2 is enabled and access is for L2
       bool output_full = m_L2_ctr_queue->full();
       bool port_free = m_L2cache->data_port_free();
-      #ifdef ENC_EN
+      #ifdef EXC_EN
       enum cache_request_status probe_status = m_L2cache->probe(mf->get_addr(), mf);
       if (!output_full && port_free && probe_status != RESERVATION_FAIL && probe_status!= HIT) {
         m_L2_mee_queue[CTR]->push(mf);

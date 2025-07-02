@@ -568,7 +568,10 @@ void mee::CTR_cycle() {
     m_CTRcache->cycle();
     CT_cycle();
     
-    bool output_full = m_OTP_queue->full() || m_CTR_RET_queue->full() || m_CTR_BMT_Buffer->full() || m_unit->m_ctr_L2_bundle_queue->full();
+    bool output_full = m_OTP_queue->full() || m_CTR_RET_queue->full() || m_CTR_BMT_Buffer->full();
+    #ifdef CTR_HIERACHY
+    output_full |= m_unit->m_ctr_L2_bundle_queue->full();
+    #endif
     bool port_free = m_unit->m_CTRcache->data_port_free();
 
     if (!m_CTR_queue->empty() && !m_unit->mee_dram_queue_full(CTR) && !output_full && port_free) {
@@ -976,7 +979,7 @@ void mee::simple_cycle(unsigned cycle) {
     }
     // printf("L2 to mee queue: %d %d\n", m_unit->m_sub_partition[0]->m_L2_mee_queue->empty(), m_unit->m_sub_partition[0]->m_L2_mee_queue->empty());
     // L2 to mee
-    DL_CNT++;
+    // DL_CNT++;
     if (DL_CNT >= 10000) {
         printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
     }
@@ -997,7 +1000,7 @@ void mee::simple_cycle(unsigned cycle) {
                     last_issued_partition = spid;
                     break;
                 } else {
-                    // DL_CNT++;
+                    DL_CNT++;
                     continue;
                 }
             }
@@ -1064,7 +1067,7 @@ void mee::simple_cycle(unsigned cycle) {
                     // mf->set_cooked_status();
                     // printf("BBBBBBBBBBBBBBBBB");
                     // }
-                } else if (!m_unit->mee_dram_queue_full(2, NORM)) {              // read
+                } else {              // read
                     // printf("CCCCCCCCCCCCCCCC");
                     // m_unit->mee_dram_queue_push(mf);    //读密文请求，发往DRAM中读密文
                     mf_counter++;
@@ -1089,10 +1092,13 @@ void mee::simple_cycle(unsigned cycle) {
                 #else
                 m_unit->L2_mee_queue_pop(spid);
                 #endif
+                #ifndef AES_Enable
+                m_unit->mee_dram_queue_push(mf_original, NORM);
+                #endif
                 last_issued_partition = spid;
                 break;
             } else {
-            //     DL_CNT++;
+                DL_CNT++;
             //     if (DL_CNT >= 10000) {
             //         printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
             //     }

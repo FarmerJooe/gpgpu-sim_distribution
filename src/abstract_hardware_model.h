@@ -30,7 +30,7 @@
 #define BMT_Enable
 #define MAC_Enable
 #define CTR_HIERACHY
-#define ENC_EN
+// #define EXC_EN
 #define AES_Enable
 
 
