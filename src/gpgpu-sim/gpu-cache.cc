@@ -1902,7 +1902,11 @@ void l2_cache::cycle() {
     mem_fetch *mf = m_miss_queue.front();
     // if (mf->get_sub_partition_id() >> 1 == 17)
     // printf("%s cache cycle: data size: %d\taccess size:%d\n", m_name.c_str(), mf->get_data_size(), mf->get_access_size());
+    #ifdef CTR_HIERACHY
     if (!m_memport->full(mf->size(), mf->get_is_write(), mf->get_data_type())) {
+    #else
+    if (!m_memport->full(mf->size(), mf->get_is_write())) {
+    #endif
       m_miss_queue.pop_front();
       m_memport->push(mf);
     }

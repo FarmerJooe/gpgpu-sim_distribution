@@ -48,7 +48,8 @@
 #include "shader.h"
 
 void print_addr(char s[], mem_fetch *mf, unsigned cycle) {
-  // printf("%s:\taddr: %x\tsp_id: %d\twid: %d\tsid: %d\tsp_addr: %x\taccess type: %d\tdata type: %d\tmf_id: %d\tmf_poniter: %p\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_wid(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id(), mf, cycle);
+  // if (mf->get_sub_partition_id() / 2 == 3)
+  //   printf("%s:\taddr: %x\tsp_id: %d\twid: %d\tsid: %d\tsp_addr: %x\taccess type: %d\tdata type: %d\tmf_id: %d\tmf_poniter: %p\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_wid(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id(), mf, cycle);
   // printf("%s:\taddr: %x\tsp_id: %d\twid: %d\tsid: %d\tsp_addr: %x\taccess type: %d\tdata type: %d\tmf_id: %d\tcycle:%d\n", s, mf->get_addr(), mf->get_sub_partition_id(), mf->get_wid(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id(), cycle);
 }
 
@@ -981,6 +982,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
       }
     } else {
       // L2 is disabled or non-texture access to texture-only L2
+      assert(false);
       mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE,
                      m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
       #ifdef CTR_HIERACHY

@@ -402,6 +402,7 @@ class L2interface : public mem_fetch_interface {
   }
   virtual void push(mem_fetch *mf) {
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
+    assert(!full(1, mf->is_write()));
     m_unit->m_L2_mee_queue->push(mf);
     // if (mf->get_access_type() == 9)
     // printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\twr: %d\taccess type:%d\n", "L2 to mee:", mf->get_addr(), mf->get_sid(), mf->get_is_write(), mf->get_partition_addr(), mf->get_access_type());

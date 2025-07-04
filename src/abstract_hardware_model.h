@@ -29,9 +29,10 @@
 
 #define BMT_Enable
 #define MAC_Enable
-#define CTR_HIERACHY
+// #define CTR_HIERACHY
 // #define EXC_EN
 #define AES_Enable
+#define DEADLOCK_EN
 
 
 #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED

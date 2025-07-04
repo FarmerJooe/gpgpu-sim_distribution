@@ -9,7 +9,7 @@ mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class me
     m_config(config),
     m_gpu(gpu),
     m_ecc(ecc) {
-    unsigned len = 1024;
+    unsigned len = 64;
     m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     #ifdef CTR_HIERACHY
@@ -43,11 +43,11 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    // if (m_unit->get_mpid() == 17) {
-    //     printf("%s\t", s);
-    //     if (mf->get_original_mf())
-    //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
-    //     printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
+    // if (m_unit->get_mpid() == 3) {
+        // printf("%s\t", s);
+        // if (mf->get_original_mf())
+        //     printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
+        // printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
     // }
 }
 
@@ -312,7 +312,7 @@ void mee::CT_cycle() {
 
     if (!m_Ciphertext_queue->empty()) {
         mem_fetch *mf = m_Ciphertext_queue->top();
-        // print_addr("L2 to mee:\t", mf);
+        print_addr("L2 to mee:\t", mf);
         if (mf->is_write()) { // write
         // assert(!mf->is_write());
             if (mf->is_raw() && !m_AES_queue->full()) {
@@ -359,7 +359,7 @@ void mee::AES_cycle() {
         int spid = m_unit->global_sub_partition_id_to_local_id(mf->get_sub_partition_id());
         // if (mf->get_sub_partition_id() == 0) 
         //     printf("%x\n", OTP_addr);
-        // print_addr("waiting for AES:\t", mf);
+        print_addr("waiting for AES:\t", mf);
         assert(OTP_id);
         // if (mf->is_write())
         //     printf("PPPPPPPPPPPPPP\n");
@@ -463,7 +463,7 @@ void mee::MAC_CHECK_cycle() {
             m_MAC_CHECK_queue->pop();
             // printf("%p %d MAC HASH %d\n", mf, mf->get_sub_partition_id(), HASH_id);
         } else {
-            // print_addr("waiting for MAC Check:\t", mf);
+            print_addr("waiting for MAC Check:\t", mf);
             // if (mf->get_sub_partition_id() == 32) 
                 // printf("%p %d MAC waiting for HASH %d\n", mf, mf->get_sub_partition_id(), HASH_id);
         }
@@ -537,7 +537,7 @@ void mee::BMT_CHECK_cycle() {
         // assert(cnt);
         mem_fetch *mf = m_CTR_BMT_Buffer->top();
             // gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, mf->get_id());
-        // print_addr("CTR to BMT:\t", mf);
+        print_addr("CTR to BMT:\t", mf);
         // if (m_unit->get_mpid() == 13)
         //     printf("BMT_CHECK_queue size = %d\n", m_BMT_CHECK_queue->get_n_element());
         m_n_reqs_in_BMT++;
@@ -657,7 +657,7 @@ void mee::MAC_cycle() {
     
     if (!m_MAC_queue->empty() && !m_unit->mee_dram_queue_full(MAC) && !output_full && port_free) {
         mem_fetch *mf = m_MAC_queue->top();
-        // print_addr("MAC cycle access:\t\t", mf);
+        print_addr("MAC cycle access:\t\t", mf);
 
         assert(mf->get_id());
 
@@ -732,7 +732,7 @@ void mee::BMT_cycle() {
 
     if (!m_BMT_queue->empty() && !m_unit->mee_dram_queue_full(BMT) && !output_full && port_free) {
         mem_fetch *mf = m_BMT_queue->top();
-        // print_addr("BMT waiting access:\t", mf);
+        print_addr("BMT waiting access:\t", mf);
         // assert(mf->get_access_type() == mf->get_access_type());
 
         // if (mf->get_access_type() == META_RBW) {
@@ -748,17 +748,17 @@ void mee::BMT_cycle() {
         bool read_sent = was_read_sent(events);
         // print_addr("CTR cycle access:\t\t", mf);
         if (status == HIT) {
-            // print_addr("BMT access HIT:\t", mf);
+            print_addr("BMT access HIT:\t", mf);
             if (mf->get_id() && !mf->is_write()) {
                 m_BMT_CHECK_queue->push(mf);
                 m_HASH_queue->push(new hash{BMT, mf->get_id(), mf->is_write()});
             }
             m_BMT_queue->pop();
         } else if (status != RESERVATION_FAIL) {
-            // print_addr("BMT access MISS:\t", mf);
+            print_addr("BMT access MISS:\t", mf);
             m_BMT_queue->pop();
         } else {
-            // print_addr("BMT access reservation_fail:\t", mf);
+            print_addr("BMT access reservation_fail:\t", mf);
             assert(!write_sent);
             assert(!read_sent);
         }
@@ -1059,11 +1059,6 @@ void mee::simple_cycle(unsigned cycle) {
 
                     // m_AES_queue->push(mf);  //写密文请求，将明文送入AES中解密
                     m_Ciphertext_queue->push(mf);
-                    #ifdef CTR_HIERACHY
-                    m_unit->L2_mee_queue_pop(spid, NORM);
-                    #else
-                    m_unit->L2_mee_queue_pop(spid);
-                    #endif
                     // mf->set_cooked_status();
                     // printf("BBBBBBBBBBBBBBBBB");
                     // }
@@ -1072,6 +1067,7 @@ void mee::simple_cycle(unsigned cycle) {
                     // m_unit->mee_dram_queue_push(mf);    //读密文请求，发往DRAM中读密文
                     mf_counter++;
                     mf->set_id(mf_counter);
+                    print_addr("L2 to mee Read: ", mf);
                     m_Ciphertext_queue->push(mf);
                     if (m_config->m_META_config.m_cache_type == SECTOR) {
                         gen_CTR_mf(mf, false, META_ACC, 32, mf_counter);
