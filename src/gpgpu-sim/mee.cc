@@ -1,12 +1,13 @@
 #include "mee.h"
 #include <list>
 
-mee::mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu, class ECCEngine *ecc) : 
+mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, counterMap *ctrModCount, class gpgpu_sim *gpu, class ECCEngine *ecc) : 
     m_unit(unit), 
     m_CTRcache(CTRcache),
     m_MACcache(MACcache),
     m_BMTcache(BMTcache),
     m_config(config),
+    m_ctrModCount(ctrModCount),
     m_gpu(gpu),
     m_ecc(ecc) {
     unsigned len = 64;
@@ -43,15 +44,15 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    // if (m_unit->get_mpid() == 3) {
-        // printf("%s\t", s);
-        // if (mf->get_original_mf())
-        //     printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
-        // printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
+    // if (m_unit->get_mpid() == 25) {
+    //     printf("%s\t", s);
+    //     if (mf->get_original_mf())
+    //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
+    //     printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
     // }
 }
 
-void mee::print_status(class meta_cache *m_METAcache, mem_fetch *mf) {
+void mee::print_status(class data_cache *m_METAcache, mem_fetch *mf) {
     // if (m_unit->get_mpid() == 14) {
     //     unsigned idx = m_METAcache->m_config.set_index(mf->get_addr());
     //     enum cache_request_status status = m_METAcache->m_tag_array->probe(mf->get_addr(), idx, mf->get_access_sector_mask(), mf->is_write());
@@ -558,7 +559,8 @@ void mee::CTR_cycle() {
             // assert(!mf_return->is_write());
             print_addr("CTR MISS return:\t\t", mf_return);
             if (!m_OTP_queue->full()) { //CTR读MISS，则应生成CTR to BMT任务
-                m_ctr_rdret_addr = mf_return->get_addr();
+                // m_ctr_rdret_addr = mf_return->get_addr();
+                // m_ctr_wr_addr[mf_return->get_addr()]++; //CTR读MISS后，CTR++，然后写CTR
                 m_OTP_queue->push(new unsigned(mf_return->get_id()));   //得到CTR值，计算OTP用于解密
                 m_CTR_RET_queue->pop();
             }
@@ -578,15 +580,15 @@ void mee::CTR_cycle() {
         mem_fetch *mf = m_CTR_queue->top();
         print_addr("CTR cycle access:\t\t", mf);
 
-        if (mf->is_write()) {
-            // if (m_unit->get_mpid() == 23)
-            //     printf("ctr write access:\tm_pid:%d\tOTP_id:%d\tctr_rdhit_addr: %x\tctr_rdret_addr: %x\tctr_write_addr: %x\n", 
-            //         m_unit->get_mpid(), mf->get_id(), m_ctr_rdhit_addr, m_ctr_rdret_addr, mf->get_addr());
-            if (!m_OTP_set[mf->get_id()] && m_ctr_rdret_addr != mf->get_addr() && m_ctr_rdhit_addr != mf->get_addr()) {//读到CTR后，才可以CTR++，然后写CTR
-                // todo: CTR更新需要先读后写，需要完善读完成的检测
-                return;
-            }
-        }
+        // if (mf->is_write()) {
+        //     // if (m_unit->get_mpid() == 23)
+        //     //     printf("ctr write access:\tm_pid:%d\tOTP_id:%d\tctr_rdhit_addr: %x\tctr_rdret_addr: %x\tctr_write_addr: %x\n", 
+        //     //         m_unit->get_mpid(), mf->get_id(), m_ctr_rdhit_addr, m_ctr_rdret_addr, mf->get_addr());
+        //     if (!m_OTP_set[mf->get_id()] && !m_ctr_wr_addr[mf->get_addr()]) {//读到CTR后，才可以CTR++，然后写CTR
+        //         // todo: CTR更新需要先读后写，需要完善读完成的检测
+        //         // return;
+        //     }
+        // }
 
         std::list<cache_event> events;
         enum cache_request_status status = m_CTRcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
@@ -610,7 +612,7 @@ void mee::CTR_cycle() {
                     m_OTP_queue->push(new unsigned(mf->get_id()));  //CTR HIT后计算OTP用于加密/解密
                 if (mf->get_id())
                     OTP_counter++;
-                m_ctr_rdhit_addr = mf->get_addr();
+                // m_ctr_wr_addr[mf->get_addr()]++;
             }
             // }
         } else if (status != RESERVATION_FAIL) {
@@ -661,11 +663,14 @@ void mee::MAC_cycle() {
 
         assert(mf->get_id());
 
-        if (mf->is_write()) {   //对于写MAC请求，则应等待密文被Hash为新MAC值
-            if (!m_MAC_set[mf->get_id()]) {
-                return;
-            }
-        }
+        // 写操作前先读
+        // 读命中则写也命中
+        // 读MISS则写也MISS
+        // if (mf->is_write()) {   //对于写MAC请求，则应等待密文被Hash为新MAC值
+        //     if (!m_MAC_set[mf->get_id()]) {
+        //         // return;
+        //     }
+        // }
 
         std::list<cache_event> events;
         enum cache_request_status status = m_MACcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
@@ -765,7 +770,7 @@ void mee::BMT_cycle() {
     }
 };
 
-void mee::META_fill_responses(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK) {
+void mee::META_fill_responses(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK) {
     if (m_METAcache->access_ready() && !m_META_RET_queue->full()) {
         mem_fetch *mf = m_METAcache->next_access();
         if (mf->get_access_type() == META_ACC && mf->get_id())
@@ -829,7 +834,7 @@ void mee::CTR_fill() {
 }
 #endif
 
-void mee::META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type) {
+void mee::META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type) {
     // if (m_METAcache == m_BMTcache) printf("%llx & %llx == %llx\n", mf->get_addr(), BASE, mf->get_addr() & BASE);
     
     if (!m_unit->dram_mee_queue_empty(m_data_type)) {
@@ -983,11 +988,12 @@ void mee::simple_cycle(unsigned cycle) {
     if (DL_CNT >= 10000) {
         printf("DEAD LOCK! mpid: %d\n", m_unit->get_mpid());
     }
-    for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
-        p++) {
+    for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel; p++) {
+        
         int spid = (p + last_issued_partition + 1) %
                 m_config->m_n_sub_partition_per_memory_channel;
         #ifdef CTR_HIERACHY
+        // CTR to mee
         if (!m_unit->L2_mee_queue_empty(spid, CTR)) {
             mem_fetch *mf = m_unit->L2_mee_queue_top(spid, CTR);
             if (mf->get_data_type() == CTR) {
@@ -996,17 +1002,20 @@ void mee::simple_cycle(unsigned cycle) {
                     last_issued_partition = spid;
                     print_addr("L2 ctr to mee: ", mf);
                     m_unit->mee_dram_queue_push(mf, CTR);
+                    // 因为要break，所以必须在这里pop
                     m_unit->L2_mee_queue_pop(spid, CTR);
                     last_issued_partition = spid;
                     break;
                 } else {
                     DL_CNT++;
-                    continue;
+                    // continue;
                 }
             }
         } else if (!m_unit->L2_mee_queue_empty((spid + 1) % m_config->m_n_sub_partition_per_memory_channel, CTR)) {
             continue;
         }
+
+        // L2 to mee
         if (!m_unit->L2_mee_queue_empty(spid, NORM)) {
             mem_fetch *mf = m_unit->L2_mee_queue_top(spid, NORM);
         #else

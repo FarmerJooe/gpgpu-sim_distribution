@@ -535,6 +535,7 @@ class gpgpu_sim : public gpgpu_t {
   unsigned finished_kernel();
   void set_kernel_done(kernel_info_t *kernel);
   void stop_all_running_kernels();
+  void test();
 
   void init();
   void cycle();
@@ -618,6 +619,10 @@ class gpgpu_sim : public gpgpu_t {
 
   // backward pointer
   class gpgpu_context *gpgpu_ctx;
+                                                // // 获取CTR Cache配置
+                                                // cache_config get_ctr_cache_config() {
+                                                //   return m_config.m_memory_config.m_CTR_config;
+                                                // }
 
  private:
   // clocks
@@ -669,6 +674,7 @@ class gpgpu_sim : public gpgpu_t {
   const shader_core_config *m_shader_config;
   const memory_config *m_memory_config;
 
+  protected:
   // stats
   class shader_core_stats *m_shader_stats;
   class memory_stats_t *m_memory_stats;

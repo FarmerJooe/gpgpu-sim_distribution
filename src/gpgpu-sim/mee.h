@@ -13,11 +13,11 @@
 
 class mee {
     public:
-        mee(class memory_partition_unit *unit, class meta_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, class gpgpu_sim *gpu, class ECCEngine *ecc);
+        mee(class memory_partition_unit *unit, class data_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, counterMap *ctrModCount, class gpgpu_sim *gpu, class ECCEngine *ecc);
         void cycle(unsigned cycle);
         void simple_cycle(unsigned cycle);
         void print_addr(char s[], mem_fetch *mf) const;
-        void print_status(class meta_cache *m_METAcache, mem_fetch *mf);
+        void print_status(class data_cache *m_METAcache, mem_fetch *mf);
         void print_tag();
         void print_ctr(new_addr_type sub_partition_id, new_addr_type partition_addr);
         void meta_access(fifo_pipeline<mem_fetch> *m_META_queue, new_addr_type addr, mem_access_type type, 
@@ -42,9 +42,9 @@ class mee {
         void gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id);
         bool META_queue_empty();
 
-        void META_fill_responses(class meta_cache *m_METAcache,  fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK);
+        void META_fill_responses(class data_cache *m_METAcache,  fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK);
         void CTR_fill();
-        void META_fill(class meta_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type);
+        void META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type);
 
         bool CTR_busy();
         bool MAC_busy();
@@ -60,7 +60,7 @@ class mee {
             int id;
             bool wr;
         };
-        class meta_cache *m_CTRcache;
+        class data_cache *m_CTRcache;
         class meta_cache *m_MACcache;
         class meta_cache *m_BMTcache;
         class memory_partition_unit *m_unit;

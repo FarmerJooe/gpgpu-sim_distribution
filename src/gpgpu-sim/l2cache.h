@@ -33,6 +33,7 @@
 #include "../abstract_hardware_model.h"
 #include "dram.h"
 #include "gpu-cache.h"
+#include "ctr-cache.h"
 
 #include <list>
 #include <queue>
@@ -142,6 +143,7 @@ class memory_partition_unit {
   bool mee_L2_queue_full(unsigned spid) const;
 
   class memory_sub_partition **m_sub_partition;
+  counterMap *m_ctrModCount;
   
  private:
   unsigned m_id;
@@ -150,7 +152,11 @@ class memory_partition_unit {
   // class memory_sub_partition **m_sub_partition;
   class dram_t *m_dram;
 
+  #ifdef COMPRESSION_Enable
+  class ctr_cache *m_CTRcache;
+  #else
   class meta_cache *m_CTRcache;
+  #endif
   class meta_cache *m_MACcache;
   class meta_cache *m_BMTcache;
   class mee *m_mee;

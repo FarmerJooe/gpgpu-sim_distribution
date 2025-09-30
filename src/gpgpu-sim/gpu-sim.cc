@@ -46,6 +46,7 @@
 #include "delayqueue.h"
 #include "dram.h"
 #include "gpu-cache.h"
+#include "ctr-cache.h"
 #include "gpu-misc.h"
 #include "icnt_wrapper.h"
 #include "l2cache.h"
@@ -1535,7 +1536,7 @@ void gpgpu_sim::gpu_print_stat_pw() {
   for (unsigned n = 0; n < m_running_kernels.size(); n++) {
     m_kernel_more_cta_left += kernel_more_cta_left(m_running_kernels[n]);
   }
-  fprintf(statfout, "not_completed = %d\ttot_cta = %d\n", m_tot_not_completed, m_tot_not_completed + m_kernel_more_cta_left);
+  fprintf(statfout, "not_completed = %d\ttot_inst = %d\n", m_tot_not_completed, (gpu_tot_sim_insn + gpu_sim_insn));
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
     m_cluster[i]->print_not_completed(statfout);
   }
@@ -2101,7 +2102,14 @@ void gpgpu_sim::issue_block2core() {
 unsigned long long g_single_step =
     0;  // set this in gdb to single step the pipeline
 
+void gpgpu_sim::test() {
+  test_ctr_cache(this);
+}
+
 void gpgpu_sim::cycle() {
+
+  // test();
+
   int clock_mask = next_clock_domain();
 
   if (clock_mask & CORE) {

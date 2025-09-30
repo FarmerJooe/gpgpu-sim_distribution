@@ -125,9 +125,17 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   m_mf_allocator = new partition_mf_allocator(config);
 
   if (!m_config->m_META_config.disabled()) {
+    #ifdef COMPRESSION_Enable
+    m_CTRcache =
+        new ctr_cache(CTRc_name, m_config->m_CTR_config, -1, -1, m_CTRinterface,
+                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+    m_ctrModCount = m_CTRcache->m_ctrModCount;
+    #else
     m_CTRcache =
         new meta_cache(CTRc_name, m_config->m_CTR_config, -1, -1, m_CTRinterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+    m_ctrModCount = new counterMap();
+    #endif
     m_MACcache =
         new meta_cache(MACc_name, m_config->m_META_config, -1, -1, m_MACinterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
@@ -136,7 +144,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
   }
   
-  m_mee = new mee(this, m_CTRcache, m_MACcache, m_BMTcache, m_config, m_gpu, m_ecc);
+  m_mee = new mee(this, m_CTRcache, m_MACcache, m_BMTcache, m_config, m_ctrModCount, m_gpu, m_ecc);
 
   m_sub_partition = new memory_sub_partition
       *[m_config->m_n_sub_partition_per_memory_channel];
@@ -290,8 +298,11 @@ void memory_partition_unit::cache_cycle(unsigned cycle) {
   #endif
 
   // printf("memory_partition_unit cycle: %d\n", cycle);
+  #ifdef MEE_Enable
   m_mee->simple_cycle(cycle);
-  // m_mee->cycle(cycle);
+  #else
+  m_mee->cycle(cycle);
+  #endif
 }
 
 void memory_partition_unit::visualizer_print(gzFile visualizer_file) const {
@@ -592,7 +603,7 @@ void memory_partition_unit::print(FILE *fp) const {
 
 void memory_partition_unit::accumulate_METAcache_stats(
     class cache_stats &l2_stats, char META[]) const {
-  class meta_cache *m_METAcache;
+  class data_cache *m_METAcache;
   if (strcmp(META, "CTR") == 0) {
     m_METAcache = m_CTRcache;
   } else if (strcmp(META, "MAC") == 0) {
@@ -610,7 +621,7 @@ void memory_partition_unit::accumulate_METAcache_stats(
 
 void memory_partition_unit::get_METAcache_sub_stats(
     struct cache_sub_stats &css, char META[]) const {
-  class meta_cache *m_METAcache;
+  class data_cache *m_METAcache;
   if (strcmp(META, "CTR") == 0) {
     m_METAcache = m_CTRcache;
   } else if (strcmp(META, "MAC") == 0) {

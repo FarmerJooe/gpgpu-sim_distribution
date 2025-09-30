@@ -233,6 +233,80 @@ void tag_array::remove_pending_line(mem_fetch *mf) {
   }
 }
 
+bool tag_array::is_invalid_line(unsigned index) {
+  cache_block_t *line = m_lines[index];
+  return line->is_invalid_line();
+}
+
+bool tag_array::find_victim_line(unsigned set_index, unsigned &idx, bool &wb, evicted_block_info &evicted) {
+  bool all_reserved = true;
+  unsigned valid_line = (unsigned)-1;
+  unsigned long long valid_timestamp = (unsigned)-1;
+
+  wb = false;
+
+  for (unsigned way = 0; way < m_config.m_assoc; way++) {
+    unsigned index = set_index * m_config.m_assoc + way;
+    cache_block_t *line = m_lines[index];
+
+    if (!line->is_reserved_line()) {
+      // percentage of dirty lines in the cache
+      // number of dirty lines / total lines in the cache
+      float dirty_line_percentage =
+          ((float)m_dirty / (m_config.m_nset * m_config.m_assoc)) * 100;
+      // If the cacheline is from a load op (not modified), 
+      // or the total dirty cacheline is above a specific value,
+      // Then this cacheline is eligible to be considered for replacement candidate
+      // i.e. Only evict clean cachelines until total dirty cachelines reach the limit.
+      if (!line->is_modified_line() ||
+          dirty_line_percentage >= m_config.m_wr_percent) {
+        
+        if (line->is_invalid_line()) {
+          continue;
+        } else {
+          all_reserved = false;
+          // valid line : keep track of most appropriate replacement candidate
+          if (m_config.m_replacement_policy == LRU) {
+            if (line->get_last_access_time() < valid_timestamp) {
+              valid_timestamp = line->get_last_access_time();
+              valid_line = index;
+            }
+          } else if (m_config.m_replacement_policy == FIFO) {
+            if (line->get_alloc_time() < valid_timestamp) {
+              valid_timestamp = line->get_alloc_time();
+              valid_line = index;
+            }
+          }
+        }
+      }
+    }
+  }
+  if (all_reserved) {
+    assert(m_config.m_alloc_policy == ON_MISS);
+    return false;  // miss and not enough space in cache to allocate
+                              // on miss
+  }
+
+  if (valid_line != (unsigned)-1) {
+    idx = valid_line;
+    if (m_lines[idx]->is_modified_line()) {
+      wb = true;
+      // m_lines[idx]->set_byte_mask(mf);
+      evicted.set_info(m_lines[idx]->m_block_addr,
+                        m_lines[idx]->get_modified_size(),
+                        m_lines[idx]->get_dirty_byte_mask(),
+                        m_lines[idx]->get_dirty_sector_mask());
+      m_dirty--;
+    }
+    for (unsigned j = 0; j < SECTOR_CHUNCK_SIZE; j++)
+      m_lines[idx]->set_status(INVALID, mem_access_sector_mask_t().set(j));
+  } else
+    abort();  // if an unreserved block exists, it is either invalid or
+              // replaceable
+  
+  return true;
+}
+
 enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
                                            mem_fetch *mf, bool is_write,
                                            bool probe_mode) const {

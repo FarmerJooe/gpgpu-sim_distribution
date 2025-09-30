@@ -819,6 +819,10 @@ class cache_config {
     assert(m_valid);
     return m_nset;
   }
+  unsigned get_assoc() const {
+    assert(m_valid);
+    return m_assoc;
+  }
   unsigned get_total_size_inKB() const {
     assert(m_valid);
     return (m_assoc * m_nset * m_line_sz) / 1024;
@@ -948,6 +952,8 @@ class tag_array {
                                   mem_access_sector_mask_t mask, bool is_write,
                                   bool probe_mode = false,
                                   mem_fetch *mf = NULL) const;
+  bool is_invalid_line(unsigned index);
+  bool find_victim_line(unsigned set_index, unsigned &idx, bool &wb, evicted_block_info &evicted);
   enum cache_request_status access(new_addr_type addr, unsigned time,
                                    unsigned &idx, mem_fetch *mf);
   enum cache_request_status access(new_addr_type addr, unsigned time,
@@ -1614,7 +1620,7 @@ class data_cache : public baseline_cache {
                                            unsigned time,
                                            std::list<cache_event> &events);
 
- protected:
+ public:
   data_cache(const char *name, cache_config &config, int core_id, int type_id,
              mem_fetch_interface *memport, mem_fetch_allocator *mfcreator,
              enum mem_fetch_status status, tag_array *new_tag_array,
@@ -1628,6 +1634,7 @@ class data_cache : public baseline_cache {
     m_gpu = gpu;
   }
 
+ protected:
   mem_access_type m_wr_alloc_type;  // Specifies type of write allocate request
                                     // (e.g., L1 or L2)
   mem_access_type

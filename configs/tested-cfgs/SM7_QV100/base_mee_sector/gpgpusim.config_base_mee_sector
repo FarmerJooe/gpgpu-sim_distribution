@@ -42,7 +42,7 @@
 -gpgpu_ptx_instruction_classification 0
 -gpgpu_ptx_sim_mode 0
 -gpgpu_ptx_force_max_capability 70 
-# -gpgpu_max_cycle 500000
+-gpgpu_max_cycle 500000
 
 # Device Limits
 -gpgpu_stack_size_limit 1024
@@ -204,7 +204,7 @@
 -dram_latency 100
 
 # dram model config
--gpgpu_dram_scheduler 0
+-gpgpu_dram_scheduler 1
 -gpgpu_frfcfs_dram_sched_queue_size 64
 -gpgpu_dram_return_queue_size 192
 
