@@ -14,7 +14,7 @@ mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class me
     m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     #ifdef CTR_HIERACHY
-    m_mee_dram_sync_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 20);
+    m_mee_dram_sync_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     #endif
     m_MAC_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_BMT_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
@@ -22,13 +22,13 @@ mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class me
     m_CTR_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_MAC_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
     m_BMT_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
-    m_Ciphertext_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len + 100);
+    m_Ciphertext_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
 
     m_OTP_queue = new fifo_pipeline<unsigned>("meta-queue", m_config->m_crypto_latency, m_config->m_crypto_latency + len);
-    m_AES_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 4);
+    m_AES_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
 
     m_HASH_queue = new fifo_pipeline<hash>("meta-queue", m_config->m_crypto_latency, m_config->m_crypto_latency + len);
-    m_MAC_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, 4);
+    m_MAC_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
 
     // m_HASH_queue = new fifo_pipeline<unsigned>("meta-queue", 40, 40 + len);
     m_BMT_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
