@@ -33,6 +33,63 @@
 #include <zlib.h>
 #include <map>
 
+enum mee_latency_stage {
+  SUBPARTITION_STAGE = 0,
+  CIPHER_QUEUE_STAGE,
+  AES_QUEUE_STAGE,
+  AES_SERVICE_STAGE,
+  MAC_QUEUE_STAGE,
+  HASH_QUEUE_STAGE,
+  BMT_QUEUE_STAGE,
+  BMT_CHECK_STAGE,
+  CTR_META_STAGE,
+  MAC_META_STAGE,
+  BMT_META_STAGE,
+  CIPHER_DRAM_STAGE,
+  RETURN_STAGE,
+  NUM_MEE_LATENCY_STAGE
+};
+
+enum mee_stall_stage {
+  SUBPARTITION_ARBITRATION_STALL = 0,
+  CIPHER_QUEUE_FULL_STALL,
+  AES_INPUT_STALL,
+  MAC_QUEUE_FULL_STALL,
+  HASH_QUEUE_FULL_STALL,
+  BMT_QUEUE_FULL_STALL,
+  BMT_CHECK_QUEUE_FULL_STALL,
+  CTR_META_RESERVATION_STALL,
+  MAC_META_RESERVATION_STALL,
+  BMT_META_RESERVATION_STALL,
+  MEE_DRAM_QUEUE_FULL_STALL_CTR,
+  MEE_DRAM_QUEUE_FULL_STALL_MAC,
+  MEE_DRAM_QUEUE_FULL_STALL_BMT,
+  MEE_DRAM_QUEUE_FULL_STALL_DATA,
+  MEE_L2_QUEUE_FULL_STALL,
+  NUM_MEE_STALL_STAGE
+};
+
+enum meta_access_type {
+  META_ACCESS_CTR = 0,
+  META_ACCESS_MAC,
+  META_ACCESS_BMT,
+  NUM_META_ACCESS_TYPE
+};
+
+struct stage_latency_stats {
+  unsigned long long total;
+  unsigned long long max;
+  unsigned long long samples;
+  unsigned long long hist[32];
+  void clear() {
+    total = 0;
+    max = 0;
+    samples = 0;
+    for (unsigned i = 0; i < 32; ++i) hist[i] = 0;
+  }
+  void add(unsigned long long latency);
+};
+
 class memory_config;
 class memory_stats_t {
  public:
@@ -46,6 +103,19 @@ class memory_stats_t {
   void memlatstat_icnt2mem_pop(class mem_fetch *mf);
   void memlatstat_lat_pw();
   void memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk);
+
+  void record_stage_latency(enum mee_latency_stage stage,
+                            unsigned long long latency);
+  void record_stage_stall(enum mee_stall_stage stage,
+                          unsigned long long cycles = 1);
+  void record_meta_request(enum meta_access_type type, unsigned bytes);
+  void record_meta_latency(enum meta_access_type type,
+                           unsigned long long latency);
+  void record_cipher_dram_request(unsigned bytes);
+  void record_cipher_dram_latency(unsigned long long latency);
+  void record_return_latency(unsigned long long latency);
+  void record_aes_busy(unsigned long long cycles);
+  void record_aes_idle(unsigned long long cycles = 1);
 
   void visualizer_print(gzFile visualizer_file);
 
@@ -123,6 +193,22 @@ class memory_stats_t {
   unsigned total_n_access;
   unsigned total_n_reads;
   unsigned total_n_writes;
+
+  stage_latency_stats m_stage_latency[NUM_MEE_LATENCY_STAGE];
+  unsigned long long m_stage_stall[NUM_MEE_STALL_STAGE];
+
+  unsigned long long m_meta_requests[NUM_META_ACCESS_TYPE];
+  unsigned long long m_meta_bytes[NUM_META_ACCESS_TYPE];
+  stage_latency_stats m_meta_latency[NUM_META_ACCESS_TYPE];
+
+  unsigned long long m_cipher_dram_requests;
+  unsigned long long m_cipher_dram_bytes;
+  stage_latency_stats m_cipher_dram_latency;
+
+  stage_latency_stats m_return_latency;
+
+  unsigned long long m_aes_busy_cycles;
+  unsigned long long m_aes_idle_cycles;
 };
 
 #endif /*MEM_LATENCY_STAT_H*/

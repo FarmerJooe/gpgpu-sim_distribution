@@ -42,6 +42,8 @@
 #include "gpu-cache.h"
 #include "shader.h"
 
+class memory_stats_t;
+
 // constants for statistics printouts
 #define GPU_RSTAT_SHD_INFO 0x1
 #define GPU_RSTAT_BW_STAT 0x2
@@ -724,6 +726,7 @@ class gpgpu_sim : public gpgpu_t {
   bool has_special_cache_config(std::string kernel_name);
   void change_cache_config(FuncCache cache_config);
   void set_cache_config(std::string kernel_name);
+  memory_stats_t *get_memory_stats() { return m_memory_stats; }
 
   // Jin: functional simulation for CDP
  private:

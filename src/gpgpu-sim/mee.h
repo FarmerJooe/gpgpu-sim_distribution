@@ -10,6 +10,7 @@
 #include "shader.h"
 #include "gpu-sim.h"
 #include "ecc.h"
+#include "mem_latency_stat.h"
 
 class mee {
     public:
@@ -35,6 +36,8 @@ class mee {
         new_addr_type get_partition_addr(mem_fetch *mf);
         new_addr_type get_sub_partition_id(mem_fetch *mf);
         new_addr_type get_addr(new_addr_type partition_id, new_addr_type partition_addr);
+        void push_cipher_request(mem_fetch *mf);
+        unsigned next_mf_id();
 
         unsigned int get_BMT_Layer(new_addr_type addr);
         void gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id);

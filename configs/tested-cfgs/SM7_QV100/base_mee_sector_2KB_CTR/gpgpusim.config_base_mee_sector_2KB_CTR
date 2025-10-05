@@ -240,10 +240,11 @@
 -visualizer_enabled 0
 
 # tracing functionality
--trace_enabled 1
--trace_components LIVENESS
+-trace_enabled 0
+-trace_components LIVENESS,MEMORY_PARTITION_UNIT,MEMORY_SUBPARTITION_UNIT
 #-trace_components WARP_SCHEDULER,SCOREBOARD
 -trace_sampling_core 0
+-trace_sampling_memory_partition -1
 
 # power simulation
 -power_simulation_enabled 1 

@@ -240,7 +240,7 @@
 -visualizer_enabled 0
 
 # tracing functionality
--trace_enabled 1
+-trace_enabled 0
 -trace_components LIVENESS
 #-trace_components WARP_SCHEDULER,SCOREBOARD
 -trace_sampling_core 0

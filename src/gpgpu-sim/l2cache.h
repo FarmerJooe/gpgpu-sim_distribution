@@ -183,6 +183,8 @@ class memory_partition_unit {
   const unsigned send_trigger_threshold = 64;
   const unsigned receive_stop_threshold = 64;
   unsigned last_send = 0;
+
+  void normalize_sub_partition(mem_fetch *mf, const char *context);
   // fifo_pipeline<mem_fetch> *m_NORM_dram_queue; 
   // fifo_pipeline<mem_fetch> *m_CTR_dram_queue; 
   // fifo_pipeline<mem_fetch> *m_MAC_dram_queue; 

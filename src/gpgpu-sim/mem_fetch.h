@@ -203,6 +203,16 @@ class mem_fetch {
   enum BMT_Layer m_BMT_Layer = DEFAULT;
   unsigned long long m_miss_cycle[10];
   unsigned long long m_fill_cycle[10];
+  unsigned long long m_subpartition_arrival_time;
+  unsigned long long m_cipher_enqueue_time;
+  unsigned long long m_aes_enqueue_time;
+  unsigned long long m_mac_enqueue_time;
+  unsigned long long m_bmt_enqueue_time;
+  unsigned long long m_hash_enqueue_time;
+  unsigned long long m_ctr_enqueue_time;
+  unsigned long long m_meta_issue_time;
+  unsigned long long m_cipher_dram_issue_time;
+  unsigned long long m_decrypt_finish_time;
   void set_miss_cycle(enum cache_form _cache_form, unsigned long long cycle) {
     this->m_miss_cycle[_cache_form] = cycle;
   }
@@ -218,6 +228,72 @@ class mem_fetch {
   unsigned long long get_fill_cycle(enum cache_form _cache_form) {
     return this->m_fill_cycle[_cache_form];
   }
+
+  void set_subpartition_arrival_time(unsigned long long cycle) {
+    m_subpartition_arrival_time = cycle;
+  }
+  unsigned long long get_subpartition_arrival_time() const {
+    return m_subpartition_arrival_time;
+  }
+
+  void set_cipher_enqueue_time(unsigned long long cycle) {
+    m_cipher_enqueue_time = cycle;
+  }
+  unsigned long long get_cipher_enqueue_time() const {
+    return m_cipher_enqueue_time;
+  }
+  void reset_cipher_enqueue_time() { m_cipher_enqueue_time = 0; }
+
+  void set_aes_enqueue_time(unsigned long long cycle) {
+    m_aes_enqueue_time = cycle;
+  }
+  unsigned long long get_aes_enqueue_time() const { return m_aes_enqueue_time; }
+  void reset_aes_enqueue_time() { m_aes_enqueue_time = 0; }
+
+  void set_mac_enqueue_time(unsigned long long cycle) {
+    m_mac_enqueue_time = cycle;
+  }
+  unsigned long long get_mac_enqueue_time() const { return m_mac_enqueue_time; }
+  void reset_mac_enqueue_time() { m_mac_enqueue_time = 0; }
+
+  void set_ctr_enqueue_time(unsigned long long cycle) {
+    m_ctr_enqueue_time = cycle;
+  }
+  unsigned long long get_ctr_enqueue_time() const { return m_ctr_enqueue_time; }
+  void reset_ctr_enqueue_time() { m_ctr_enqueue_time = 0; }
+
+  void set_bmt_enqueue_time(unsigned long long cycle) {
+    m_bmt_enqueue_time = cycle;
+  }
+  unsigned long long get_bmt_enqueue_time() const { return m_bmt_enqueue_time; }
+  void reset_bmt_enqueue_time() { m_bmt_enqueue_time = 0; }
+
+  void set_hash_enqueue_time(unsigned long long cycle) {
+    m_hash_enqueue_time = cycle;
+  }
+  unsigned long long get_hash_enqueue_time() const { return m_hash_enqueue_time; }
+  void reset_hash_enqueue_time() { m_hash_enqueue_time = 0; }
+
+  void set_meta_issue_time(unsigned long long cycle) { m_meta_issue_time = cycle; }
+  unsigned long long get_meta_issue_time() const { return m_meta_issue_time; }
+  void reset_meta_issue_time() { m_meta_issue_time = 0; }
+
+  void set_cipher_dram_issue_time(unsigned long long cycle) {
+    assert(cycle <= 1000000);
+    m_cipher_dram_issue_time = cycle;
+  }
+  unsigned long long get_cipher_dram_issue_time() const {
+    return m_cipher_dram_issue_time;
+  }
+  void reset_cipher_dram_issue_time() { m_cipher_dram_issue_time = 0; }
+
+  void set_decrypt_finish_time(unsigned long long cycle) {
+    m_decrypt_finish_time = cycle;
+  }
+  unsigned long long get_decrypt_finish_time() const {
+    return m_decrypt_finish_time;
+  }
+  void reset_decrypt_finish_time() { m_decrypt_finish_time = 0; }
 
 };
 

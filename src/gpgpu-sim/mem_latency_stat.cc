@@ -39,6 +39,61 @@
 #include "stat-tool.h"
 #include "visualizer.h"
 
+static unsigned int histogram_index(unsigned long long latency) {
+  if (latency == 0) return 0;
+  unsigned int idx = 0;
+  unsigned long long value = latency;
+  while (value >>= 1) ++idx;
+  if (idx >= 32) idx = 31;
+  return idx;
+}
+
+void stage_latency_stats::add(unsigned long long latency) {
+  total += latency;
+  ++samples;
+  if (latency > max) max = latency;
+  unsigned idx = histogram_index(latency);
+  hist[idx]++;
+}
+
+static const char *kMeeStageNames[NUM_MEE_LATENCY_STAGE] = {
+    "SubPartition",  "CipherQueue",     "AESQueue",    "AESService",
+    "MACQueue",      "HASHQueue",       "BMTQueue",    "BMTCheck",
+    "CTRMeta",       "MACMeta",         "BMTMeta",     "CipherDRAM",
+    "Return"};
+
+static const char *kMeeStallNames[NUM_MEE_STALL_STAGE] = {
+    "subpartition_arbitration", "cipher_queue_full", "aes_input",
+    "mac_queue_full",           "hash_queue_full",   "bmt_queue_full",
+    "bmt_check_queue_full",     "ctr_meta_reservation",
+    "mac_meta_reservation",     "bmt_meta_reservation",
+    "mee_dram_full_ctr",        "mee_dram_full_mac",
+    "mee_dram_full_bmt",        "mee_dram_full_data",
+    "mee_l2_full"};
+
+static const char *kMetaNames[NUM_META_ACCESS_TYPE] = {"CTR", "MAC", "BMT"};
+
+static void print_histogram_line(const stage_latency_stats &stats) {
+  printf("    hist:");
+  for (unsigned i = 0; i < 32; ++i) {
+    printf(" %llu", (unsigned long long)stats.hist[i]);
+  }
+  printf("\n");
+}
+
+static void print_latency_block(const char *label,
+                                const stage_latency_stats &stats) {
+  printf("[%s]\n", label);
+  printf("  samples              : %llu\n", stats.samples);
+  printf("  total_latency        : %llu\n", stats.total);
+  if (stats.samples)
+    printf("  avg_latency          : %llu\n", stats.total / stats.samples);
+  else
+    printf("  avg_latency          : 0\n");
+  printf("  max_latency          : %llu\n", stats.max);
+  print_histogram_line(stats);
+}
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -108,6 +163,20 @@ memory_stats_t::memory_stats_t(unsigned n_shader,
                       // mf_num_lat_pw to obtain average latency Per Window
   mf_total_lat = 0;
   num_mfs = 0;
+  for (unsigned k = 0; k < NUM_MEE_LATENCY_STAGE; ++k)
+    m_stage_latency[k].clear();
+  for (unsigned k = 0; k < NUM_MEE_STALL_STAGE; ++k) m_stage_stall[k] = 0;
+  for (unsigned k = 0; k < NUM_META_ACCESS_TYPE; ++k) {
+    m_meta_requests[k] = 0;
+    m_meta_bytes[k] = 0;
+    m_meta_latency[k].clear();
+  }
+  m_cipher_dram_requests = 0;
+  m_cipher_dram_bytes = 0;
+  m_cipher_dram_latency.clear();
+  m_return_latency.clear();
+  m_aes_busy_cycles = 0;
+  m_aes_idle_cycles = 0;
   printf("*** Initializing Memory Statistics ***\n");
   totalbankreads =
       (unsigned int **)calloc(mem_config->m_n_mem, sizeof(unsigned int *));
@@ -204,18 +273,56 @@ unsigned memory_stats_t::memlatstat_done(mem_fetch *mf) {
 
 void memory_stats_t::memlatstat_read_done(mem_fetch *mf) {
   if (m_memory_config->gpgpu_memlatency_stat) {
+    unsigned long long now =
+        m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle;
     unsigned mf_latency = memlatstat_done(mf);
     if (mf_latency >
         mf_max_lat_table[mf->get_tlx_addr().chip][mf->get_tlx_addr().bk])
       mf_max_lat_table[mf->get_tlx_addr().chip][mf->get_tlx_addr().bk] =
           mf_latency;
     unsigned icnt2sh_latency;
-    icnt2sh_latency = (m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle) -
-                      mf->get_return_timestamp();
+    icnt2sh_latency = now - mf->get_return_timestamp();
     tot_icnt2sh_latency += icnt2sh_latency;
     icnt2sh_lat_table[LOGB2(icnt2sh_latency)]++;
     if (icnt2sh_latency > max_icnt2sh_latency)
       max_icnt2sh_latency = icnt2sh_latency;
+
+    if (mf->get_meta_issue_time()) {
+      unsigned long long meta_latency =
+          now - mf->get_meta_issue_time();
+      meta_access_type meta_type = META_ACCESS_CTR;
+      switch (mf->get_data_type()) {
+        case CTR:
+          meta_type = META_ACCESS_CTR;
+          break;
+        case MAC:
+          meta_type = META_ACCESS_MAC;
+          break;
+        case BMT:
+          meta_type = META_ACCESS_BMT;
+          break;
+        default:
+          break;
+      }
+      if (mf->get_data_type() == CTR || mf->get_data_type() == MAC ||
+          mf->get_data_type() == BMT)
+        record_meta_latency(meta_type, meta_latency);
+      mf->reset_meta_issue_time();
+    }
+
+    if (mf->get_cipher_dram_issue_time()) {
+      unsigned long long cipher_latency =
+          now - mf->get_cipher_dram_issue_time();
+      record_cipher_dram_latency(cipher_latency);
+      mf->reset_cipher_dram_issue_time();
+    }
+
+    if (mf->get_decrypt_finish_time()) {
+      unsigned long long ret_latency =
+          now - mf->get_decrypt_finish_time();
+      record_return_latency(ret_latency);
+      mf->reset_decrypt_finish_time();
+    }
   }
 }
 
@@ -266,6 +373,61 @@ void memory_stats_t::memlatstat_lat_pw() {
     mf_tot_lat_pw = 0;
     mf_num_lat_pw = 0;
   }
+}
+
+void memory_stats_t::record_stage_latency(enum mee_latency_stage stage,
+                                          unsigned long long latency) {
+  if (!m_memory_config->gpgpu_memlatency_stat) return;
+  if (stage >= NUM_MEE_LATENCY_STAGE) return;
+  m_stage_latency[stage].add(latency);
+}
+
+void memory_stats_t::record_stage_stall(enum mee_stall_stage stage,
+                                        unsigned long long cycles) {
+  if (!m_memory_config->gpgpu_memlatency_stat) return;
+  if (stage >= NUM_MEE_STALL_STAGE) return;
+  m_stage_stall[stage] += cycles;
+}
+
+void memory_stats_t::record_meta_request(enum meta_access_type type,
+                                         unsigned bytes) {
+  if (!m_memory_config->gpgpu_memlatency_stat) return;
+  if (type >= NUM_META_ACCESS_TYPE) return;
+  m_meta_requests[type]++;
+  m_meta_bytes[type] += bytes;
+}
+
+void memory_stats_t::record_meta_latency(enum meta_access_type type,
+                                         unsigned long long latency) {
+  if (!m_memory_config->gpgpu_memlatency_stat) return;
+  if (type >= NUM_META_ACCESS_TYPE) return;
+  m_meta_latency[type].add(latency);
+}
+
+void memory_stats_t::record_cipher_dram_request(unsigned bytes) {
+  if (!m_memory_config->gpgpu_memlatency_stat) return;
+  m_cipher_dram_requests++;
+  m_cipher_dram_bytes += bytes;
+}
+
+void memory_stats_t::record_cipher_dram_latency(unsigned long long latency) {
+  if (!m_memory_config->gpgpu_memlatency_stat) return;
+  m_cipher_dram_latency.add(latency);
+}
+
+void memory_stats_t::record_return_latency(unsigned long long latency) {
+  if (!m_memory_config->gpgpu_memlatency_stat) return;
+  m_return_latency.add(latency);
+}
+
+void memory_stats_t::record_aes_busy(unsigned long long cycles) {
+  if (!m_memory_config->gpgpu_memlatency_stat) return;
+  m_aes_busy_cycles += cycles;
+}
+
+void memory_stats_t::record_aes_idle(unsigned long long cycles) {
+  if (!m_memory_config->gpgpu_memlatency_stat) return;
+  m_aes_idle_cycles += cycles;
 }
 
 void memory_stats_t::memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk) {
@@ -485,6 +647,52 @@ void memory_stats_t::memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk) {
       }
       printf("\n");
     }
+
+    printf("\n===== MEE Latency Breakdown =====\n");
+    for (unsigned stage = 0; stage < NUM_MEE_LATENCY_STAGE; ++stage) {
+      print_latency_block(kMeeStageNames[stage], m_stage_latency[stage]);
+    }
+
+    printf("\n===== MEE Stall Counters =====\n");
+    for (unsigned s = 0; s < NUM_MEE_STALL_STAGE; ++s) {
+      printf("[%s]\n  stall_cycles         : %llu\n",
+             kMeeStallNames[s], (unsigned long long)m_stage_stall[s]);
+    }
+
+    printf("\n===== Meta-DRAM =====\n");
+    unsigned long long total_meta_bytes = 0;
+    for (unsigned t = 0; t < NUM_META_ACCESS_TYPE; ++t) {
+      total_meta_bytes += m_meta_bytes[t];
+      print_latency_block(kMetaNames[t], m_meta_latency[t]);
+      printf("  requests             : %llu\n",
+             (unsigned long long)m_meta_requests[t]);
+      printf("  bytes                : %llu\n",
+             (unsigned long long)m_meta_bytes[t]);
+    }
+
+    printf("\n===== Cipher-DRAM =====\n");
+    print_latency_block("Cipher", m_cipher_dram_latency);
+    printf("  requests             : %llu\n",
+           (unsigned long long)m_cipher_dram_requests);
+    printf("  bytes                : %llu\n",
+           (unsigned long long)m_cipher_dram_bytes);
+
+    unsigned long long total_tracked_bytes =
+        total_meta_bytes + m_cipher_dram_bytes;
+    double meta_ratio = 0.0;
+    if (total_tracked_bytes)
+      meta_ratio =
+          (double)total_meta_bytes / (double)total_tracked_bytes;
+    printf("  meta_byte_ratio      : %.3f\n", meta_ratio);
+
+    printf("\n===== Return Path =====\n");
+    print_latency_block("Return", m_return_latency);
+
+    printf("\n[AES Utilization]\n");
+    printf("  busy_cycles          : %llu\n",
+           (unsigned long long)m_aes_busy_cycles);
+    printf("  idle_cycles          : %llu\n",
+           (unsigned long long)m_aes_idle_cycles);
   }
 
   if (m_memory_config->gpgpu_memlatency_stat & GPU_MEMLATSTAT_MC) {

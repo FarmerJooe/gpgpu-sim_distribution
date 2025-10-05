@@ -1,0 +1,37 @@
+diff --git a/src/gpgpu-sim/mem_fetch.cc b/src/gpgpu-sim/mem_fetch.cc
+index 9ef25d6..45ee672 100644
+--- a/src/gpgpu-sim/mem_fetch.cc
++++ b/src/gpgpu-sim/mem_fetch.cc
+@@ -71,9 +71,31 @@ mem_fetch::mem_fetch(const mem_access_t &access, const warp_inst_t *inst,
+   }
+   raw_data = true;
+   id = 0;
++  for (int i = 0; i < 10; ++i) {
++    m_miss_cycle[i] = 0;
++    m_fill_cycle[i] = 0;
++  }
++  m_subpartition_arrival_time = 0;
++  m_cipher_enqueue_time = 0;
++  m_aes_enqueue_time = 0;
++  m_mac_enqueue_time = 0;
++  m_bmt_enqueue_time = 0;
++  m_hash_enqueue_time = 0;
++  m_ctr_enqueue_time = 0;
++  m_meta_issue_time = 0;
++  m_cipher_dram_issue_time = 0;
++  m_decrypt_finish_time = 0;
+ }
+ 
+-mem_fetch::~mem_fetch() { m_status = MEM_FETCH_DELETED; }
++mem_fetch::~mem_fetch() {
++  if (id == 0 || m_data_type == TOT) {
++    fprintf(stderr,
++            "[MEE][mf_destroy] mf %p id %u addr 0x%llx data %d status %d\n",
++            (void *)this, id, (unsigned long long)m_access.get_addr(),
++            m_data_type, m_status);
++  }
++  m_status = MEM_FETCH_DELETED;
++}
+ 
+ #define MF_TUP_BEGIN(X) static const char *Status_str[] = {
+ #define MF_TUP(X) #X

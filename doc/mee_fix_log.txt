@@ -1,0 +1,9 @@
+[日志] 添加normalize_sub_partition函数修正mem_fetch分区ID异常，更新文件 src/gpgpu-sim/l2cache.h, src/gpgpu-sim/l2cache.cc
+[日志] 在simple_dram_model_cycle与dram_cycle中调用normalize_sub_partition以修正返回请求的分区编号
+[日志] normalize_sub_partition日志增加mem_fetch ID以追踪异常请求来源
+[日志] mee_dram_queue_push中增加ID为0的请求告警输出
+[日志] push_cipher_request增加ID为0的调试输出
+[日志] normalize日志新增指针地址便于识别悬挂指针
+[日志] mem_fetch析构函数记录ID为0或TOT类型的释放事件
+[日志] push_cipher_request检测到ID为0时分配新的mf_id并打印告警
+[日志] 在simple_dram_model_cycle与dram_cycle中过滤addr或ID为0的非法mf并记录drop日志
