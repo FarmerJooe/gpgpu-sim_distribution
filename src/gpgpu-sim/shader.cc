@@ -2969,12 +2969,12 @@ void gpgpu_sim::shader_print_cache_stats(FILE *fout) const {
       fprintf(stdout,
               "\tL1D_cache_core[%d]: Access = %llu, Miss = %llu, Miss_rate = "
               "%.3lf, Pending_hits = %llu, Reservation_fails = %llu, "
-              "average_kernel_stall_cycles = %llu, average_stall_cycles = %llu\n",
+              "average_kernel_avg_mf_latency = %llu, average_avg_mf_latency = %llu\n",
               i, css.accesses, css.misses,
               (double)css.misses / (double)css.accesses, css.pending_hits,
               css.res_fails,
-              css_pw.stall_cycles / std::max(1ull, css_pw.stall_count),
-              css.stall_cycles / std::max(1ull, css.stall_count));
+              css_pw.avg_mf_latency / std::max(1ull, css_pw.mf_count),
+              css.avg_mf_latency / std::max(1ull, css.mf_count));
 
       total_css += css;
       total_css_pw += css_pw;
@@ -2989,12 +2989,12 @@ void gpgpu_sim::shader_print_cache_stats(FILE *fout) const {
             total_css.pending_hits);
     fprintf(fout, "\tL1D_total_cache_reservation_fails = %llu\n",
             total_css.res_fails);
-    printf("L1D_total_average_cache_stall_cycles = %llu\n", total_css.stall_cycles / std::max(1ull, total_css.stall_count));
+    printf("L1D_total_average_avg_mf_latency = %llu\n", total_css.avg_mf_latency / std::max(1ull, total_css.mf_count));
     printf("L1D_kernel_cache_misses = %llu\n", (total_css_pw.read_misses + total_css_pw.write_misses));
     if (total_css_pw.accesses > 0)
       printf("L1D_kernel_cache_miss_rate = %.4lf\n",
               (double)(total_css_pw.read_misses + total_css_pw.write_misses) / (double)total_css_pw.accesses);
-    printf("L1D_kernel_average_cache_stall_cycles = %llu\n", total_css_pw.stall_cycles / std::max(1ull, total_css_pw.stall_count));
+    printf("L1D_kernel_average_avg_mf_latency = %llu\n", total_css_pw.avg_mf_latency / std::max(1ull, total_css_pw.mf_count));
     total_css.print_port_stats(fout, "\tL1D_cache");
   }
 

@@ -35,6 +35,7 @@
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <vector>
 #include "../abstract_hardware_model.h"
 #include "../option_parser.h"
 #include "../trace.h"
@@ -53,6 +54,8 @@ class memory_stats_t;
 #define GPU_RSTAT_PDOM 0x20
 #define GPU_RSTAT_SCHED 0x40
 #define GPU_MEMLATSTAT_MC 0x2
+#define GPU_MEMLATSTAT_QUEUE 0x4
+#define GPU_MEMLATSTAT_MEE 0x8
 
 // constants for configuring merging of coalesced scatter-gather requests
 #define TEX_MSHR_MERGE 0x4
@@ -178,6 +181,7 @@ class memory_config {
     gpgpu_dram_timing_opt = NULL;
     gpgpu_L2_queue_config = NULL;
     gpgpu_ctx = ctx;
+    gpgpu_memlatency_stat = 0;
   }
   void init() {
     assert(gpgpu_dram_timing_opt);
@@ -294,7 +298,7 @@ class memory_config {
   unsigned gpgpu_frfcfs_dram_sched_queue_size;
   unsigned gpgpu_dram_return_queue_size;
   enum dram_ctrl_t scheduler_type;
-  bool gpgpu_memlatency_stat;
+  unsigned gpgpu_memlatency_stat;
   unsigned m_n_mem;
   unsigned m_n_sub_partition_per_memory_channel;
   unsigned m_n_mem_sub_partition;
@@ -712,6 +716,7 @@ class gpgpu_sim : public gpgpu_t {
   // performance counter for stalls due to congestion.
   unsigned int gpu_stall_dramfull;
   unsigned int gpu_stall_icnt2sh;
+  std::vector<unsigned long long> gpu_stall_dramfull_per_subpartition;
   unsigned long long partiton_reqs_in_parallel;
   unsigned long long partiton_reqs_in_parallel_total;
   unsigned long long partiton_reqs_in_parallel_util;

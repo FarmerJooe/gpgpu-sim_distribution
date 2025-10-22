@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 
 #ifndef DELAYQUEUE_H
 #define DELAYQUEUE_H
@@ -55,9 +56,26 @@ class fifo_pipeline {
     m_head = NULL;
     m_tail = NULL;
     for (unsigned i = 0; i < m_min_len; i++) push(NULL);
+    m_busy_cycles = 0;
+  }
+
+  fifo_pipeline(const char* nm, unsigned int id, unsigned int minlen, unsigned int maxlen) {
+    char name[64];
+    snprintf(name, sizeof(name), "%s_%03u", nm, id);
+    assert(maxlen);
+    m_name = name;
+    m_min_len = minlen;
+    m_max_len = maxlen;
+    m_length = 0;
+    m_n_element = 0;
+    m_head = NULL;
+    m_tail = NULL;
+    for (unsigned i = 0; i < m_min_len; i++) push(NULL);
+    m_busy_cycles = 0;
   }
 
   ~fifo_pipeline() {
+    // print_busy();
     while (m_head) {
       m_tail = m_head;
       m_head = m_head->m_next;
@@ -153,8 +171,8 @@ class fifo_pipeline {
     }
   }
 
-  bool full() const { return (m_max_len && m_length >= m_max_len); }
-  bool full(int n) const { return (m_max_len && m_length + n > m_max_len); }
+  bool full()  { return (m_max_len && m_length >= m_max_len) ? busy() : false; }
+  bool full(int n)  { return (m_max_len && m_length + n > m_max_len) ? busy() : false; }
   bool is_avilable_size(unsigned size) const {
     return (m_max_len && m_length + size - 1 >= m_max_len);
   }
@@ -165,7 +183,7 @@ class fifo_pipeline {
 
   void print() const {
     fifo_data<T>* ddp = m_head;
-    printf("%s(%d): ", m_name, m_length);
+    printf("%s(%d): ", m_name.c_str(), m_length);
     while (ddp) {
       printf("%p ", ddp->m_data);
       ddp = ddp->m_next;
@@ -173,13 +191,23 @@ class fifo_pipeline {
     printf("\n");
   }
 
+  void print_busy() const {
+    printf("%s busy: %llu\n", m_name.c_str(), m_busy_cycles);
+  }
+
+  bool busy() {
+    m_busy_cycles++;
+    return true;
+  }
+
  private:
-  const char* m_name;
+  std::string m_name;
 
   unsigned int m_min_len;
   unsigned int m_max_len;
   unsigned int m_length;
   unsigned int m_n_element;
+  unsigned long long m_busy_cycles;
 
   fifo_data<T>* m_head;
   fifo_data<T>* m_tail;

@@ -44,7 +44,7 @@
 #include "mee.h"
 #include "l2cache_trace.h"
 #include "mem_fetch.h"
-#include "mem_latency_stat.h"
+// #include "mem_latency_stat.h"
 #include "shader.h"
 
 void print_addr(char s[], mem_fetch *mf, unsigned cycle) {
@@ -97,11 +97,18 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   sscanf(m_config->gpgpu_L2_queue_config, "%u:%u:%u:%u", &icnt_L2, &L2_dram,
          &dram_L2, &L2_icnt);
   
-  m_mee_dram_queue[TOT] = new fifo_pipeline<mem_fetch>("mee-to-dram", 0, 1);
-  m_dram_mee_queue[TOT] = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, 1);
+  char fifo_mee_dram_name[32];
+  char fifo_dram_mee_name[32];
+  snprintf(fifo_mee_dram_name, 32, "mee-to-dram-%d_%03d\0", TOT, m_id);
+  snprintf(fifo_dram_mee_name, 32, "dram-to-mee-%d_%03d\0", TOT, m_id);
+  
+  m_mee_dram_queue[TOT] = new fifo_pipeline<mem_fetch>(fifo_mee_dram_name, 0, 1);
+  m_dram_mee_queue[TOT] = new fifo_pipeline<mem_fetch>(fifo_dram_mee_name, 0, 1);
   for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
-    m_mee_dram_queue[i] = new fifo_pipeline<mem_fetch>("mee-to-dram", 0, L2_dram);
-    m_dram_mee_queue[i] = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, dram_L2);
+    snprintf(fifo_mee_dram_name, 32, "mee-to-dram-%d_%03d\0", i, m_id);
+    snprintf(fifo_dram_mee_name, 32, "dram-to-mee-%d_%03d\0", i, m_id);
+    m_mee_dram_queue[i] = new fifo_pipeline<mem_fetch>(fifo_mee_dram_name, 0, L2_dram);
+    m_dram_mee_queue[i] = new fifo_pipeline<mem_fetch>(fifo_dram_mee_name, 0, dram_L2);
   }
 
   char CTRc_name[32];
@@ -112,16 +119,20 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   snprintf(BMTc_name, 32, "BMT_bank_%03d\0", m_id);
   // m_metainterface = new metainterface(this);
   #ifdef CTR_HIERACHY
-  m_ctr_L2_bundle_queue = new fifo_pipeline<mem_fetch>("ctr-L2-bundle", 0, 128);
-  m_L2_ctr_bundle_queue = new fifo_pipeline<mem_fetch>("L2-ctr-bundle", 0, 128);
+  char fifo_ctr_L2_bundle_name[32];
+  snprintf(fifo_ctr_L2_bundle_name, 32, "ctr-L2-bundle-%d_%03d\0", TOT, m_id);
+  char fifo_L2_ctr_bundle_name[32];
+  snprintf(fifo_L2_ctr_bundle_name, 32, "L2-ctr-bundle-%d_%03d\0", TOT, m_id);
+  m_ctr_L2_bundle_queue = new fifo_pipeline<mem_fetch>(fifo_ctr_L2_bundle_name, 0, 128);
+  m_L2_ctr_bundle_queue = new fifo_pipeline<mem_fetch>(fifo_L2_ctr_bundle_name, 0, 128);
   #endif
-  m_BMTinterface = new metainterface(m_mee_dram_queue[BMT]);
+  m_BMTinterface = new metainterface(m_mee_dram_queue[BMT], m_gpu, m_stats);
   #ifdef CTR_HIERACHY
-  m_CTRinterface = new metainterface(m_ctr_L2_bundle_queue);
+  m_CTRinterface = new metainterface(m_ctr_L2_bundle_queue, m_gpu, m_stats);
   #else
-  m_CTRinterface = new metainterface(m_mee_dram_queue[CTR]);
+  m_CTRinterface = new metainterface(m_mee_dram_queue[CTR], m_gpu, m_stats);
   #endif
-  m_MACinterface = new metainterface(m_mee_dram_queue[MAC]);
+  m_MACinterface = new metainterface(m_mee_dram_queue[MAC], m_gpu, m_stats);
   m_mf_allocator = new partition_mf_allocator(config);
 
   if (!m_config->m_META_config.disabled()) {
@@ -160,6 +171,22 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   m_cache_MAC_acc = 0;
   m_cache_BMT_acc = 0;
   m_cache_meta_wb = 0;
+}
+
+void memory_partition_unit::print_mem_part_fifo_busy() const {
+  for (unsigned i = 0; i < NUM_DATA_TYPE; i++) {
+    m_mee_dram_queue[i]->print_busy();
+    m_dram_mee_queue[i]->print_busy();
+  }
+  #ifdef CTR_HIERACHY
+  m_ctr_L2_bundle_queue->print_busy();
+  m_L2_ctr_bundle_queue->print_busy();
+  #endif
+  for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel; p++) {
+    m_sub_partition[p]->print_sub_partition_fifo_busy();
+  }
+  m_mee->print_mee_fifo_busy();
+
 }
 
 void memory_partition_unit::handle_memcpy_to_gpu(
@@ -828,21 +855,52 @@ memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,
   sscanf(m_config->gpgpu_L2_queue_config, "%u:%u:%u:%u", &icnt_L2, &L2_dram,
          &dram_L2, &L2_icnt);
   #ifdef CTR_HIERACHY
-  m_ctr_L2_queue = new fifo_pipeline<mem_fetch>("ctr-to-L2", 0, 64);
+  char fifo_ctr_L2_name[32];
+  snprintf(fifo_ctr_L2_name, 32, "ctr-to-L2_%03d\0", m_id);
+  m_ctr_L2_queue = new fifo_pipeline<mem_fetch>("fifo_ctr_L2_name", 0, 64);
   #endif
-  m_icnt_L2_queue = new fifo_pipeline<mem_fetch>("icnt-to-L2", 0, icnt_L2);
+  char fifo_icnt_L2_name[32];
+  snprintf(fifo_icnt_L2_name, 32, "icnt-to-L2_%03d\0", m_id);
+  m_icnt_L2_queue = new fifo_pipeline<mem_fetch>(fifo_icnt_L2_name, 0, icnt_L2);
   #ifdef CTR_HIERACHY
-  m_L2_mee_queue[CTR] = new fifo_pipeline<mem_fetch>("L2-ctr-to-mee", 0, L2_dram + 64);
-  m_L2_mee_queue[NORM] = new fifo_pipeline<mem_fetch>("L2-data-to-mee", 0, L2_dram + 64);
+  char fifo_L2_mee_ctr_name[32];
+  snprintf(fifo_L2_mee_ctr_name, 32, "L2-ctr-to-mee_%03d\0", m_id);
+  char fifo_L2_mee_norm_name[32];
+  snprintf(fifo_L2_mee_norm_name, 32, "L2-data-to-mee_%03d\0", m_id);
+  m_L2_mee_queue[CTR] = new fifo_pipeline<mem_fetch>(fifo_L2_mee_ctr_name, 0, L2_dram + 64);
+  m_L2_mee_queue[NORM] = new fifo_pipeline<mem_fetch>(fifo_L2_mee_norm_name, 0, L2_dram + 64);
   #else
-  m_L2_mee_queue = new fifo_pipeline<mem_fetch>("L2-to-mee", 0, L2_dram);
+  char fifo_L2_mee_name[32];
+  snprintf(fifo_L2_mee_name, 32, "L2-to-mee_%03d\0", m_id);
+  m_L2_mee_queue = new fifo_pipeline<mem_fetch>(fifo_L2_mee_name, 0, L2_dram);
   #endif
   // m_mee_dram_queue = new fifo_pipeline<mem_fetch>("mee-to-dram", 0, L2_dram);
   // m_dram_mee_queue = new fifo_pipeline<mem_fetch>("dram-to-mee", 0, dram_L2);
-  m_mee_L2_queue = new fifo_pipeline<mem_fetch>("mee-to-L2", 0, dram_L2);
-  m_L2_ctr_queue = new fifo_pipeline<mem_fetch>("L2-to-ctr", 0, 64);
-  m_L2_icnt_queue = new fifo_pipeline<mem_fetch>("L2-to-icnt", 0, L2_icnt);
+  char fifo_mee_L2_name[32];
+  snprintf(fifo_mee_L2_name, 32, "mee-to-L2_%03d\0", m_id);
+  char fifo_L2_ctr_name[32];
+  snprintf(fifo_L2_ctr_name, 32, "L2-to-ctr_%03d\0", m_id);
+  char fifo_L2_icnt_name[32];
+  snprintf(fifo_L2_icnt_name, 32, "L2-to-icnt_%03d\0", m_id);
+  m_mee_L2_queue = new fifo_pipeline<mem_fetch>(fifo_mee_L2_name, 0, dram_L2);
+  m_L2_ctr_queue = new fifo_pipeline<mem_fetch>(fifo_L2_ctr_name, 0, 64);
+  m_L2_icnt_queue = new fifo_pipeline<mem_fetch>(fifo_L2_icnt_name, 0, L2_icnt);
   wb_addr = -1;
+}
+
+void memory_sub_partition::print_sub_partition_fifo_busy() const {
+  // use fifo print_busy() function
+  #ifdef CTR_HIERACHY
+  m_ctr_L2_queue->print_busy();
+  #endif
+  m_icnt_L2_queue->print_busy();
+  #ifndef CTR_HIERACHY
+  m_L2_mee_queue->print_busy();
+  #endif
+  m_mee_L2_queue->print_busy();
+  m_L2_icnt_queue->print_busy();
+
+
 }
 
 memory_sub_partition::~memory_sub_partition() {
@@ -946,7 +1004,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
         m_L2cache->fill(mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
                                 m_memcpy_cycle_offset);
         // mf->set_l2_fill_cycle(m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
-        // m_L2cache->inc_stall_cycles(1);
+        // m_L2cache->inc_mf_latency(1);
         m_mee_L2_queue->pop();
       }
     }
@@ -1551,6 +1609,14 @@ void memory_sub_partition::push(mem_fetch *m_req, unsigned long long cycle) {
 
 mem_fetch *memory_sub_partition::pop() {
   mem_fetch *mf = m_L2_icnt_queue->pop();
+  if (mf && mf->get_subpartition_arrival_time()) {
+    unsigned long long now =
+        m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
+    unsigned long long queue_wait =
+        now - mf->get_subpartition_arrival_time();
+    m_stats->record_subpartition_queue_latency(m_id, queue_wait);
+    mf->set_subpartition_arrival_time(0);
+  }
   m_request_tracker.erase(mf);
   if (mf && mf->isatomic()) mf->do_atomic();
   if (mf && (mf->get_access_type() == L2_WRBK_ACC ||
@@ -1616,4 +1682,22 @@ void memory_sub_partition::visualizer_print(gzFile visualizer_file) {
   m_stats->L2_write_hit += temp_sub_stats.write_hits;
 
   clear_L2cache_stats_pw();
+}
+
+enum meta_access_type get_data_type2meta_access_type(enum data_type dtype) {
+  switch (dtype) {
+    case TOT:
+      return NUM_META_ACCESS_TYPE;
+    case CTR:
+      return META_ACCESS_CTR;
+    case BMT:
+      return META_ACCESS_BMT;
+    case MAC:
+      return META_ACCESS_MAC;
+    case NORM:
+      return NUM_META_ACCESS_TYPE; // NORM access are recorded as CTR type
+    default:
+      assert(0);
+      return NUM_META_ACCESS_TYPE;
+  }
 }

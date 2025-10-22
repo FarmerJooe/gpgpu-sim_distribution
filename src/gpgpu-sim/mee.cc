@@ -11,28 +11,29 @@ mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class me
     m_gpu(gpu),
     m_ecc(ecc) {
     unsigned len = 64;
-    m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
-    m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    unsigned m_id = m_unit->get_mpid();
+    m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-CTR-queue", m_id, 0, len);
+    m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-Ciphertext-queue", m_id, 0, len);
     #ifdef CTR_HIERACHY
-    m_mee_dram_sync_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_mee_dram_sync_queue = new fifo_pipeline<mem_fetch>("meta-mee-dram-sync-queue", m_id, 0, len);
     #endif
-    m_MAC_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
-    m_BMT_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_MAC_queue = new fifo_pipeline<mem_fetch>("meta-MAC-queue", m_id, 0, len);
+    m_BMT_queue = new fifo_pipeline<mem_fetch>("meta-BMT-queue", m_id, 0, len);
 
-    m_CTR_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
-    m_MAC_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
-    m_BMT_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
-    m_Ciphertext_RET_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_CTR_RET_queue = new fifo_pipeline<mem_fetch>("meta-CTR-RET-queue", m_id, 0, len);
+    m_MAC_RET_queue = new fifo_pipeline<mem_fetch>("meta-MAC-RET-queue", m_id, 0, len);
+    m_BMT_RET_queue = new fifo_pipeline<mem_fetch>("meta-BMT-RET-queue", m_id, 0, len);
+    m_Ciphertext_RET_queue = new fifo_pipeline<mem_fetch>("meta-Ciphertext-RET-queue", m_id, 0, len);
 
-    m_OTP_queue = new fifo_pipeline<unsigned>("meta-queue", m_config->m_crypto_latency, m_config->m_crypto_latency + len);
-    m_AES_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_OTP_queue = new fifo_pipeline<unsigned>("meta-OTP-queue", m_id, m_config->m_crypto_latency, m_config->m_crypto_latency + len);
+    m_AES_queue = new fifo_pipeline<mem_fetch>("meta-AES-queue", m_id, 0, len);
 
-    m_HASH_queue = new fifo_pipeline<hash>("meta-queue", m_config->m_crypto_latency, m_config->m_crypto_latency + len);
-    m_MAC_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_HASH_queue = new fifo_pipeline<hash>("meta-HASH-queue", m_id, m_config->m_crypto_latency, m_config->m_crypto_latency + len);
+    m_MAC_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-MAC-CHECK-queue", m_id, 0, len);
 
     // m_HASH_queue = new fifo_pipeline<unsigned>("meta-queue", 40, 40 + len);
-    m_BMT_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
-    m_CTR_BMT_Buffer = new fifo_pipeline<mem_fetch>("meta-queue", 0, len);
+    m_BMT_CHECK_queue = new fifo_pipeline<mem_fetch>("meta-BMT-CHECK-queue", m_id, 0, len);
+    m_CTR_BMT_Buffer = new fifo_pipeline<mem_fetch>("meta-CTR-BMT-Buffer-queue", m_id, 0, len);
 
     m_ctrModCount = new counterMap;
     m_ctrMajor = new counterMap;
@@ -40,11 +41,37 @@ mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class me
 
     BMT_busy = false;
 }
+
+void mee::print_mee_fifo_busy() const{
+    m_CTR_queue->print_busy();
+    m_Ciphertext_queue->print_busy();
+    #ifdef CTR_HIERACHY
+    m_mee_dram_sync_queue->print_busy();
+    #endif
+    m_MAC_queue->print_busy();
+    m_BMT_queue->print_busy();
+
+    m_CTR_RET_queue->print_busy();
+    m_MAC_RET_queue->print_busy();
+    m_BMT_RET_queue->print_busy();
+    m_Ciphertext_RET_queue->print_busy();
+
+    m_OTP_queue->print_busy();
+    m_AES_queue->print_busy();
+
+    m_HASH_queue->print_busy();
+    m_MAC_CHECK_queue->print_busy();
+
+    // m_HASH_queue = new fifo_pipeline<unsigned>("meta-queue", 40, 40 + len);
+    m_BMT_CHECK_queue->print_busy();
+    m_CTR_BMT_Buffer->print_busy();
+}
+
 int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    // if (m_unit->get_mpid() == 25) {
+    // if (m_unit->get_mpid() == 1) {
     //     printf("%s\t", s);
     //     if (mf->get_original_mf())
     //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
@@ -693,11 +720,11 @@ void mee::CTR_cycle() {
         memory_stats_t *stats = m_gpu->get_memory_stats();
         unsigned long long now =
             m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
-        if (mf->get_ctr_enqueue_time()) {
-            stats->record_stage_latency(CTR_META_STAGE,
-                                        now - mf->get_ctr_enqueue_time());
-            mf->reset_ctr_enqueue_time();
-        }
+        // if (mf->get_ctr_enqueue_time()) {
+        //     stats->record_stage_latency(CTR_META_STAGE,
+        //                                 now - mf->get_ctr_enqueue_time());
+        //     mf->reset_ctr_enqueue_time();
+        // }
 
         // if (mf->is_write()) {
         //     // if (m_unit->get_mpid() == 23)
@@ -713,6 +740,13 @@ void mee::CTR_cycle() {
         enum cache_request_status status = m_CTRcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
         bool write_sent = was_write_sent(events);
         bool read_sent = was_read_sent(events);
+        if (status != RESERVATION_FAIL) { 
+            if (mf->get_ctr_enqueue_time()) {
+                stats->record_stage_latency(CTR_QUEUE_STAGE,
+                                            now - mf->get_ctr_enqueue_time());
+                mf->reset_ctr_enqueue_time();
+            }
+        }
         if (status == HIT) {
             m_CTR_queue->pop();
             if (mf->is_write()) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
@@ -792,11 +826,11 @@ void mee::MAC_cycle() {
     if (!m_MAC_queue->empty() && !m_unit->mee_dram_queue_full(MAC) && !output_full && port_free) {
         mem_fetch *mf = m_MAC_queue->top();
         print_addr("MAC cycle access:\t\t", mf);
-        if (mf->get_mac_enqueue_time()) {
-            stats->record_stage_latency(MAC_QUEUE_STAGE,
-                                        now - mf->get_mac_enqueue_time());
-            mf->reset_mac_enqueue_time();
-        }
+        // if (mf->get_mac_enqueue_time()) {
+        //     stats->record_stage_latency(MAC_QUEUE_STAGE,
+        //                                 now - mf->get_mac_enqueue_time());
+        //     mf->reset_mac_enqueue_time();
+        // }
 
         assert(mf->get_id());
 
@@ -814,6 +848,13 @@ void mee::MAC_cycle() {
         bool write_sent = was_write_sent(events);
         bool read_sent = was_read_sent(events);
         // print_addr("CTR cycle access:\t\t", mf);
+        if (status != RESERVATION_FAIL) { 
+            if (mf->get_mac_enqueue_time()) {
+                stats->record_stage_latency(MAC_QUEUE_STAGE,
+                                            now - mf->get_mac_enqueue_time());
+                mf->reset_mac_enqueue_time();
+            }
+        }
         if (status == HIT) {
             if (mf->is_write()) {   //MAC写HIT，则MAC Hash值使用结束
                 // m_MAC_set[mf->get_id()]--;
@@ -888,13 +929,13 @@ void mee::BMT_cycle() {
     if (!m_BMT_queue->empty() && !m_unit->mee_dram_queue_full(BMT) && !output_full && port_free) {
         mem_fetch *mf = m_BMT_queue->top();
         print_addr("BMT waiting access:\t", mf);
-        if (mf->get_bmt_enqueue_time()) {
-            unsigned long long now =
-                m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
-            stats->record_stage_latency(BMT_QUEUE_STAGE,
-                                        now - mf->get_bmt_enqueue_time());
-            mf->reset_bmt_enqueue_time();
-        }
+        // if (mf->get_bmt_enqueue_time()) {
+        //     unsigned long long now =
+        //         m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
+        //     stats->record_stage_latency(BMT_QUEUE_STAGE,
+        //                                 now - mf->get_bmt_enqueue_time());
+        //     mf->reset_bmt_enqueue_time();
+        // }
         // assert(mf->get_access_type() == mf->get_access_type());
 
         // if (mf->get_access_type() == META_RBW) {
@@ -909,6 +950,15 @@ void mee::BMT_cycle() {
         bool write_sent = was_write_sent(events);
         bool read_sent = was_read_sent(events);
         // print_addr("CTR cycle access:\t\t", mf);
+        if (status != RESERVATION_FAIL) { 
+            unsigned long long now =
+                m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
+            if (mf->get_bmt_enqueue_time()) {
+                stats->record_stage_latency(BMT_QUEUE_STAGE,
+                                            now - mf->get_bmt_enqueue_time());
+                mf->reset_bmt_enqueue_time();
+            }
+        }
         if (status == HIT) {
             print_addr("BMT access HIT:\t", mf);
             if (mf->get_id() && !mf->is_write()) {
@@ -943,6 +993,10 @@ void mee::BMT_cycle() {
 void mee::META_fill_responses(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK) {
     if (m_METAcache->access_ready() && !m_META_RET_queue->full()) {
         mem_fetch *mf = m_METAcache->next_access();
+        enum data_type m_data_type = mf->get_data_type();
+        memory_stats_t *stats = m_gpu->get_memory_stats();
+        unsigned long long now =
+            m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
         if (mf->get_access_type() == META_ACC && mf->get_id())
             m_META_RET_queue->push(mf);
         // assert(mf->get_access_type() == META_ACC);
@@ -950,6 +1004,34 @@ void mee::META_fill_responses(class data_cache *m_METAcache, fifo_pipeline<mem_f
         print_addr("fill responses:\t", mf);
         // reply(m_METAcache, mf);
         // delete mf;
+        if (mf && mf->get_meta_issue_time() && stats) {
+            mee_latency_stage stage = NUM_MEE_LATENCY_STAGE;
+            meta_access_type meta_type = NUM_META_ACCESS_TYPE;
+            switch (m_data_type) {
+              case CTR:
+                stage = CTR_META_STAGE;
+                meta_type = META_ACCESS_CTR;
+                break;
+              case MAC:
+                stage = MAC_META_STAGE;
+                meta_type = META_ACCESS_MAC;
+                break;
+              case BMT:
+                stage = BMT_META_STAGE;
+                meta_type = META_ACCESS_BMT;
+                break;
+              default:
+                break;
+            }
+            if (stage != NUM_MEE_LATENCY_STAGE &&
+                meta_type != NUM_META_ACCESS_TYPE) {
+                unsigned long long latency =
+                    now - mf->get_meta_issue_time();
+                stats->record_stage_latency(stage, latency);
+                stats->record_meta_latency(meta_type, latency);
+            }
+            mf->reset_meta_issue_time();
+        }
     } else {
         if (m_META_RET_queue->full()){
             // printf("fill responses ERROR: %d\n", m_unit->get_mpid());
@@ -1008,9 +1090,6 @@ void mee::META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
     // if (m_METAcache == m_BMTcache) printf("%llx & %llx == %llx\n", mf->get_addr(), BASE, mf->get_addr() & BASE);
     
     if (!m_unit->dram_mee_queue_empty(m_data_type)) {
-        memory_stats_t *stats = m_gpu->get_memory_stats();
-        unsigned long long now =
-            m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
         mem_fetch *mf_return = NULL;
         #ifdef CTR_HIERACHY
         if (m_data_type == CTR) {
@@ -1024,34 +1103,6 @@ void mee::META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
         #else
         mf_return = m_unit->dram_mee_queue_top(m_data_type);
         #endif
-        if (mf_return && mf_return->get_meta_issue_time() && stats) {
-            mee_latency_stage stage = NUM_MEE_LATENCY_STAGE;
-            meta_access_type meta_type = NUM_META_ACCESS_TYPE;
-            switch (m_data_type) {
-              case CTR:
-                stage = CTR_META_STAGE;
-                meta_type = META_ACCESS_CTR;
-                break;
-              case MAC:
-                stage = MAC_META_STAGE;
-                meta_type = META_ACCESS_MAC;
-                break;
-              case BMT:
-                stage = BMT_META_STAGE;
-                meta_type = META_ACCESS_BMT;
-                break;
-              default:
-                break;
-            }
-            if (stage != NUM_MEE_LATENCY_STAGE &&
-                meta_type != NUM_META_ACCESS_TYPE) {
-                unsigned long long latency =
-                    now - mf_return->get_meta_issue_time();
-                stats->record_stage_latency(stage, latency);
-                stats->record_meta_latency(meta_type, latency);
-            }
-            mf_return->reset_meta_issue_time();
-        }
         
         #ifdef BMT_Enable
         if (m_data_type == CTR && mf_return->get_access_type() == META_ACC)
@@ -1240,8 +1291,10 @@ void mee::simple_cycle(unsigned cycle) {
             assert(mf->is_raw());
             // printf("TTTTTTTTTTTTTTTT\n");
             // mee to dram
-            if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(8)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
+            if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(2)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
                 && !m_MAC_queue->full() && !m_Ciphertext_queue->full()) {
+                // mf->get_access_size() 可能大于32？
+                // assert(mf->get_access_size() <= 32);
                 // last_issued_partition = spid;
                 DL_CNT = 0;
                 // assert(!mf->is_write());

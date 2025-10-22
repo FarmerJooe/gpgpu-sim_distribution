@@ -272,7 +272,7 @@ void memory_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_n_mem_per_ctrlr", OPT_UINT32,
                          &gpu_n_mem_per_ctrlr,
                          "number of memory chips per memory controller", "1");
-  option_parser_register(opp, "-gpgpu_memlatency_stat", OPT_INT32,
+  option_parser_register(opp, "-gpgpu_memlatency_stat", OPT_UINT32,
                          &gpgpu_memlatency_stat,
                          "track and display latency statistics 0x2 enables MC, "
                          "0x4 enables queue logs",
@@ -974,6 +974,8 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
   gpu_tot_sim_cycle_parition_util = 0;
   partiton_replys_in_parallel = 0;
   partiton_replys_in_parallel_total = 0;
+  gpu_stall_dramfull_per_subpartition.assign(
+      m_memory_config->m_n_mem_sub_partition, 0);
 
   m_memory_partition_unit =
       new memory_partition_unit *[m_memory_config->m_n_mem];
@@ -1385,10 +1387,11 @@ void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
 
       fprintf(stdout,
               "%s_cache_bank[%d]: Access = %llu, Miss = %llu, Miss_rate = "
-              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu\n",
+              "%.3lf, Pending_hits = %llu, Reservation_fails = %llu, average_avg_mf_latency = %llu\n",
               META, i, l2_css.accesses, l2_css.misses,
               (double)l2_css.misses / (double)l2_css.accesses,
-              l2_css.pending_hits, l2_css.res_fails);
+              l2_css.pending_hits, l2_css.res_fails,
+              l2_css.avg_mf_latency / std::max(1ull, l2_css.mf_count));
 
       total_l2_css += l2_css;
     }
@@ -1409,6 +1412,7 @@ void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
       printf("%s_total_cache_pending_hits = %llu\n", META, total_l2_css.pending_hits);
       printf("%s_total_cache_reservation_fails = %llu\n",
              META, total_l2_css.res_fails);
+      printf("%s_total_average_avg_mf_latency = %llu\n", META, total_l2_css.avg_mf_latency / std::max(1ull, total_l2_css.mf_count));
       printf("%s_total_cache_breakdown:\n", META);
 
       char META_cache_stats_breakdown[128];
@@ -1568,6 +1572,10 @@ void gpgpu_sim::gpu_print_stat() {
 
   // performance counter for stalls due to congestion.
   printf("gpu_stall_dramfull = %d\n", gpu_stall_dramfull);
+  for (unsigned i = 0; i < gpu_stall_dramfull_per_subpartition.size(); ++i) {
+    printf("gpu_stall_dramfull_subpartition[%u] = %llu\n", i,
+           gpu_stall_dramfull_per_subpartition[i]);
+  }
   printf("gpu_stall_icnt2sh    = %d\n", gpu_stall_icnt2sh);
 
   // printf("partiton_reqs_in_parallel = %lld\n", partiton_reqs_in_parallel);
@@ -1683,12 +1691,12 @@ void gpgpu_sim::gpu_print_stat() {
       fprintf(stdout,
               "L2_cache_bank[%d]: Access = %llu, Miss = %llu, Miss_rate = "
               "%.3lf, Pending_hits = %llu, Reservation_fails = %llu, ctr_lines = %llu, "
-              "average_kernel_stall_cycles = %llu, average_stall_cycles = %llu\n",
+              "average_kernel_avg_mf_latency = %llu, average_avg_mf_latency = %llu\n",
               i, l2_css.accesses, l2_css.misses,
               (double)l2_css.misses / (double)l2_css.accesses,
               l2_css.pending_hits, l2_css.res_fails, m_memory_sub_partition[i]->get_data_lines(CTR),
-              l2_css_pw.stall_cycles / std::max(1ull, l2_css_pw.stall_count),
-              l2_css.stall_cycles / std::max(1ull, l2_css.stall_count));
+              l2_css_pw.avg_mf_latency / std::max(1ull, l2_css_pw.mf_count),
+              l2_css.avg_mf_latency / std::max(1ull, l2_css.mf_count));
 
       total_l2_css += l2_css;
       total_l2_css_pw += l2_css_pw;
@@ -1710,12 +1718,12 @@ void gpgpu_sim::gpu_print_stat() {
       printf("L2_total_ctr_lines = %llu\n", m_tot_ctr_lines / 64);
       printf("L2_total_cache_util = %.4lf\n",
                (double)(total_l2_css.accesses - total_l2_css.res_fails) /  (64 * (gpu_tot_sim_cycle + gpu_sim_cycle)));
-      printf("L2_total_average_cache_stall_cycles = %llu\n", total_l2_css.stall_cycles / std::max(1ull, total_l2_css.stall_count));
+      printf("L2_total_average_avg_mf_latency = %llu\n", total_l2_css.avg_mf_latency / std::max(1ull, total_l2_css.mf_count));
       printf("L2_kernel_cache_misses = %llu\n", (total_l2_css_pw.read_misses + total_l2_css_pw.write_misses));
       if (total_l2_css_pw.accesses > 0)
         printf("L2_kernel_cache_miss_rate = %.4lf\n",
                (double)(total_l2_css_pw.read_misses + total_l2_css_pw.write_misses) / (double)total_l2_css_pw.accesses);
-      printf("L2_kernel_average_cache_stall_cycles = %llu\n", total_l2_css_pw.stall_cycles / std::max(1ull, total_l2_css_pw.stall_count));
+      printf("L2_kernel_average_avg_mf_latency = %llu\n", total_l2_css_pw.avg_mf_latency / std::max(1ull, total_l2_css_pw.mf_count));
       printf("L2_total_cache_breakdown:\n");
       l2_stats.print_stats(stdout, "L2_cache_stats_breakdown");
       printf("L2_total_cache_reservation_fail_breakdown:\n");
@@ -1735,6 +1743,9 @@ void gpgpu_sim::gpu_print_stat() {
   // ecc status
   gpu_print_ECC_status();
   // gpu_print_ctrModCount_breakdown();
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+    m_memory_partition_unit[i]->print_mem_part_fifo_busy();
+  }
 
   if (m_config.gpgpu_cflog_interval != 0) {
     spill_log_to_file(stdout, 1, gpu_sim_cycle);
@@ -2087,8 +2098,7 @@ int gpgpu_sim::next_clock_domain(void) {
 }
 
 void gpgpu_sim::issue_block2core() {
-  // unsigned last_issued = m_last_cluster_issue;
-  unsigned last_issued = 0;
+  unsigned last_issued = m_last_cluster_issue;
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
     unsigned idx = (i + last_issued + 1) % m_shader_config->n_simt_clusters;
     unsigned num = m_cluster[idx]->issue_block2core();
@@ -2175,6 +2185,7 @@ void gpgpu_sim::cycle() {
       // SECTOR_CHUNCK_SIZE requests, so ensure you have enough buffer for them
       if (m_memory_sub_partition[i]->full(SECTOR_CHUNCK_SIZE)) {
         gpu_stall_dramfull++;
+        gpu_stall_dramfull_per_subpartition[i]++;
       } else {
         mem_fetch *mf = (mem_fetch *)icnt_pop(m_shader_config->mem2device(i));
         m_memory_sub_partition[i]->push(mf, gpu_sim_cycle + gpu_tot_sim_cycle);

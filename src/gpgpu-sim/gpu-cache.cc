@@ -747,10 +747,10 @@ cache_stats::cache_stats() {
   m_cache_port_available_cycles = 0;
   m_cache_data_port_busy_cycles = 0;
   m_cache_fill_port_busy_cycles = 0;
-  m_cache_stall_cycles = 0;
-  m_cache_stall_cycles_pw = 0;
-  m_cache_stall_count = 0;
-  m_cache_stall_count_pw = 0;
+  m_cache_mf_latency = 0;
+  m_cache_mf_latency_pw = 0;
+  m_cache_mf_count = 0;
+  m_cache_mf_count_pw = 0;
 }
 
 void cache_stats::clear() {
@@ -765,10 +765,10 @@ void cache_stats::clear() {
   m_cache_port_available_cycles = 0;
   m_cache_data_port_busy_cycles = 0;
   m_cache_fill_port_busy_cycles = 0;
-  m_cache_stall_cycles = 0;
-  m_cache_stall_cycles_pw = 0;
-  m_cache_stall_count = 0;
-  m_cache_stall_count_pw = 0;
+  m_cache_mf_latency = 0;
+  m_cache_mf_latency_pw = 0;
+  m_cache_mf_count = 0;
+  m_cache_mf_count_pw = 0;
 }
 
 void cache_stats::clear_pw() {
@@ -778,8 +778,8 @@ void cache_stats::clear_pw() {
   for (unsigned i = 0; i < NUM_MEM_ACCESS_TYPE; ++i) {
     std::fill(m_stats_pw[i].begin(), m_stats_pw[i].end(), 0);
   }
-  m_cache_stall_cycles_pw = 0;
-  m_cache_stall_count_pw = 0;
+  m_cache_mf_latency_pw = 0;
+  m_cache_mf_count_pw = 0;
 }
 
 void cache_stats::inc_stats(int access_type, int access_outcome) {
@@ -808,11 +808,11 @@ void cache_stats::inc_fail_stats(int access_type, int fail_outcome) {
   m_fail_stats[access_type][fail_outcome]++;
 }
 
-void cache_stats::inc_stall_cycles(unsigned long long cycles) {
-  m_cache_stall_cycles += cycles;
-  m_cache_stall_cycles_pw += cycles;
-  m_cache_stall_count++;
-  m_cache_stall_count_pw++;
+void cache_stats::inc_mf_latency(unsigned long long cycles) {
+  m_cache_mf_latency += cycles;
+  m_cache_mf_latency_pw += cycles;
+  m_cache_mf_count++;
+  m_cache_mf_count_pw++;
 }
 
 enum cache_request_status cache_stats::select_stats_status(
@@ -890,12 +890,12 @@ cache_stats cache_stats::operator+(const cache_stats &cs) {
       m_cache_data_port_busy_cycles + cs.m_cache_data_port_busy_cycles;
   ret.m_cache_fill_port_busy_cycles =
       m_cache_fill_port_busy_cycles + cs.m_cache_fill_port_busy_cycles;
-  ret.m_cache_stall_cycles = m_cache_stall_cycles + cs.m_cache_stall_cycles;
-  ret.m_cache_stall_cycles_pw =
-      m_cache_stall_cycles_pw + cs.m_cache_stall_cycles_pw;
-  ret.m_cache_stall_count = m_cache_stall_count + cs.m_cache_stall_count;
-  ret.m_cache_stall_count_pw =
-      m_cache_stall_count_pw + cs.m_cache_stall_count_pw;
+  ret.m_cache_mf_latency = m_cache_mf_latency + cs.m_cache_mf_latency;
+  ret.m_cache_mf_latency_pw =
+      m_cache_mf_latency_pw + cs.m_cache_mf_latency_pw;
+  ret.m_cache_mf_count = m_cache_mf_count + cs.m_cache_mf_count;
+  ret.m_cache_mf_count_pw =
+      m_cache_mf_count_pw + cs.m_cache_mf_count_pw;
   return ret;
 }
 
@@ -918,10 +918,10 @@ cache_stats &cache_stats::operator+=(const cache_stats &cs) {
   m_cache_port_available_cycles += cs.m_cache_port_available_cycles;
   m_cache_data_port_busy_cycles += cs.m_cache_data_port_busy_cycles;
   m_cache_fill_port_busy_cycles += cs.m_cache_fill_port_busy_cycles;
-  m_cache_stall_cycles += cs.m_cache_stall_cycles;
-  m_cache_stall_cycles_pw += cs.m_cache_stall_cycles_pw;
-  m_cache_stall_count += cs.m_cache_stall_count;
-  m_cache_stall_count_pw += cs.m_cache_stall_count_pw;
+  m_cache_mf_latency += cs.m_cache_mf_latency;
+  m_cache_mf_latency_pw += cs.m_cache_mf_latency_pw;
+  m_cache_mf_count += cs.m_cache_mf_count;
+  m_cache_mf_count_pw += cs.m_cache_mf_count_pw;
   return *this;
 }
 
@@ -1030,8 +1030,8 @@ void cache_stats::get_sub_stats(struct cache_sub_stats &css) const {
   t_css.port_available_cycles = m_cache_port_available_cycles;
   t_css.data_port_busy_cycles = m_cache_data_port_busy_cycles;
   t_css.fill_port_busy_cycles = m_cache_fill_port_busy_cycles;
-  t_css.stall_cycles = m_cache_stall_cycles;
-  t_css.stall_count = m_cache_stall_count;
+  t_css.avg_mf_latency = m_cache_mf_latency;
+  t_css.mf_count = m_cache_mf_count;
 
   css = t_css;
 }
@@ -1083,8 +1083,8 @@ void cache_stats::get_sub_stats_pw(struct cache_sub_stats_pw &css) const {
     }
   }
 
-  t_css.stall_cycles = m_cache_stall_cycles_pw;
-  t_css.stall_count = m_cache_stall_count_pw;
+  t_css.avg_mf_latency = m_cache_mf_latency_pw;
+  t_css.mf_count = m_cache_mf_count_pw;
 
   css = t_css;
 }
@@ -1211,8 +1211,8 @@ void baseline_cache::cycle() {
 /// in caller)
 void baseline_cache::fill(mem_fetch *mf, unsigned time) {
   // printf("%s cache fill: data size: %d\taccess size:%d\taccess type:%d\n", m_name.c_str(), mf->get_data_size(), mf->get_access_size(), mf->get_access_type());
-  mf->set_fill_cycle(get_cache_form(), time);
-  this->inc_stall_cycles(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
+  // mf->set_fill_cycle(get_cache_form(), time);
+  // this->inc_mf_latency(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
   if (m_config.m_mshr_type == SECTOR_ASSOC) {
     assert(mf->get_original_mf());
     extra_mf_fields_lookup::iterator e =
@@ -1263,6 +1263,13 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
 bool baseline_cache::waiting_for_fill(mem_fetch *mf) {
   extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
   return e != m_extra_mf_fields.end();
+}
+
+mem_fetch *data_cache::next_access() {
+  mem_fetch *mf = m_mshrs.next_access();
+  mf->set_fill_cycle(get_cache_form(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+  this->inc_mf_latency(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
+  return mf; 
 }
 
 void baseline_cache::print(FILE *fp, unsigned &accesses,

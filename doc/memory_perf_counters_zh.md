@@ -1,6 +1,6 @@
 # GPGPU-Sim 访存与 MEE 安全流水线性能模型
 
-本文件把 L2↔DRAM 通路中的多层安全模块 (MEE) 纳入访存模型，说明各阶段的时间窗口、阻塞来源，以及需要新增的性能计数器。配合 `polybench-2DConvolution_performance.log` 等输出，可精细拆分总延迟并评估 AES/CTR/MAC/BMT 对 DRAM 带宽的影响。
+本文件把 L2↔DRAM 通路中的多层安全模块 (MEE) 纳入访存模型，说明各阶段的时间窗口、阻塞来源，以及需要新增的性能计数器。配合 `polybench-2DConvolution_performance.log` 等输出，可精细拆分总延迟并评估 AES/CTR/MAC/BMT 对 DRAM 带宽的影响。注意：需将配置项 `-gpgpu_memlatency_stat` 的 `GPU_MEMLATSTAT_MEE (0x8)` 置位（常用值 `14 = 0x2|0x4|0x8`）才能采集下文列出的 MEE 统计。
 
 ---
 
@@ -40,7 +40,7 @@
 - `lat_AES_queue = (AES pop 时间) - aes_enqueue_time`
 - `lat_AES_service = decrypt_finish_time - (AES pop 时间)` （约为 `m_config->m_crypto_latency`）
 - `lat_MAC_queue`, `lat_BMT_queue` 等同理；
-- `lat_meta = (memlatstat_read_done 时间) - meta_issue_time`；
+- `lat_meta = (META_fill 完成时间) - meta_issue_time`；
 - `lat_cipher_dram = (memlatstat_read_done 时间) - cipher_dram_issue_time`；
 - `lat_T5 = (L2 接收时间) - decrypt_finish_time`。
 
@@ -101,17 +101,23 @@
 - `meta_dram_bandwidth_ratio = meta_bytes_to_dram / total_dram_bytes`
 - `mee_dram_queue_full_stall[CTR|MAC|BMT]`
 
+> 说明：META 延迟在 MEE 层的 `META_fill` 阶段统计，因为元数据在返回 shader 前已被消费，`memlatstat_read_done` 不再持有这部分时间戳。
+
 ### 4.6 普通数据 DRAM 访存（T₄）
 
 - `cipher_dram_requests`, `cipher_dram_bytes`
 - `avg_cipher_dram_latency`, `max_cipher_dram_latency`
 - `normal_vs_meta_dram_conflicts`（两类请求争用 DRAM 接口时的周期数）
 
+> 说明：仅统计 `data_type == NORM` 的请求；META 流程已经在 T₃ 中记录。
+
 ### 4.7 返回阶段（T₅）
 
 - `tot_decrypt_to_l2_latency`, `max_decrypt_to_l2_latency`
 - `mee_l2_queue_full_stall`
 - `mee_l2_queue_occupancy_histogram`
+
+> 说明：同样只对普通数据（解密后返回 L2 的请求）统计，META 不经过此阶段。
 
 ---
 

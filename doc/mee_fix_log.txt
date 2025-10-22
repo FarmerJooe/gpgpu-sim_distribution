@@ -7,3 +7,5 @@
 [日志] mem_fetch析构函数记录ID为0或TOT类型的释放事件
 [日志] push_cipher_request检测到ID为0时分配新的mf_id并打印告警
 [日志] 在simple_dram_model_cycle与dram_cycle中过滤addr或ID为0的非法mf并记录drop日志
+[日志] 将gpgpu_memlatency_stat扩展为位掩码并新增GPU_MEMLATSTAT_MEE位，用于控制MEE统计
+[日志] 调整memlatstat_read_done仅在NORM返回时采集延迟，META延迟改由MEE阶段统计

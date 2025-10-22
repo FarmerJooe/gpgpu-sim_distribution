@@ -77,17 +77,31 @@ class xbar_router {
   unsigned long long in_buffer_util;
   unsigned long long packets_num;
 
+  std::vector<std::vector<unsigned long long> > conflict_matrix;
+  std::vector<unsigned long long> blocked_by_output_busy_by_output;
+  std::vector<unsigned long long> blocked_by_output_busy_by_input;
+  std::vector<unsigned long long> blocked_by_full_buffer_by_output;
+  std::vector<unsigned long long> blocked_by_full_buffer_by_input;
+  std::vector<unsigned long long> out_buffer_full_events_by_output;
+  std::vector<unsigned long long> in_buffer_full_events_by_input;
+  std::vector<unsigned long long> in_buffer_full_wait_sum_by_input;
+  std::vector<unsigned long long> in_buffer_full_wait_max_by_input;
+
  private:
   void iSLIP_Advance();
   void RR_Advance();
 
   struct Packet {
-    Packet(void* m_data, unsigned m_output_deviceID) {
-      data = m_data;
-      output_deviceID = m_output_deviceID;
-    }
+    Packet(void* m_data, unsigned m_output_deviceID,
+           unsigned long long m_enqueue_cycle, unsigned m_input_deviceID)
+        : data(m_data),
+          output_deviceID(m_output_deviceID),
+          enqueue_cycle(m_enqueue_cycle),
+          input_deviceID(m_input_deviceID) {}
     void* data;
     unsigned output_deviceID;
+    unsigned long long enqueue_cycle;
+    unsigned input_deviceID;
   };
   vector<queue<Packet> > in_buffers;
   vector<queue<Packet> > out_buffers;

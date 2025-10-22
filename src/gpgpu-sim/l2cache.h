@@ -34,6 +34,7 @@
 #include "dram.h"
 #include "gpu-cache.h"
 #include "ctr-cache.h"
+#include "mem_latency_stat.h"
 
 #include <list>
 #include <queue>
@@ -75,6 +76,8 @@ class memory_partition_unit {
   memory_partition_unit(unsigned partition_id, const memory_config *config,
                         class memory_stats_t *stats, class gpgpu_sim *gpu);
   ~memory_partition_unit();
+
+  void print_mem_part_fifo_busy() const;
 
   bool busy() const;
 
@@ -248,6 +251,8 @@ class memory_sub_partition {
   memory_sub_partition(unsigned sub_partition_id, const memory_config *config,
                        class memory_stats_t *stats, class gpgpu_sim *gpu);
   ~memory_sub_partition();
+
+  void print_sub_partition_fifo_busy() const;
 
   unsigned get_id() const { return m_id; }
 
@@ -423,10 +428,14 @@ class L2interface : public mem_fetch_interface {
   memory_sub_partition *m_unit;
 };
 
+enum meta_access_type get_data_type2meta_access_type(enum data_type dtype);
+
 class metainterface : public mem_fetch_interface {
  public:
   // metainterface(memory_partition_unit *unit, enum cache_type dtype) { 
-  metainterface(fifo_pipeline<mem_fetch> *pipeline) { 
+  metainterface(fifo_pipeline<mem_fetch> *pipeline, gpgpu_sim *m_gpu, memory_stats_t *stats):
+    m_gpu(m_gpu),
+    m_stats(stats){ 
     // m_unit = unit;
     // m_dtype = dtype;
     this->pipeline = pipeline;
@@ -442,6 +451,12 @@ class metainterface : public mem_fetch_interface {
     // printf("%saddr: %x\tmf_type: %d\tsp_addr: %x\taccess type:%d\n", "mee to dram:\t", mf->get_addr(), mf->get_data_type(), mf->get_partition_addr(), mf->get_access_type());
 
     // m_unit->mee_dram_queue_push(mf);
+    unsigned long long now =
+        m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
+
+    enum data_type dtype = mf->get_data_type();
+    mf->set_meta_issue_time(now);
+    m_stats->record_meta_request(get_data_type2meta_access_type(mf->get_data_type()), now);
     pipeline->push(mf);
   }
 
@@ -449,6 +464,8 @@ class metainterface : public mem_fetch_interface {
   memory_partition_unit *m_unit;
   enum cache_type m_dtype;
   fifo_pipeline<mem_fetch> *pipeline;
+  class memory_stats_t *m_stats;
+  class gpgpu_sim *m_gpu;
 };
 
 #endif

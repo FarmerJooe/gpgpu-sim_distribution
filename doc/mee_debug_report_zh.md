@@ -24,6 +24,7 @@
 
 ## src/gpgpu-sim/gpu-sim.h
 - `src/gpgpu-sim/gpu-sim.h:42`：前置声明 `memory_stats_t`，解除头文件循环依赖。
+- `src/gpgpu-sim/gpu-sim.h:49-60`：将 `gpgpu_memlatency_stat` 改为位掩码，并新增 `GPU_MEMLATSTAT_MEE`/`GPU_MEMLATSTAT_QUEUE` 常量，明确支持 MC/Queue/MEE 多维统计。
 - `src/gpgpu-sim/gpu-sim.h:729`：暴露 `get_memory_stats()` 访问器，允许 MEE 模块将延迟与占用信息写回统计对象。
 
 以上即为当前工作中对代码所做的全部调整。后续如需继续定位 `dest_spid` 越界，可重点关注 `test.log` 中被新增日志打出的请求轨迹。
@@ -46,5 +47,11 @@
 ### src/gpgpu-sim/mem_fetch.cc
 - `src/gpgpu-sim/mem_fetch.cc:90-97`：析构时打印 `[MEE][mf_destroy]` 行，捕捉仍然带有 `id==0` 或 `data_type==TOT` 的对象，辅助判断是否存在悬挂/重复释放问题。
 
+### src/gpgpu-sim/mem_latency_stat.cc
+- `src/gpgpu-sim/mem_latency_stat.cc:368-716`：所有 MEE 统计接口改为检查 `GPU_MEMLATSTAT_MEE` 位，只有在配置显式开启时才采样；同时消除旧的 debug printf，当位未开启时直接返回。
+- `src/gpgpu-sim/mem_latency_stat.cc:272-312`：`memlatstat_read_done()` 仅在普通数据 (NORM) 返回时统计 Cipher-DRAM / Return Path；META 请求的延迟统计改由 MEE 层 (`META_fill`) 负责，避免因为 META 不回流到 shader 而导致报表全部为 0。
+- `src/gpgpu-sim/mem_latency_stat.cc:640-709`：打印阶段同样受 `GPU_MEMLATSTAT_MEE` 控制，避免未启用时输出全零；保留原有 MC (0x2) / Queue (0x4) 统计逻辑。
+
 ### 调试辅助文档
 - 新增 `doc/mee_fix_log.txt`，按时间顺序记录每次改动的摘要与涉及文件，便于后续比对。
+- 配置示例仍使用 `-gpgpu_memlatency_stat 14`，现明确表示同时启用 MC(0x2)/Queue(0x4)/MEE(0x8) 统计。

@@ -38,9 +38,10 @@ enum mee_latency_stage {
   CIPHER_QUEUE_STAGE,
   AES_QUEUE_STAGE,
   AES_SERVICE_STAGE,
+  CTR_QUEUE_STAGE,
   MAC_QUEUE_STAGE,
-  HASH_QUEUE_STAGE,
   BMT_QUEUE_STAGE,
+  HASH_QUEUE_STAGE,
   BMT_CHECK_STAGE,
   CTR_META_STAGE,
   MAC_META_STAGE,
@@ -104,6 +105,9 @@ class memory_stats_t {
   void memlatstat_lat_pw();
   void memlatstat_print(unsigned n_mem, unsigned gpu_mem_n_bk);
 
+  void record_subpartition_queue_latency(unsigned sub_partition_id,
+                                         unsigned long long latency);
+
   void record_stage_latency(enum mee_latency_stage stage,
                             unsigned long long latency);
   void record_stage_stall(enum mee_stall_stage stage,
@@ -149,6 +153,14 @@ class memory_stats_t {
   unsigned mf_tot_lat_pw;  // total latency summed up per window. divide by
                            // mf_num_lat_pw to obtain average latency Per Window
   unsigned long long int mf_total_lat;
+
+  unsigned long long subpartition_queue_wait_sum;
+  unsigned long long subpartition_queue_wait_max;
+  unsigned long long subpartition_queue_wait_samples;
+  unsigned subpartition_queue_wait_hist[32];
+  unsigned long long *subpartition_queue_wait_sum_per_sp;
+  unsigned long long *subpartition_queue_wait_max_per_sp;
+  unsigned long long *subpartition_queue_wait_samples_per_sp;
   unsigned long long int *
       *mf_total_lat_table;      // mf latency sums[dram chip id][bank id]
   unsigned **mf_max_lat_table;  // mf latency sums[dram chip id][bank id]

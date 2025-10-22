@@ -1098,8 +1098,8 @@ struct cache_sub_stats {
   unsigned long long misses;
   unsigned long long pending_hits;
   unsigned long long res_fails;
-  unsigned long long stall_cycles;
-  unsigned long long stall_count;
+  unsigned long long avg_mf_latency;
+  unsigned long long mf_count;
 
   unsigned long long port_available_cycles;
   unsigned long long data_port_busy_cycles;
@@ -1111,8 +1111,8 @@ struct cache_sub_stats {
     misses = 0;
     pending_hits = 0;
     res_fails = 0;
-    stall_cycles = 0;
-    stall_count = 0;
+    avg_mf_latency = 0;
+    mf_count = 0;
     port_available_cycles = 0;
     data_port_busy_cycles = 0;
     fill_port_busy_cycles = 0;
@@ -1125,8 +1125,8 @@ struct cache_sub_stats {
     misses += css.misses;
     pending_hits += css.pending_hits;
     res_fails += css.res_fails;
-    stall_cycles += css.stall_cycles;
-    stall_count += css.stall_count;
+    avg_mf_latency += css.avg_mf_latency;
+    mf_count += css.mf_count;
     port_available_cycles += css.port_available_cycles;
     data_port_busy_cycles += css.data_port_busy_cycles;
     fill_port_busy_cycles += css.fill_port_busy_cycles;
@@ -1142,8 +1142,8 @@ struct cache_sub_stats {
     ret.misses = misses + cs.misses;
     ret.pending_hits = pending_hits + cs.pending_hits;
     ret.res_fails = res_fails + cs.res_fails;
-    ret.stall_cycles = stall_cycles + cs.stall_cycles;
-    ret.stall_count = stall_count + cs.stall_count;
+    ret.avg_mf_latency = avg_mf_latency + cs.avg_mf_latency;
+    ret.mf_count = mf_count + cs.mf_count;
     ret.port_available_cycles =
         port_available_cycles + cs.port_available_cycles;
     ret.data_port_busy_cycles =
@@ -1169,8 +1169,8 @@ struct cache_sub_stats_pw {
   unsigned read_pending_hits;
   unsigned read_res_fails;
 
-  unsigned long long stall_cycles;
-  unsigned long long stall_count;
+  unsigned long long avg_mf_latency;
+  unsigned long long mf_count;
 
   cache_sub_stats_pw() { clear(); }
   void clear() {
@@ -1183,8 +1183,8 @@ struct cache_sub_stats_pw {
     read_hits = 0;
     read_pending_hits = 0;
     read_res_fails = 0;
-    stall_cycles = 0;
-    stall_count = 0;
+    avg_mf_latency = 0;
+    mf_count = 0;
   }
   cache_sub_stats_pw &operator+=(const cache_sub_stats_pw &css) {
     ///
@@ -1197,8 +1197,8 @@ struct cache_sub_stats_pw {
     read_pending_hits += css.read_pending_hits;
     write_res_fails += css.write_res_fails;
     read_res_fails += css.read_res_fails;
-    stall_cycles += css.stall_cycles;
-    stall_count += css.stall_count;
+    avg_mf_latency += css.avg_mf_latency;
+    mf_count += css.mf_count;
     return *this;
   }
 
@@ -1214,8 +1214,8 @@ struct cache_sub_stats_pw {
     ret.read_pending_hits = read_pending_hits + cs.read_pending_hits;
     ret.write_res_fails = write_res_fails + cs.write_res_fails;
     ret.read_res_fails = read_res_fails + cs.read_res_fails;
-    ret.stall_cycles = stall_cycles + cs.stall_cycles;
-    ret.stall_count = stall_count + cs.stall_count;
+    ret.avg_mf_latency = avg_mf_latency + cs.avg_mf_latency;
+    ret.mf_count = mf_count + cs.mf_count;
     return ret;
   }
 };
@@ -1236,7 +1236,7 @@ class cache_stats {
   // Increment AerialVision cache stats
   void inc_stats_pw(int access_type, int access_outcome);
   void inc_fail_stats(int access_type, int fail_outcome);
-  void inc_stall_cycles(unsigned long long cycles);
+  void inc_mf_latency(unsigned long long cycles);
   enum cache_request_status select_stats_status(
       enum cache_request_status probe, enum cache_request_status access) const;
   unsigned long long &operator()(int access_type, int access_outcome,
@@ -1272,10 +1272,10 @@ class cache_stats {
   unsigned long long m_cache_port_available_cycles;
   unsigned long long m_cache_data_port_busy_cycles;
   unsigned long long m_cache_fill_port_busy_cycles;
-  unsigned long long m_cache_stall_cycles;
-  unsigned long long m_cache_stall_cycles_pw;
-  unsigned long long m_cache_stall_count;
-  unsigned long long m_cache_stall_count_pw;
+  unsigned long long m_cache_mf_latency;
+  unsigned long long m_cache_mf_latency_pw;
+  unsigned long long m_cache_mf_count;
+  unsigned long long m_cache_mf_count_pw;
 
   friend class gpgpu_sim;
 };
@@ -1361,7 +1361,7 @@ class baseline_cache : public cache_t {
   /// not include accesses that "HIT")
   bool access_ready() const { return m_mshrs.access_ready(); }
   /// Pop next ready access (does not include accesses that "HIT")
-  mem_fetch *next_access() { return m_mshrs.next_access(); }
+  virtual mem_fetch *next_access() { return m_mshrs.next_access(); }
   // flash invalidate all entries in cache
   void flush() { m_tag_array->flush(); }
   void invalidate() { m_tag_array->invalidate(); }
@@ -1386,8 +1386,8 @@ class baseline_cache : public cache_t {
   void get_sub_stats_pw(struct cache_sub_stats_pw &css) const {
     m_stats.get_sub_stats_pw(css);
   }
-  void inc_stall_cycles(unsigned long long cycles) {
-    m_stats.inc_stall_cycles(cycles);
+  void inc_mf_latency(unsigned long long cycles) {
+    m_stats.inc_mf_latency(cycles);
   }
 
   enum cache_form m_cache_form;
@@ -1642,6 +1642,7 @@ class data_cache : public baseline_cache {
   class gpgpu_sim *m_gpu;
   // unsigned 
  public:
+  virtual mem_fetch *next_access();
   
   unsigned long long m_tot_accesses[NUM_DATA_TYPE] = {0, 0, 0, 0, 0};
   unsigned long long m_tot_misses[NUM_DATA_TYPE] = {0, 0, 0, 0, 0};

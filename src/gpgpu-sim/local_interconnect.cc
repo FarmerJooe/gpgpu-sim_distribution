@@ -37,6 +37,45 @@
 #include "local_interconnect.h"
 #include "mem_fetch.h"
 
+static void print_router_extended_stats(const xbar_router *router,
+                                        const char *prefix) {
+  if (!router) return;
+
+  unsigned total_inputs = router->in_buffer_full_events_by_input.size();
+  unsigned total_outputs = router->blocked_by_output_busy_by_output.size();
+
+  for (unsigned in = 0; in < router->conflict_matrix.size(); ++in) {
+    for (unsigned out = 0; out < router->conflict_matrix[in].size(); ++out) {
+      unsigned long long value = router->conflict_matrix[in][out];
+      if (value)
+        printf("%s_conflict_matrix[%u->%u] = %llu\n", prefix, in, out, value);
+    }
+  }
+
+  for (unsigned out = 0; out < total_outputs; ++out) {
+    unsigned long long busy = router->blocked_by_output_busy_by_output[out];
+    unsigned long long full = router->blocked_by_full_buffer_by_output[out];
+    unsigned long long full_events = router->out_buffer_full_events_by_output[out];
+    if (busy || full || full_events)
+      printf("%s_output[%u]_busy_conflicts = %llu blocked_by_full = %llu full_events = %llu\n",
+             prefix, out, busy, full, full_events);
+  }
+
+  for (unsigned in = 0; in < total_inputs; ++in) {
+    unsigned long long busy = router->blocked_by_output_busy_by_input[in];
+    unsigned long long full = router->blocked_by_full_buffer_by_input[in];
+    unsigned long long events = router->in_buffer_full_events_by_input[in];
+    if (busy || full || events) {
+      unsigned long long avg_wait =
+          events ? router->in_buffer_full_wait_sum_by_input[in] / events : 0;
+      printf(
+          "%s_input[%u]_busy_conflicts = %llu blocked_by_full = %llu in_buf_full = %llu avg_wait = %llu max_wait = %llu\n",
+          prefix, in, busy, full, events, avg_wait,
+          router->in_buffer_full_wait_max_by_input[in]);
+    }
+  }
+}
+
 xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type,
                          unsigned n_shader, unsigned n_mem,
                          const struct inct_config& m_localinct_config) {
@@ -73,6 +112,17 @@ xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type,
   conflicts_util = 0;
   cycles_util = 0;
   reqs_util = 0;
+
+  conflict_matrix.assign(total_nodes,
+                         std::vector<unsigned long long>(total_nodes, 0));
+  blocked_by_output_busy_by_output.assign(total_nodes, 0);
+  blocked_by_output_busy_by_input.assign(total_nodes, 0);
+  blocked_by_full_buffer_by_output.assign(total_nodes, 0);
+  blocked_by_full_buffer_by_input.assign(total_nodes, 0);
+  out_buffer_full_events_by_output.assign(total_nodes, 0);
+  in_buffer_full_events_by_input.assign(total_nodes, 0);
+  in_buffer_full_wait_sum_by_input.assign(total_nodes, 0);
+  in_buffer_full_wait_max_by_input.assign(total_nodes, 0);
 }
 
 xbar_router::~xbar_router() {}
@@ -80,7 +130,8 @@ xbar_router::~xbar_router() {}
 void xbar_router::Push(unsigned input_deviceID, unsigned output_deviceID,
                        void* data, unsigned int size) {
   assert(input_deviceID < total_nodes);
-  in_buffers[input_deviceID].push(Packet(data, output_deviceID));
+  in_buffers[input_deviceID].push(
+      Packet(data, output_deviceID, cycles, input_deviceID));
   packets_num++;
 }
 
@@ -102,7 +153,17 @@ bool xbar_router::Has_Buffer_In(unsigned input_deviceID, unsigned size,
 
   bool has_buffer =
       (in_buffers[input_deviceID].size() + size <= in_buffer_limit);
-  if (update_counter && !has_buffer) in_buffer_full++;
+  if (update_counter && !has_buffer) {
+    in_buffer_full++;
+    in_buffer_full_events_by_input[input_deviceID]++;
+    if (!in_buffers[input_deviceID].empty()) {
+      unsigned long long wait_cycles =
+          cycles - in_buffers[input_deviceID].front().enqueue_cycle;
+      in_buffer_full_wait_sum_by_input[input_deviceID] += wait_cycles;
+      if (wait_cycles > in_buffer_full_wait_max_by_input[input_deviceID])
+        in_buffer_full_wait_max_by_input[input_deviceID] = wait_cycles;
+    }
+  }
 
   return has_buffer;
 }
@@ -140,11 +201,22 @@ void xbar_router::RR_Advance() {
           issued[_packet.output_deviceID] = true;
           reqs++;
         } else
-          conflict_sub++;
+          {
+            conflict_sub++;
+            conflict_matrix[node_id][_packet.output_deviceID]++;
+            blocked_by_output_busy_by_output[_packet.output_deviceID]++;
+            blocked_by_output_busy_by_input[node_id]++;
+          }
       } else {
         out_buffer_full++;
+        out_buffer_full_events_by_output[_packet.output_deviceID]++;
+        blocked_by_full_buffer_by_output[_packet.output_deviceID]++;
+        blocked_by_full_buffer_by_input[node_id]++;
 
-        if (issued[_packet.output_deviceID]) conflict_sub++;
+        if (issued[_packet.output_deviceID]) {
+          conflict_sub++;
+          conflict_matrix[node_id][_packet.output_deviceID]++;
+        }
       }
     }
   }
@@ -177,24 +249,24 @@ void xbar_router::RR_Advance() {
 // IEEE/ACM transactions on networking 2 (1999): 188-201.
 // https://www.cs.rutgers.edu/~sn624/552-F18/papers/islip.pdf
 void xbar_router::iSLIP_Advance() {
-  vector<unsigned> node_tmp;
+  std::vector<int> first_requester(total_nodes, -1);
   bool active = false;
 
   unsigned conflict_sub = 0;
   unsigned reqs = 0;
 
-  // calcaulte how many conflicts are there for stats
+  // calculate how many conflicts are there for stats
   for (unsigned i = 0; i < total_nodes; ++i) {
     if (!in_buffers[i].empty()) {
       Packet _packet_tmp = in_buffers[i].front();
-      if (!node_tmp.empty()) {
-        if (std::find(node_tmp.begin(), node_tmp.end(),
-                      _packet_tmp.output_deviceID) != node_tmp.end()) {
-          conflict_sub++;
-        } else
-          node_tmp.push_back(_packet_tmp.output_deviceID);
+      unsigned out = _packet_tmp.output_deviceID;
+      if (first_requester[out] == -1) {
+        first_requester[out] = static_cast<int>(i);
       } else {
-        node_tmp.push_back(_packet_tmp.output_deviceID);
+        conflict_sub++;
+        conflict_matrix[i][out]++;
+        blocked_by_output_busy_by_output[out]++;
+        blocked_by_output_busy_by_input[i]++;
       }
       active = true;
     }
@@ -239,8 +311,15 @@ void xbar_router::iSLIP_Advance() {
           }
         }
       }
-    } else
+    } else {
       out_buffer_full++;
+      out_buffer_full_events_by_output[i]++;
+      int blocking_input = first_requester[i];
+      if (blocking_input >= 0) {
+        blocked_by_full_buffer_by_output[i]++;
+        blocked_by_full_buffer_by_input[blocking_input]++;
+      }
+    }
   }
 
   if (active) {
@@ -398,6 +477,8 @@ void LocalInterconnect::DisplayStats() const {
          ((float)(net[REQ_NET]->out_buffer_util) / (net[REQ_NET]->cycles) /
           net[REQ_NET]->active_out_buffers));
 
+  print_router_extended_stats(net[REQ_NET], "Req");
+
   printf("\n");
   printf("Reply_Network_injected_packets_num = %lld\n",
          net[REPLY_NET]->packets_num);
@@ -421,6 +502,8 @@ void LocalInterconnect::DisplayStats() const {
   printf("Reply_Network_out_buffer_avg_util = %12.4f\n",
          ((float)(net[REPLY_NET]->out_buffer_util) / (net[REPLY_NET]->cycles) /
           net[REPLY_NET]->active_out_buffers));
+
+  print_router_extended_stats(net[REPLY_NET], "Reply");
 }
 
 void LocalInterconnect::DisplayOverallStats() const {}
