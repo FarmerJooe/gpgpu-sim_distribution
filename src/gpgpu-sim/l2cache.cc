@@ -101,6 +101,9 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   char fifo_dram_mee_name[32];
   snprintf(fifo_mee_dram_name, 32, "mee-to-dram-%d_%03d\0", TOT, m_id);
   snprintf(fifo_dram_mee_name, 32, "dram-to-mee-%d_%03d\0", TOT, m_id);
+
+  send_trigger_threshold = L2_dram;
+  receive_stop_threshold = dram_L2;
   
   m_mee_dram_queue[TOT] = new fifo_pipeline<mem_fetch>(fifo_mee_dram_name, 0, 1);
   m_dram_mee_queue[TOT] = new fifo_pipeline<mem_fetch>(fifo_dram_mee_name, 0, 1);
@@ -153,8 +156,13 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
     m_BMTcache =
         new meta_cache(BMTc_name, m_config->m_META_config, -1, -1, m_BMTinterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+
+    // Initialize cache trace for meta caches
+    m_CTRcache->init_cache_trace(&m_config->m_cache_trace_config);
+    m_MACcache->init_cache_trace(&m_config->m_cache_trace_config);
+    m_BMTcache->init_cache_trace(&m_config->m_cache_trace_config);
   }
-  
+
   m_mee = new mee(this, m_CTRcache, m_MACcache, m_BMTcache, m_config, m_ctrModCount, m_gpu, m_ecc);
 
   m_sub_partition = new memory_sub_partition
@@ -835,6 +843,10 @@ memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,
     m_L2cache =
         new l2_cache(L2c_name, m_config->m_L2_config, -1, -1, m_L2interface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+
+    // Initialize cache trace for L2 cache
+    m_L2cache->init_cache_trace(&m_config->m_cache_trace_config);
+
     // m_CTRcache =
     //     new l2_cache(L2c_name, m_config->m_META_config, -1, -1, m_metainterface,
     //                  m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);

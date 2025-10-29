@@ -1236,6 +1236,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
   assert(e->second.m_valid);
   mf->set_data_size(e->second.m_data_size);
   mf->set_addr(e->second.m_addr);
+  unsigned cache_index_for_trace = e->second.m_cache_index;
   if (m_config.m_alloc_policy == ON_MISS)
     m_tag_array->fill(e->second.m_cache_index, time, mf);
   else if (m_config.m_alloc_policy == ON_FILL) {
@@ -1257,6 +1258,9 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
   }
   m_extra_mf_fields.erase(mf);
   m_bandwidth_management.use_fill_port(mf);
+
+  // Cache trace: record fill
+  trace_fill(mf, time, cache_index_for_trace);
 }
 
 /// Checks if mf is waiting to be filled by lower memory level
@@ -1950,7 +1954,20 @@ enum cache_request_status data_cache::access(new_addr_type addr, mem_fetch *mf,
   m_stats.inc_stats_pw(mf->get_access_type(), m_stats.select_stats_status(
                                                   probe_status, access_status));
   if (access_status == MISS || access_status == SECTOR_MISS)
-      mf->set_miss_cycle(get_cache_form(), time);                                              
+      mf->set_miss_cycle(get_cache_form(), time);
+
+  // Cache trace: record access
+  evicted_block_info evicted;
+  bool eviction_occurred = false;
+  for (std::list<cache_event>::iterator e = events.begin(); e != events.end(); ++e) {
+    if (e->m_cache_event_type == WRITE_BACK_REQUEST_SENT) {
+      evicted = e->m_evicted_block;
+      eviction_occurred = true;
+      break;
+    }
+  }
+  trace_access(mf, time, access_status, cache_index, eviction_occurred, evicted);
+
   return access_status;
 }
 
@@ -2159,3 +2176,333 @@ void tex_cache::display_state(FILE *fp) const {
   }
 }
 /******************************************************************************************************************************************/
+
+/****** Cache Trace Implementation ******/
+
+// Initialize cache trace
+void baseline_cache::init_cache_trace(const cache_trace_config *trace_config) {
+  m_trace_config = trace_config;
+  m_trace_file = NULL;
+  m_trace_enabled = false;
+
+  if (!trace_config || !trace_config->m_enabled) {
+    return;
+  }
+
+  // Check if this cache type should be traced
+  cache_form form = get_cache_form();
+  bool should_trace_this_cache = false;
+
+  switch (form) {
+    case L2_CACHE:
+      should_trace_this_cache = trace_config->m_trace_l2;
+      break;
+    case L1D_CACHE:
+      should_trace_this_cache = trace_config->m_trace_l1d;
+      break;
+    case CTR_CACHE:
+      should_trace_this_cache = trace_config->m_trace_ctr;
+      break;
+    case MAC_CACHE:
+      should_trace_this_cache = trace_config->m_trace_mac;
+      break;
+    case BMT_CACHE:
+      should_trace_this_cache = trace_config->m_trace_bmt;
+      break;
+    default:
+      should_trace_this_cache = false;
+      break;
+  }
+
+  if (!should_trace_this_cache) {
+    return;
+  }
+
+  // Open trace file (append mode to support multiple caches)
+  m_trace_file = fopen(trace_config->m_trace_file_name.c_str(), "a");
+  if (m_trace_file == NULL) {
+    printf("Warning: Failed to open cache trace file: %s\n",
+           trace_config->m_trace_file_name.c_str());
+    return;
+  }
+
+  m_trace_enabled = true;
+
+  // Write CSV header if format is CSV (only once)
+  static bool header_written = false;
+  if (trace_config->m_format == TRACE_FORMAT_CSV && !header_written) {
+    fprintf(m_trace_file,
+            "cycle,cache_name,partition_id,sub_partition_id,cache_id,operation,access_type,status,"
+            "addr,block_addr,set_index,cache_index,way,data_type,data_size,"
+            "occupancy,occupancy_pct,dirty_lines,reserved_lines,invalid_lines,"
+            "evicted_addr,evicted_modified,evicted_size\n");
+    fflush(m_trace_file);
+    header_written = true;
+  }
+}
+
+// Close cache trace
+void baseline_cache::close_cache_trace() {
+  if (m_trace_file != NULL) {
+    fclose(m_trace_file);
+    m_trace_file = NULL;
+  }
+  m_trace_enabled = false;
+}
+
+// Check if tracing is enabled
+bool baseline_cache::should_trace() const {
+  return m_trace_enabled && m_trace_file != NULL;
+}
+
+// Get cache statistics
+void baseline_cache::get_cache_statistics(unsigned &total_lines,
+                                          unsigned &used_lines,
+                                          unsigned &dirty_lines,
+                                          unsigned &reserved_lines,
+                                          unsigned &invalid_lines) {
+  total_lines = m_config.get_num_lines();
+  used_lines = 0;
+  dirty_lines = 0;
+  reserved_lines = 0;
+  invalid_lines = 0;
+
+  for (unsigned i = 0; i < total_lines; i++) {
+    cache_block_t *line = m_tag_array->get_block(i);
+    if (!line->is_invalid_line()) {
+      used_lines++;
+      if (line->is_modified_line()) dirty_lines++;
+      if (line->is_reserved_line()) reserved_lines++;
+    } else {
+      invalid_lines++;
+    }
+  }
+}
+
+// Get way from cache index
+unsigned baseline_cache::get_way_from_index(unsigned cache_index) const {
+  return cache_index % m_config.get_assoc();
+}
+
+// Get set from cache index
+unsigned baseline_cache::get_set_from_index(unsigned cache_index) const {
+  return cache_index / m_config.get_assoc();
+}
+
+// Get cache type name
+const char* baseline_cache::get_cache_type_name() const {
+  cache_form form = get_cache_form();
+  switch (form) {
+    case L2_CACHE:
+      return "L2";
+    case L1D_CACHE:
+      return "L1D";
+    case L1I_CACHE:
+      return "L1I";
+    case L1C_CACHE:
+      return "L1C";
+    case L1T_CACHE:
+      return "L1T";
+    case CTR_CACHE:
+      return "CTR";
+    case MAC_CACHE:
+      return "MAC";
+    case BMT_CACHE:
+      return "BMT";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+// Get data type string
+const char* baseline_cache::data_type_str(data_type dt) const {
+  static const char *data_type_names[] = {
+      "NORM", "CTR", "MAC", "BMT", "PAD"
+  };
+  if (dt >= NUM_DATA_TYPE) return "UNKNOWN";
+  return data_type_names[dt];
+}
+
+// Print trace in CSV format
+void baseline_cache::print_trace_csv(cache_trace_op_type op_type, mem_fetch *mf,
+                                    unsigned time, enum cache_request_status status,
+                                    unsigned cache_index, const evicted_block_info &evicted,
+                                    new_addr_type addr, unsigned data_size) {
+  if (!should_trace()) return;
+
+  // Get cache statistics
+  unsigned total_lines, used_lines, dirty_lines, reserved_lines, invalid_lines;
+  get_cache_statistics(total_lines, used_lines, dirty_lines, reserved_lines, invalid_lines);
+
+  // Operation type string
+  const char *op_str = "";
+  switch (op_type) {
+    case TRACE_OP_ACCESS: op_str = "ACCESS"; break;
+    case TRACE_OP_FILL: op_str = "FILL"; break;
+    case TRACE_OP_WRITEBACK: op_str = "WRITEBACK"; break;
+    case TRACE_OP_EVICT: op_str = "EVICT"; break;
+  }
+
+  // Access type
+  const char *access_type_str = "";
+  new_addr_type access_addr = addr;
+  new_addr_type block_addr = 0;
+  data_type dt = NORM;
+  unsigned access_data_size = data_size;
+
+  if (mf != NULL) {
+    access_type_str = mf->is_write() ? "WRITE" : "READ";
+    access_addr = mf->get_addr();
+    block_addr = m_config.block_addr(access_addr);
+    dt = mf->get_data_type();
+    access_data_size = mf->get_data_size();
+  } else {
+    access_type_str = "-";
+    block_addr = m_config.block_addr(access_addr);
+  }
+
+  // Set and way indices
+  unsigned set_index = (cache_index != (unsigned)-1) ? get_set_from_index(cache_index) : 0;
+  unsigned way = (cache_index != (unsigned)-1) ? get_way_from_index(cache_index) : 0;
+
+  // Occupancy percentage
+  float occupancy_pct = (total_lines > 0) ? (float)used_lines / total_lines * 100.0f : 0.0f;
+
+  // Get partition and sub-partition IDs from mem_fetch if available
+  int partition_id = -1;
+  int sub_partition_id = -1;
+  if (mf != NULL) {
+    sub_partition_id = mf->get_sub_partition_id();
+    // partition_id is typically sub_partition_id >> 1 or similar, but we can extract from mem_fetch
+    partition_id = sub_partition_id >> 1;  // This is a common pattern in the code
+  }
+
+  // CSV output
+  fprintf(m_trace_file,
+          "%u,%s,%d,%d,%d,%s,%s,%s,"
+          "0x%llx,0x%llx,%u,%u,%u,%s,%u,"
+          "%u,%.2f,%u,%u,%u,"
+          "0x%llx,%u,%u\n",
+          time, m_name.c_str(), partition_id, sub_partition_id, m_tag_array->m_core_id,
+          op_str, access_type_str, cache_request_status_str(status),
+          access_addr, block_addr, set_index, cache_index, way, data_type_str(dt), access_data_size,
+          used_lines, occupancy_pct, dirty_lines, reserved_lines, invalid_lines,
+          evicted.m_block_addr, evicted.m_block_addr != 0 ? 1 : 0, evicted.m_modified_size);
+
+  fflush(m_trace_file);
+}
+
+// Print trace in readable format
+void baseline_cache::print_trace_readable(cache_trace_op_type op_type, mem_fetch *mf,
+                                         unsigned time, enum cache_request_status status,
+                                         unsigned cache_index, const evicted_block_info &evicted,
+                                         new_addr_type addr, unsigned data_size) {
+  if (!should_trace()) return;
+
+  // Get cache statistics
+  unsigned total_lines, used_lines, dirty_lines, reserved_lines, invalid_lines;
+  get_cache_statistics(total_lines, used_lines, dirty_lines, reserved_lines, invalid_lines);
+
+  // Operation type string
+  const char *op_str = "";
+  switch (op_type) {
+    case TRACE_OP_ACCESS: op_str = "ACCESS"; break;
+    case TRACE_OP_FILL: op_str = "FILL"; break;
+    case TRACE_OP_WRITEBACK: op_str = "WRITEBACK"; break;
+    case TRACE_OP_EVICT: op_str = "EVICT"; break;
+  }
+
+  // Access type
+  const char *access_type_str = "";
+  new_addr_type access_addr = addr;
+  new_addr_type block_addr = 0;
+  data_type dt = NORM;
+  unsigned access_data_size = data_size;
+
+  if (mf != NULL) {
+    access_type_str = mf->is_write() ? "WRITE" : "READ";
+    access_addr = mf->get_addr();
+    block_addr = m_config.block_addr(access_addr);
+    dt = mf->get_data_type();
+    access_data_size = mf->get_data_size();
+  } else {
+    access_type_str = "-";
+    block_addr = m_config.block_addr(access_addr);
+  }
+
+  // Set and way indices
+  unsigned set_index = (cache_index != (unsigned)-1) ? get_set_from_index(cache_index) : 0;
+  unsigned way = (cache_index != (unsigned)-1) ? get_way_from_index(cache_index) : 0;
+
+  // Occupancy percentage
+  float occupancy_pct = (total_lines > 0) ? (float)used_lines / total_lines * 100.0f : 0.0f;
+
+  // Get partition and sub-partition IDs from mem_fetch if available
+  int partition_id = -1;
+  int sub_partition_id = -1;
+  if (mf != NULL) {
+    sub_partition_id = mf->get_sub_partition_id();
+    partition_id = sub_partition_id >> 1;
+  }
+
+  // Readable output
+  fprintf(m_trace_file, "[Cycle %u] %s[P%d:SP%d:C%d] %s %s %s | ",
+          time, m_name.c_str(), partition_id, sub_partition_id, m_tag_array->m_core_id,
+          op_str, access_type_str, cache_request_status_str(status));
+
+  fprintf(m_trace_file, "Addr=0x%llx Block=0x%llx Set=%u Index=%u Way=%u | ",
+          access_addr, block_addr, set_index, cache_index, way);
+
+  fprintf(m_trace_file, "Type=%s Size=%uB | ",
+          data_type_str(dt), access_data_size);
+
+  fprintf(m_trace_file, "Occ=%u/%u(%.1f%%) Dirty=%u Rsv=%u Inv=%u",
+          used_lines, total_lines, occupancy_pct, dirty_lines, reserved_lines, invalid_lines);
+
+  if (evicted.m_block_addr != 0) {
+    fprintf(m_trace_file, " | EVICT: Addr=0x%llx Size=%u",
+            evicted.m_block_addr, evicted.m_modified_size);
+  }
+
+  fprintf(m_trace_file, "\n");
+  fflush(m_trace_file);
+}
+
+// Trace access operation
+void baseline_cache::trace_access(mem_fetch *mf, unsigned time,
+                                 enum cache_request_status status,
+                                 unsigned cache_index, bool eviction_occurred,
+                                 const evicted_block_info &evicted) {
+  if (!should_trace()) return;
+
+  if (m_trace_config->m_format == TRACE_FORMAT_CSV) {
+    print_trace_csv(TRACE_OP_ACCESS, mf, time, status, cache_index, evicted);
+  } else {
+    print_trace_readable(TRACE_OP_ACCESS, mf, time, status, cache_index, evicted);
+  }
+}
+
+// Trace fill operation
+void baseline_cache::trace_fill(mem_fetch *mf, unsigned time, unsigned cache_index) {
+  if (!should_trace()) return;
+
+  evicted_block_info empty_evicted;
+  if (m_trace_config->m_format == TRACE_FORMAT_CSV) {
+    print_trace_csv(TRACE_OP_FILL, mf, time, HIT, cache_index, empty_evicted);
+  } else {
+    print_trace_readable(TRACE_OP_FILL, mf, time, HIT, cache_index, empty_evicted);
+  }
+}
+
+// Trace writeback operation
+void baseline_cache::trace_writeback(new_addr_type addr, unsigned time,
+                                    unsigned cache_index, unsigned data_size) {
+  if (!should_trace()) return;
+
+  evicted_block_info empty_evicted;
+  if (m_trace_config->m_format == TRACE_FORMAT_CSV) {
+    print_trace_csv(TRACE_OP_WRITEBACK, NULL, time, HIT, cache_index, empty_evicted, addr, data_size);
+  } else {
+    print_trace_readable(TRACE_OP_WRITEBACK, NULL, time, HIT, cache_index, empty_evicted, addr, data_size);
+  }
+}

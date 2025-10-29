@@ -35,6 +35,7 @@
 // #define EXC_EN
 #define AES_Enable
 #define DEADLOCK_EN
+#define META_IDEAL
 
 
 #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED

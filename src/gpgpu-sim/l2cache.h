@@ -183,8 +183,8 @@ class memory_partition_unit {
   fifo_pipeline<mem_fetch> *m_ctr_L2_bundle_queue;
   fifo_pipeline<mem_fetch> *m_L2_ctr_bundle_queue;
   unsigned m_n_mf[5] = {0, 0, 0, 0, 0};
-  const unsigned send_trigger_threshold = 64;
-  const unsigned receive_stop_threshold = 64;
+  unsigned send_trigger_threshold = 64;
+  unsigned receive_stop_threshold = 64;
   unsigned last_send = 0;
 
   void normalize_sub_partition(mem_fetch *mf, const char *context);

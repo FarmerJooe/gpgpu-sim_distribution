@@ -70,6 +70,40 @@ enum cache_event_type {
   WRITE_ALLOCATE_SENT
 };
 
+enum cache_trace_op_type {
+  TRACE_OP_ACCESS = 0,
+  TRACE_OP_FILL,
+  TRACE_OP_WRITEBACK,
+  TRACE_OP_EVICT
+};
+
+enum cache_trace_format {
+  TRACE_FORMAT_CSV = 0,
+  TRACE_FORMAT_READABLE
+};
+
+struct cache_trace_config {
+  bool m_enabled;
+  cache_trace_format m_format;
+  bool m_trace_l2;
+  bool m_trace_l1d;
+  bool m_trace_ctr;
+  bool m_trace_mac;
+  bool m_trace_bmt;
+  std::string m_trace_file_name;
+
+  cache_trace_config() {
+    m_enabled = false;
+    m_format = TRACE_FORMAT_CSV;
+    m_trace_l2 = true;
+    m_trace_l1d = false;
+    m_trace_ctr = true;
+    m_trace_mac = true;
+    m_trace_bmt = true;
+    m_trace_file_name = "cache_trace.txt";
+  }
+};
+
 struct evicted_block_info {
   new_addr_type m_block_addr;
   unsigned m_modified_size;
@@ -1307,7 +1341,10 @@ class baseline_cache : public cache_t {
       : m_config(config),
         m_tag_array(new tag_array(config, core_id, type_id)),
         m_mshrs(config.m_mshr_entries, config.m_mshr_max_merge),
-        m_bandwidth_management(config) {
+        m_bandwidth_management(config),
+        m_trace_config(NULL),
+        m_trace_file(NULL),
+        m_trace_enabled(false) {
     init(name, config, memport, status);
   }
 
@@ -1338,7 +1375,10 @@ class baseline_cache : public cache_t {
     }
   }
 
-  virtual ~baseline_cache() { delete m_tag_array; }
+  virtual ~baseline_cache() {
+    close_cache_trace();
+    delete m_tag_array;
+  }
 
   void update_cache_parameters(cache_config &config) {
     m_config = config;
@@ -1395,7 +1435,7 @@ class baseline_cache : public cache_t {
   void set_cache_form(enum cache_form _cache_form) {
     this->m_cache_form = _cache_form;
   }
-  enum cache_form get_cache_form() {
+  enum cache_form get_cache_form() const {
     return m_cache_form;
   }
 
@@ -1417,7 +1457,10 @@ class baseline_cache : public cache_t {
     m_tag_array->fill(addr, time, mask, byte_mask, true, mf_data_type);
   }
 
-  
+  // Cache trace functions
+  void init_cache_trace(const cache_trace_config *trace_config);
+  void close_cache_trace();
+  bool should_trace() const;
 
  protected:
   // Constructor that can be used by derived classes with custom tag arrays
@@ -1427,7 +1470,10 @@ class baseline_cache : public cache_t {
       : m_config(config),
         m_tag_array(new_tag_array),
         m_mshrs(config.m_mshr_entries, config.m_mshr_max_merge),
-        m_bandwidth_management(config) {
+        m_bandwidth_management(config),
+        m_trace_config(NULL),
+        m_trace_file(NULL),
+        m_trace_enabled(false) {
     init(name, config, memport, status);
   }
 
@@ -1518,6 +1564,41 @@ class baseline_cache : public cache_t {
   };
 
   bandwidth_management m_bandwidth_management;
+
+  // Cache trace members
+  const cache_trace_config *m_trace_config;
+  FILE *m_trace_file;
+  bool m_trace_enabled;
+
+  // Cache trace helper functions
+  void trace_access(mem_fetch *mf, unsigned time,
+                   enum cache_request_status status,
+                   unsigned cache_index, bool eviction_occurred,
+                   const evicted_block_info &evicted);
+
+  void trace_fill(mem_fetch *mf, unsigned time, unsigned cache_index);
+
+  void trace_writeback(new_addr_type addr, unsigned time,
+                      unsigned cache_index, unsigned data_size);
+
+  void get_cache_statistics(unsigned &total_lines, unsigned &used_lines,
+                           unsigned &dirty_lines, unsigned &reserved_lines,
+                           unsigned &invalid_lines);
+
+  void print_trace_csv(cache_trace_op_type op_type, mem_fetch *mf,
+                      unsigned time, enum cache_request_status status,
+                      unsigned cache_index, const evicted_block_info &evicted,
+                      new_addr_type addr = 0, unsigned data_size = 0);
+
+  void print_trace_readable(cache_trace_op_type op_type, mem_fetch *mf,
+                           unsigned time, enum cache_request_status status,
+                           unsigned cache_index, const evicted_block_info &evicted,
+                           new_addr_type addr = 0, unsigned data_size = 0);
+
+  unsigned get_way_from_index(unsigned cache_index) const;
+  unsigned get_set_from_index(unsigned cache_index) const;
+  const char* get_cache_type_name() const;
+  const char* data_type_str(data_type dt) const;
 
   friend class l2_cache;
   friend class data_cache;

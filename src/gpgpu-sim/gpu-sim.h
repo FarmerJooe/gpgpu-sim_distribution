@@ -288,6 +288,9 @@ class memory_config {
   mutable l2_cache_config m_CTR_config;
   bool m_L2_texure_only;
 
+  // Cache trace configuration
+  cache_trace_config m_cache_trace_config;
+
   char *gpgpu_dram_timing_opt;
   char *gpgpu_L2_queue_config;
   bool l2_ideal;

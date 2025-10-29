@@ -166,10 +166,11 @@
 #-gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
 -gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
 #-gpgpu_cache:dmeta N:4:128:4,L:B:m:W:P,A:64:4,32:0,32
--gpgpu_cache:dmeta S:4:128:2,L:B:m:L:P,A:8:8,32:0,32
--gpgpu_cache:ctr S:4:128:4,L:B:m:L:P,A:8:8,32:0,32
+-gpgpu_cache:dmeta S:4:128:2,L:B:m:L:P,A:128:1,32:0,32
+-gpgpu_cache:ctr S:4:128:4,L:B:m:L:P,A:128:1,32:0,32
 -gpgpu_cache:dl2_texture_only 0
--gpgpu_dram_partition_queues 64:64:64:64
+# -gpgpu_dram_partition_queues 64:64:64:64
+-gpgpu_dram_partition_queues 1024:1024:1024:1024
 -gpgpu_perf_sim_memcpy 0
 -gpgpu_memory_partition_indexing 2
 

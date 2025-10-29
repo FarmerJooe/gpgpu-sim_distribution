@@ -10,7 +10,13 @@ mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class me
     m_ctrModCount(ctrModCount),
     m_gpu(gpu),
     m_ecc(ecc) {
-    unsigned len = 64;
+    unsigned int icnt_L2;
+    unsigned int L2_dram;
+    unsigned int dram_L2;
+    unsigned int L2_icnt;
+    sscanf(m_config->gpgpu_L2_queue_config, "%u:%u:%u:%u", &icnt_L2, &L2_dram,
+            &dram_L2, &L2_icnt);
+    unsigned len = L2_dram;
     unsigned m_id = m_unit->get_mpid();
     m_CTR_queue = new fifo_pipeline<mem_fetch>("meta-CTR-queue", m_id, 0, len);
     m_Ciphertext_queue = new fifo_pipeline<mem_fetch>("meta-Ciphertext-queue", m_id, 0, len);

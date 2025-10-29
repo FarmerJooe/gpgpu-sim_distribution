@@ -325,6 +325,36 @@ void memory_config::reg_options(class OptionParser *opp) {
       "elimnate_rw_turnaround i.e set tWTR and tRTW = 0", "0");
   option_parser_register(opp, "-icnt_flit_size", OPT_UINT32, &icnt_flit_size,
                          "icnt_flit_size", "32");
+
+  // Cache trace configuration options
+  option_parser_register(opp, "-gpgpu_cache_trace_enabled", OPT_BOOL,
+                        &m_cache_trace_config.m_enabled,
+                        "Enable cache trace (0=disabled, 1=enabled)", "0");
+
+  option_parser_register(opp, "-gpgpu_cache_trace_format", OPT_INT32,
+                        (int*)&m_cache_trace_config.m_format,
+                        "Cache trace format (0=CSV, 1=Readable)", "0");
+
+  option_parser_register(opp, "-gpgpu_cache_trace_l2", OPT_BOOL,
+                        &m_cache_trace_config.m_trace_l2,
+                        "Trace L2 cache", "1");
+
+  option_parser_register(opp, "-gpgpu_cache_trace_l1d", OPT_BOOL,
+                        &m_cache_trace_config.m_trace_l1d,
+                        "Trace L1D cache", "0");
+
+  option_parser_register(opp, "-gpgpu_cache_trace_ctr", OPT_BOOL,
+                        &m_cache_trace_config.m_trace_ctr,
+                        "Trace CTR cache", "1");
+
+  option_parser_register(opp, "-gpgpu_cache_trace_mac", OPT_BOOL,
+                        &m_cache_trace_config.m_trace_mac,
+                        "Trace MAC cache", "1");
+
+  option_parser_register(opp, "-gpgpu_cache_trace_bmt", OPT_BOOL,
+                        &m_cache_trace_config.m_trace_bmt,
+                        "Trace BMT cache", "1");
+
   m_address_mapping.addrdec_setoption(opp);
 }
 
