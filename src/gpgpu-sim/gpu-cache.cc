@@ -1872,7 +1872,7 @@ enum cache_request_status read_only_cache::access(
                     m_stats.select_stats_status(status, cache_status));
   m_stats.inc_stats_pw(mf->get_access_type(),
                        m_stats.select_stats_status(status, cache_status));
-  if (cache_status == MISS || cache_status == SECTOR_MISS)
+  if (cache_status != HIT && cache_status != RESERVATION_FAIL)
       mf->set_miss_cycle(get_cache_form(), time);
   return cache_status;
 }
