@@ -78,11 +78,13 @@ class memory_partition_unit {
   ~memory_partition_unit();
 
   void print_mem_part_fifo_busy() const;
+  void partition_print_stat_pw();
 
   bool busy() const;
 
   void dram_to_mee_cycle();
   void mee_to_dram_cycle();
+  bool dram_busy() const;
   void cache_cycle(unsigned cycle);
   void dram_cycle();
   void simple_dram_model_cycle();
@@ -301,6 +303,7 @@ class memory_sub_partition {
   void print_cache_status_breakdown() {
     m_L2cache->print_cache_status_breakdown();
   }
+  void sub_partition_print_stat_pw();
 
   unsigned long long get_ctr_acc() {
     return m_L2cache->get_ctr_acc();

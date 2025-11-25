@@ -200,6 +200,10 @@ class fifo_pipeline {
     return true;
   }
 
+  bool is_busy() const {
+    return !empty();
+  }
+
  private:
   std::string m_name;
 

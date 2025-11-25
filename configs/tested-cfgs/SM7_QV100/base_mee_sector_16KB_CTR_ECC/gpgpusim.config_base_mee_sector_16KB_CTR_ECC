@@ -42,7 +42,7 @@
 -gpgpu_ptx_instruction_classification 0
 -gpgpu_ptx_sim_mode 0
 -gpgpu_ptx_force_max_capability 70 
--gpgpu_max_cycle 2000000
+-gpgpu_max_cycle 1000000
 
 # Device Limits
 -gpgpu_stack_size_limit 1024
@@ -166,8 +166,8 @@
 #-gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
 -gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P,A:192:4,32:0,32
 #-gpgpu_cache:dmeta N:4:128:4,L:B:m:W:P,A:64:4,32:0,32
--gpgpu_cache:dmeta S:4:128:2,L:B:m:L:P,A:64:64,32:0,32
--gpgpu_cache:ctr S:4:128:4,L:B:m:L:P,A:64:64,32:0,32
+-gpgpu_cache:dmeta S:4:128:2,L:B:m:L:L,A:8:8,32,0,32
+-gpgpu_cache:ctr S:4:128:16,L:B:m:L:L,A:8:8,32,0,32
 -gpgpu_cache:dl2_texture_only 0
 -gpgpu_dram_partition_queues 64:64:64:64
 # -gpgpu_dram_partition_queues 16384:131072:16384:16384
@@ -241,13 +241,22 @@
 -visualizer_enabled 0
 
 # tracing functionality
--trace_enabled 0
--trace_components LIVENESS
+-trace_enabled 1
+# -trace_components LIVENESS,MEMORY_PARTITION_UNIT,MEMORY_SUBPARTITION_UNIT
 #-trace_components WARP_SCHEDULER,SCOREBOARD
--trace_sampling_core 0
+# -trace_sampling_core 0
+# -trace_sampling_memory_partition -1
+
+-gpgpu_cache_trace_enabled 1
+-gpgpu_cache_trace_l2 0
+-gpgpu_cache_trace_ctr 1
+-gpgpu_cache_trace_mac 0
+-gpgpu_cache_trace_bmt 0
+# -gpgpu_cache_trace_format csv
+# -gpgpu_cache_trace_file cache_trace.csv
 
 # power simulation
--power_simulation_enabled 1 
--power_simulation_mode 0
--accelwattch_xml_file accelwattch_sass_sim.xml
+# -power_simulation_enabled 1 
+# -power_simulation_mode 0
+# -accelwattch_xml_file accelwattch_sass_sim.xml
 

@@ -1435,10 +1435,10 @@ void gpgpu_sim::gpu_print_METACache_stat(char META[]) {
         printf("%s_total_cache_miss_rate = %.4lf\n",
                META, (double)total_l2_css.misses / (double)total_l2_css.accesses);
       //secondary MISS
-      printf("%s_total_cache_secondary_misses = %llu\n", META, l2_stats.m_stats[META_ACC][MSHR_HIT]);
+      printf("%s_total_cache_secondary_misses = %llu\n", META, l2_stats.m_stats[META_ACC_R][MSHR_HIT]);
       //secondary MISS rate
       if (total_l2_css.misses > 0)
-        printf("%s_total_cache_secondary_miss_rate = %.4lf\n", META, (double)l2_stats.m_stats[META_ACC][MSHR_HIT] / ((double)total_l2_css.misses + (double)l2_stats.m_stats[META_ACC][MSHR_HIT]));
+        printf("%s_total_cache_secondary_miss_rate = %.4lf\n", META, (double)l2_stats.m_stats[META_ACC_R][MSHR_HIT] / ((double)total_l2_css.misses + (double)l2_stats.m_stats[META_ACC_R][MSHR_HIT]));
       printf("%s_total_cache_pending_hits = %llu\n", META, total_l2_css.pending_hits);
       printf("%s_total_cache_reservation_fails = %llu\n",
              META, total_l2_css.res_fails);
@@ -1575,6 +1575,13 @@ void gpgpu_sim::gpu_print_stat_pw() {
     m_cluster[i]->print_not_completed(statfout);
   }
   fprintf(statfout, "\n");
+  // partition stats
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+    m_memory_partition_unit[i]->partition_print_stat_pw();
+  }
+  // for (unsigned i = 0; i < m_memory_config->m_n_mem_sub_partition; i++) {
+  //   m_memory_sub_partition[i]->sub_partition_print_stat_pw();
+  // }
   // print_not_completed(statfout);
 }
 
@@ -1772,7 +1779,7 @@ void gpgpu_sim::gpu_print_stat() {
   gpu_print_METACache_data_type_breakdown();
   // ecc status
   gpu_print_ECC_status();
-  // gpu_print_ctrModCount_breakdown();
+  gpu_print_ctrModCount_breakdown();
   for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
     m_memory_partition_unit[i]->print_mem_part_fifo_busy();
   }
@@ -2323,7 +2330,7 @@ void gpgpu_sim::cycle() {
       }
     }
 
-    if ((gpu_sim_cycle + gpu_tot_sim_cycle) % 1000 == 0) {
+    if ((gpu_sim_cycle + gpu_tot_sim_cycle) % 10000 == 0) {
       gpu_print_stat_pw();
     }
 

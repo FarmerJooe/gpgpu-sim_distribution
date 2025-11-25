@@ -751,6 +751,7 @@ cache_stats::cache_stats() {
   m_cache_mf_latency_pw = 0;
   m_cache_mf_count = 0;
   m_cache_mf_count_pw = 0;
+  m_pending_requests = 0;
 }
 
 void cache_stats::clear() {
@@ -769,6 +770,7 @@ void cache_stats::clear() {
   m_cache_mf_latency_pw = 0;
   m_cache_mf_count = 0;
   m_cache_mf_count_pw = 0;
+  m_pending_requests = 0;
 }
 
 void cache_stats::clear_pw() {
@@ -790,6 +792,14 @@ void cache_stats::inc_stats(int access_type, int access_outcome) {
     assert(0 && "Unknown cache access type or access outcome");
 
   m_stats[access_type][access_outcome]++;
+
+  // 当发生MISS、SECTOR_MISS或HIT_RESERVED时，增加未完成请求计数器
+  if (access_outcome == MISS || access_outcome == SECTOR_MISS ||
+      access_outcome == HIT_RESERVED) {
+    if (access_type == GLOBAL_ACC_R || access_type == CONST_ACC_R ||
+       access_type == INST_ACC_R || access_type == META_ACC_R)
+      inc_pending_requests();
+  }
 }
 
 void cache_stats::inc_stats_pw(int access_type, int access_outcome) {
@@ -1050,33 +1060,33 @@ void cache_stats::get_sub_stats_pw(struct cache_sub_stats_pw &css) const {
         t_css.accesses += m_stats_pw[type][status];
 
       if (status == HIT) {
-        if (type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R) {
+        if (type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R || type == META_ACC_R) {
           t_css.read_hits += m_stats_pw[type][status];
-        } else if (type == GLOBAL_ACC_W) {
+        } else if (type == GLOBAL_ACC_W || type == META_ACC_W) {
           t_css.write_hits += m_stats_pw[type][status];
         }
       }
 
       if (status == MISS || status == SECTOR_MISS) {
-        if (type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R) {
+        if (type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R || type == META_ACC_R) {
           t_css.read_misses += m_stats_pw[type][status];
-        } else if (type == GLOBAL_ACC_W) {
+        } else if (type == GLOBAL_ACC_W || type == META_ACC_W) {
           t_css.write_misses += m_stats_pw[type][status];
         }
       }
 
       if (status == HIT_RESERVED) {
-        if (type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R) {
+        if (type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R || type == META_ACC_R) {
           t_css.read_pending_hits += m_stats_pw[type][status];
-        } else if (type == GLOBAL_ACC_W) {
+        } else if (type == GLOBAL_ACC_W || type == META_ACC_W) {
           t_css.write_pending_hits += m_stats_pw[type][status];
         }
       }
 
       if (status == RESERVATION_FAIL) {
-        if (type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R) {
+        if (type == GLOBAL_ACC_R || type == CONST_ACC_R || type == INST_ACC_R || type == META_ACC_R) {
           t_css.read_res_fails += m_stats_pw[type][status];
-        } else if (type == GLOBAL_ACC_W) {
+        } else if (type == GLOBAL_ACC_W || type == META_ACC_W) {
           t_css.write_res_fails += m_stats_pw[type][status];
         }
       }
@@ -1270,10 +1280,11 @@ bool baseline_cache::waiting_for_fill(mem_fetch *mf) {
 }
 
 mem_fetch *data_cache::next_access() {
-  mem_fetch *mf = m_mshrs.next_access();
+  // 调用baseline_cache::next_access()，它会减少pending_requests计数器
+  mem_fetch *mf = baseline_cache::next_access();
   mf->set_fill_cycle(get_cache_form(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
   this->inc_mf_latency(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
-  return mf; 
+  return mf;
 }
 
 void baseline_cache::print(FILE *fp, unsigned &accesses,
@@ -1286,6 +1297,94 @@ void baseline_cache::display_state(FILE *fp) const {
   fprintf(fp, "Cache %s:\n", m_name.c_str());
   m_mshrs.display(fp);
   fprintf(fp, "\n");
+}
+
+void baseline_cache::cache_print_stat_pw() {
+  struct cache_sub_stats_pw css;
+  m_stats.get_sub_stats_pw(css);
+
+  // 1. 计算MF跟踪统计信息（注意：这些是per-window的统计）
+  // total_mf_received = 本窗口内累计接收的所有access请求（不包括RESERVATION_FAIL）
+  css.total_mf_received = css.read_hits + css.write_hits + css.read_misses + css.read_pending_hits;
+
+  // total_mf_returned = 本窗口内累计返回的所有请求：
+  // - HIT的请求立即返回：read_hits + write_hits
+  // - MISS/PENDING_HIT的请求延迟返回：mf_count统计（通过inc_mf_latency累加）
+  // 注意：RESERVATION_FAIL不算在returned中，因为它们被拒绝了（也不算在accesses中）
+  css.total_mf_returned = css.read_hits + css.write_hits + css.mf_count;
+
+  // current_mf_processing = 当前瞬时正在处理的mf数量（实时计数器）
+  // 使用m_stats.get_pending_requests()获取实时追踪的未完成请求数
+  // 该计数器在MISS/SECTOR_MISS/HIT_RESERVED时+1，在fill时-1
+  css.current_mf_processing = m_stats.get_pending_requests();
+
+  // 2. 计算RESERVED cacheline占比
+  css.total_lines = m_tag_array->size();
+  css.total_sets = m_config.m_nset;
+  css.reserved_lines = 0;
+  css.fully_reserved_sets = 0;
+
+  // 遍历所有set，统计RESERVED line和fully reserved set
+  for (unsigned set_idx = 0; set_idx < m_config.m_nset; set_idx++) {
+    unsigned reserved_in_set = 0;
+    for (unsigned way = 0; way < m_config.m_assoc; way++) {
+      unsigned line_idx = set_idx * m_config.m_assoc + way;
+      cache_block_t *line = m_tag_array->get_block(line_idx);
+      if (line && line->is_reserved_line()) {
+        css.reserved_lines++;
+        reserved_in_set++;
+      }
+    }
+    // 如果set中所有line都是RESERVED状态，则该set为fully reserved
+    if (reserved_in_set == m_config.m_assoc) {
+      css.fully_reserved_sets++;
+    }
+  }
+
+  // 3. 计算MSHR使用情况
+  css.mshr_total_entries = m_config.m_mshr_entries;
+  css.mshr_max_merge = m_config.m_mshr_max_merge;
+
+  // 使用mshr_table的get_stats方法获取准确的统计信息
+  m_mshrs.get_stats(css.mshr_used_entries, css.mshr_full_entries);
+
+  // 打印基本统计信息
+  printf(
+      "Cache %s - Accesses: %u, Read Hits: %u, Write Hits: %u, Read Misses: "
+      "%u, Write Misses: %u, Read Pending Hits: %u, Write Pending Hits: %u, "
+      "Read Res Fails: %u, Write Res Fails: %u, Avg MF Latency: %.2f\n",
+      m_name.c_str(), css.accesses, css.read_hits, css.write_hits,
+      css.read_misses, css.write_misses, css.read_pending_hits,
+      css.write_pending_hits, css.read_res_fails, css.write_res_fails,
+      (css.mf_count > 0)
+          ? ((float)css.avg_mf_latency / (float)css.mf_count)
+          : 0.0f);
+
+  // 打印新增的统计信息
+  // 1. MF跟踪信息
+  // 注意：Received和Returned是per-window累计值，Processing是当前瞬时值
+  // Pending = Received - Returned (窗口内仍在处理中的累计数量)
+  unsigned pending_in_window = css.total_mf_received - css.total_mf_returned;
+  printf("  MF Tracking - Received(PW): %u, Returned(PW): %u, Pending(PW): %u, Processing(Now): %u\n",
+         css.total_mf_received, css.total_mf_returned, pending_in_window, css.current_mf_processing);
+
+  // 2. RESERVED cacheline占比
+  float reserved_line_ratio = (css.total_lines > 0)
+      ? (float)css.reserved_lines / (float)css.total_lines * 100.0f : 0.0f;
+  float fully_reserved_set_ratio = (css.total_sets > 0)
+      ? (float)css.fully_reserved_sets / (float)css.total_sets * 100.0f : 0.0f;
+  printf("  Cache Status - Reserved Lines: %u/%u (%.2f%%), Fully Reserved Sets: %u/%u (%.2f%%)\n",
+         css.reserved_lines, css.total_lines, reserved_line_ratio,
+         css.fully_reserved_sets, css.total_sets, fully_reserved_set_ratio);
+
+  // 3. MSHR使用情况
+  float mshr_used_ratio = (css.mshr_total_entries > 0)
+      ? (float)css.mshr_used_entries / (float)css.mshr_total_entries * 100.0f : 0.0f;
+  float mshr_full_ratio = (css.mshr_used_entries > 0)
+      ? (float)css.mshr_full_entries / (float)css.mshr_used_entries * 100.0f : 0.0f;
+  printf("  MSHR Status - Used Entries: %u/%u (%.2f%%), Full Entries: %u/%u (%.2f%%)\n",
+         css.mshr_used_entries, css.mshr_total_entries, mshr_used_ratio,
+         css.mshr_full_entries, css.mshr_used_entries, mshr_full_ratio);
 }
 
 /// Read miss handler without writeback
@@ -1953,7 +2052,7 @@ enum cache_request_status data_cache::access(new_addr_type addr, mem_fetch *mf,
                     m_stats.select_stats_status(probe_status, access_status));
   m_stats.inc_stats_pw(mf->get_access_type(), m_stats.select_stats_status(
                                                   probe_status, access_status));
-  if (access_status == MISS || access_status == SECTOR_MISS)
+  if (access_status != HIT && access_status != RESERVATION_FAIL)
       mf->set_miss_cycle(get_cache_form(), time);
 
   // Cache trace: record access

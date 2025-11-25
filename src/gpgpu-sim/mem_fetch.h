@@ -279,7 +279,7 @@ class mem_fetch {
   void reset_meta_issue_time() { m_meta_issue_time = 0; }
 
   void set_cipher_dram_issue_time(unsigned long long cycle) {
-    assert(cycle <= 1000000);
+    // assert(cycle <= 1000000);
     m_cipher_dram_issue_time = cycle;
   }
   unsigned long long get_cipher_dram_issue_time() const {

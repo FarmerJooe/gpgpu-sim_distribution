@@ -17,7 +17,9 @@ class mee {
         mee(class memory_partition_unit *unit, class data_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, counterMap *ctrModCount, class gpgpu_sim *gpu, class ECCEngine *ecc);
         void cycle(unsigned cycle);
         void simple_cycle(unsigned cycle);
+        bool busy() const;
         void print_mee_fifo_busy() const;
+        void mee_print_stat_pw() const;
         void print_addr(char s[], mem_fetch *mf) const;
         void print_status(class data_cache *m_METAcache, mem_fetch *mf);
         void print_tag();

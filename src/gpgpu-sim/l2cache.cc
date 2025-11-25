@@ -197,6 +197,14 @@ void memory_partition_unit::print_mem_part_fifo_busy() const {
 
 }
 
+void memory_partition_unit::partition_print_stat_pw() {
+  m_mee->mee_print_stat_pw();
+  for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
+       p++) {
+    m_sub_partition[p]->sub_partition_print_stat_pw();
+  }
+}
+
 void memory_partition_unit::handle_memcpy_to_gpu(
     size_t addr, unsigned global_subpart_id, mem_access_sector_mask_t mask) {
   unsigned p = global_sub_partition_id_to_local_id(global_subpart_id);
@@ -295,6 +303,8 @@ void memory_partition_unit::arbitration_metadata::print(FILE *fp) const {
 
 bool memory_partition_unit::busy() const {
   bool busy = false;
+  // busy |= dram_busy();
+  // busy |= m_mee->busy();
   for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
        p++) {
     if (m_sub_partition[p]->busy()) {
@@ -366,6 +376,16 @@ int memory_partition_unit::global_sub_partition_id_to_local_id(
     int global_sub_partition_id) const {
   return (global_sub_partition_id -
           m_id * m_config->m_n_sub_partition_per_memory_channel);
+}
+
+bool memory_partition_unit::dram_busy() const {
+  bool busy = false;
+  for (unsigned i = 0; i < NUM_DATA_TYPE; i++) {
+    busy |= m_dram_mee_queue[i]->is_busy();
+    busy |= m_mee_dram_queue[i]->is_busy();
+    busy |= m_n_mf[i] > 0;
+  }
+  return busy;
 }
 
 void memory_partition_unit::mee_to_dram_cycle() {
@@ -1417,6 +1437,12 @@ void memory_sub_partition::print(FILE *fp) const {
     }
   }
   if (!m_config->m_L2_config.disabled()) m_L2cache->display_state(fp);
+}
+
+void memory_sub_partition::sub_partition_print_stat_pw() {
+  printf("Memory Sub Partition %u L2 Cache input buffer used: %d\n", m_id, m_icnt_L2_queue->get_n_element());
+  if (!m_config->m_L2_config.disabled()) m_L2cache->cache_print_stat_pw();
+
 }
 
 void memory_stats_t::visualizer_print(gzFile visualizer_file) {

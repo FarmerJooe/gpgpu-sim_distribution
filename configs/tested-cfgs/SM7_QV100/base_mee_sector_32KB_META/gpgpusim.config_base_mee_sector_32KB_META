@@ -49,7 +49,7 @@
 -gpgpu_heap_size_limit 8388608
 -gpgpu_runtime_sync_depth_limit 2
 -gpgpu_runtime_pending_launch_count_limit 2048
--gpgpu_kernel_launch_latency 0
+-gpgpu_kernel_launch_latency 5000
 -gpgpu_TB_launch_latency 0
 
 # Compute Capability
@@ -170,6 +170,7 @@
 -gpgpu_cache:ctr S:4:128:32,L:B:m:L:P,A:64:64,32:0,32
 -gpgpu_cache:dl2_texture_only 0
 -gpgpu_dram_partition_queues 64:64:64:64
+# -gpgpu_dram_partition_queues 16384:131072:16384:16384
 -gpgpu_perf_sim_memcpy 0
 -gpgpu_memory_partition_indexing 2
 
@@ -202,7 +203,7 @@
 -dram_latency 100
 
 # dram model config
--gpgpu_dram_scheduler 0
+-gpgpu_dram_scheduler 1
 -gpgpu_frfcfs_dram_sched_queue_size 64
 -gpgpu_dram_return_queue_size 192
 
@@ -240,9 +241,19 @@
 -visualizer_enabled 0
 
 # tracing functionality
-#-trace_enabled 0
+-trace_enabled 0
+-trace_components LIVENESS,MEMORY_PARTITION_UNIT,MEMORY_SUBPARTITION_UNIT
 #-trace_components WARP_SCHEDULER,SCOREBOARD
-#-trace_sampling_core 0
+-trace_sampling_core 0
+-trace_sampling_memory_partition -1
+
+-gpgpu_cache_trace_enabled 1
+-gpgpu_cache_trace_l2 1
+-gpgpu_cache_trace_ctr 1
+-gpgpu_cache_trace_mac 1
+-gpgpu_cache_trace_bmt 1
+# -gpgpu_cache_trace_format csv
+# -gpgpu_cache_trace_file cache_trace.csv
 
 # power simulation
 -power_simulation_enabled 1 

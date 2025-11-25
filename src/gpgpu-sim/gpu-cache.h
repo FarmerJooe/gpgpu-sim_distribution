@@ -1100,6 +1100,19 @@ class mshr_table {
            "Change of MSHR parameters between kernels is not allowed");
   }
 
+  // 获取MSHR统计信息
+  void get_stats(unsigned &used_entries, unsigned &full_entries) const {
+    used_entries = 0;
+    full_entries = 0;
+    for (typename table::const_iterator i = m_data.begin(); i != m_data.end(); ++i) {
+      used_entries++;
+      // 如果该entry中合并的请求数达到最大值，则认为是full entry
+      if (i->second.m_list.size() >= m_max_merged) {
+        full_entries++;
+      }
+    }
+  }
+
  private:
   // finite sized, fully associative table, with a finite maximum number of
   // merged requests
@@ -1206,6 +1219,23 @@ struct cache_sub_stats_pw {
   unsigned long long avg_mf_latency;
   unsigned long long mf_count;
 
+  // Memory fetch tracking
+  unsigned total_mf_received;    // 累计已接收的mf数量
+  unsigned total_mf_returned;    // 累计已返回的mf数量
+  unsigned current_mf_processing;  // 当前正在处理的mf数量
+
+  // Cacheline reservation status
+  unsigned total_lines;          // cache总line数
+  unsigned reserved_lines;       // RESERVED状态的line数量
+  unsigned total_sets;           // cache总set数
+  unsigned fully_reserved_sets;  // 所有line均为RESERVED的set数量
+
+  // MSHR status
+  unsigned mshr_total_entries;   // MSHR总entry数
+  unsigned mshr_used_entries;    // MSHR已使用的entry数量
+  unsigned mshr_full_entries;    // MSHR满了的entry数量（已达最大可合并请求数）
+  unsigned mshr_max_merge;       // MSHR最大可合并请求数
+
   cache_sub_stats_pw() { clear(); }
   void clear() {
     accesses = 0;
@@ -1219,6 +1249,20 @@ struct cache_sub_stats_pw {
     read_res_fails = 0;
     avg_mf_latency = 0;
     mf_count = 0;
+
+    total_mf_received = 0;
+    total_mf_returned = 0;
+    current_mf_processing = 0;
+
+    total_lines = 0;
+    reserved_lines = 0;
+    total_sets = 0;
+    fully_reserved_sets = 0;
+
+    mshr_total_entries = 0;
+    mshr_used_entries = 0;
+    mshr_full_entries = 0;
+    mshr_max_merge = 0;
   }
   cache_sub_stats_pw &operator+=(const cache_sub_stats_pw &css) {
     ///
@@ -1233,6 +1277,17 @@ struct cache_sub_stats_pw {
     read_res_fails += css.read_res_fails;
     avg_mf_latency += css.avg_mf_latency;
     mf_count += css.mf_count;
+
+    total_mf_received += css.total_mf_received;
+    total_mf_returned += css.total_mf_returned;
+    current_mf_processing += css.current_mf_processing;
+
+    reserved_lines += css.reserved_lines;
+    fully_reserved_sets += css.fully_reserved_sets;
+
+    mshr_used_entries += css.mshr_used_entries;
+    mshr_full_entries += css.mshr_full_entries;
+
     return *this;
   }
 
@@ -1250,6 +1305,21 @@ struct cache_sub_stats_pw {
     ret.read_res_fails = read_res_fails + cs.read_res_fails;
     ret.avg_mf_latency = avg_mf_latency + cs.avg_mf_latency;
     ret.mf_count = mf_count + cs.mf_count;
+
+    ret.total_mf_received = total_mf_received + cs.total_mf_received;
+    ret.total_mf_returned = total_mf_returned + cs.total_mf_returned;
+    ret.current_mf_processing = current_mf_processing + cs.current_mf_processing;
+
+    ret.total_lines = total_lines + cs.total_lines;
+    ret.reserved_lines = reserved_lines + cs.reserved_lines;
+    ret.total_sets = total_sets + cs.total_sets;
+    ret.fully_reserved_sets = fully_reserved_sets + cs.fully_reserved_sets;
+
+    ret.mshr_total_entries = mshr_total_entries + cs.mshr_total_entries;
+    ret.mshr_used_entries = mshr_used_entries + cs.mshr_used_entries;
+    ret.mshr_full_entries = mshr_full_entries + cs.mshr_full_entries;
+    ret.mshr_max_merge = mshr_max_merge + cs.mshr_max_merge;
+
     return ret;
   }
 };
@@ -1273,6 +1343,13 @@ class cache_stats {
   void inc_mf_latency(unsigned long long cycles);
   enum cache_request_status select_stats_status(
       enum cache_request_status probe, enum cache_request_status access) const;
+
+  // 管理未完成请求计数器
+  void inc_pending_requests() { m_pending_requests++; }
+  void dec_pending_requests() {
+    if (m_pending_requests > 0) m_pending_requests--;
+  }
+  unsigned get_pending_requests() const { return m_pending_requests; }
   unsigned long long &operator()(int access_type, int access_outcome,
                                  bool fail_outcome);
   unsigned long long operator()(int access_type, int access_outcome,
@@ -1310,6 +1387,9 @@ class cache_stats {
   unsigned long long m_cache_mf_latency_pw;
   unsigned long long m_cache_mf_count;
   unsigned long long m_cache_mf_count_pw;
+
+  // 实时追踪未完成的请求数量：MISS/SECTOR_MISS/HIT_RESERVED时+1，fill时-1
+  unsigned m_pending_requests;
 
   friend class gpgpu_sim;
 };
@@ -1401,12 +1481,18 @@ class baseline_cache : public cache_t {
   /// not include accesses that "HIT")
   bool access_ready() const { return m_mshrs.access_ready(); }
   /// Pop next ready access (does not include accesses that "HIT")
-  virtual mem_fetch *next_access() { return m_mshrs.next_access(); }
+  virtual mem_fetch *next_access() {
+    mem_fetch *mf = m_mshrs.next_access();
+    // 当mf从MSHR返回时，减少未完成请求计数器
+    m_stats.dec_pending_requests();
+    return mf;
+  }
   // flash invalidate all entries in cache
   void flush() { m_tag_array->flush(); }
   void invalidate() { m_tag_array->invalidate(); }
   void print(FILE *fp, unsigned &accesses, unsigned &misses) const;
   void display_state(FILE *fp) const;
+  void cache_print_stat_pw();
 
   // Stat collection
   const cache_stats &get_stats() const { return m_stats; }

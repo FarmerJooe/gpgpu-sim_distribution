@@ -37,7 +37,7 @@ enum cache_request_status ctr_cache::access(new_addr_type addr, mem_fetch *mf,
                         m_stats.select_stats_status(probe_status, access_status));
     m_stats.inc_stats_pw(mf->get_access_type(), m_stats.select_stats_status(
                                                     probe_status, access_status));
-    if (access_status == MISS || access_status == SECTOR_MISS)
+    if (access_status != HIT && access_status != RESERVATION_FAIL)
         mf->set_miss_cycle(get_cache_form(), time);                                              
     return access_status;
 }
@@ -47,7 +47,7 @@ mem_fetch* gen_mf(class mem_fetch_allocator *m_mf_allocator, unsigned long long 
     new_addr_type m_addr = 0xdeadbeef;
 
     mem_fetch *mf = m_mf_allocator->alloc(
-        m_addr, META_ACC, 32, true, cycle);
+        m_addr, META_ACC_R, 32, true, cycle);
     
     return mf;
 }
