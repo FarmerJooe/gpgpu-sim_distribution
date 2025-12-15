@@ -442,6 +442,11 @@ enum cache_request_status tag_array::access(new_addr_type addr, unsigned time,
                            m_lines[idx]->get_dirty_byte_mask(),
                            m_lines[idx]->get_dirty_sector_mask());
           m_dirty--;
+        } else if (m_lines[idx]->is_valid_line()) {
+          evicted.set_info(m_lines[idx]->m_block_addr,
+                           mf->get_access_size(),
+                           mf->get_access_byte_mask(),
+                           mf->get_access_sector_mask());
         }
         m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr),
                                time, mf->get_access_sector_mask(), mf->get_data_type());
@@ -1641,6 +1646,20 @@ enum cache_request_status data_cache::wr_miss_wa_naive(
       wb->set_id(mf->get_id());
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                          time, events);
+    } else if (m_config.m_move_policy == ENABLE_META_MOVE && evicted.m_modified_size > 0) {
+      mem_fetch *mv = m_memfetch_creator->alloc(
+          evicted.m_block_addr, META_MOVE, mf->get_access_warp_mask(),
+          evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+          true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+          NULL);
+      // the evicted block may have wrong chip id when advanced L2 hashing  is
+      // used, so set the right chip address from the original mf
+      mv->set_data_type(mf->get_data_type());
+      mv->set_chip(mf->get_tlx_addr().chip);
+      mv->set_parition(mf->get_tlx_addr().sub_partition);
+      mv->set_id(mf->get_id());
+      send_write_request(mv, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
+                        time, events);
     }
     return MISS;
   }
@@ -1696,6 +1715,20 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         wb->set_id(mf->get_id());
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                            time, events);
+      } else if (m_config.m_move_policy == ENABLE_META_MOVE && evicted.m_modified_size > 0) {
+        mem_fetch *mv = m_memfetch_creator->alloc(
+            evicted.m_block_addr, META_MOVE, mf->get_access_warp_mask(),
+            evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+            true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+            NULL);
+        // the evicted block may have wrong chip id when advanced L2 hashing  is
+        // used, so set the right chip address from the original mf
+        mv->set_data_type(mf->get_data_type());
+        mv->set_chip(mf->get_tlx_addr().chip);
+        mv->set_parition(mf->get_tlx_addr().sub_partition);
+        mv->set_id(mf->get_id());
+        send_write_request(mv, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
+                          time, events);
       }
       return MISS;
     }
@@ -1775,6 +1808,20 @@ enum cache_request_status data_cache::wr_miss_wa_fetch_on_write(
         wb->set_id(mf->get_id());
         send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                            time, events);
+      } else if (m_config.m_move_policy == ENABLE_META_MOVE && evicted.m_modified_size > 0) {
+        mem_fetch *mv = m_memfetch_creator->alloc(
+            evicted.m_block_addr, META_MOVE, mf->get_access_warp_mask(),
+            evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+            true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+            NULL);
+        // the evicted block may have wrong chip id when advanced L2 hashing  is
+        // used, so set the right chip address from the original mf
+        mv->set_data_type(mf->get_data_type());
+        mv->set_chip(mf->get_tlx_addr().chip);
+        mv->set_parition(mf->get_tlx_addr().sub_partition);
+        mv->set_id(mf->get_id());
+        send_write_request(mv, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
+                          time, events);
       }
       return MISS;
     }
@@ -1807,15 +1854,17 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
       m_tag_array->access(block_addr, time, cache_index, wb, evicted, mf, false);
   assert(m_status != HIT);
   cache_block_t *block = m_tag_array->get_block(cache_index);
-  if (!block->is_modified_line()) {
-    m_tag_array->inc_dirty();
-  }
-  block->set_status(MODIFIED, mf->get_access_sector_mask());
-  block->set_byte_mask(mf);
-  if (m_status == HIT_RESERVED) {
-    block->set_ignore_on_fill(true, mf->get_access_sector_mask());
-    block->set_modified_on_fill(true, mf->get_access_sector_mask());
-    block->set_byte_mask_on_fill(true);
+  if (mf->get_access_type() != META_MOVE) {
+    if (!block->is_modified_line()) {
+      m_tag_array->inc_dirty();
+    }
+    block->set_status(MODIFIED, mf->get_access_sector_mask());
+    block->set_byte_mask(mf);
+    if (m_status == HIT_RESERVED) {
+      block->set_ignore_on_fill(true, mf->get_access_sector_mask());
+      block->set_modified_on_fill(true, mf->get_access_sector_mask());
+      block->set_byte_mask_on_fill(true);
+    }
   }
 
   if (mf->get_access_byte_mask().count() == m_config.get_atom_sz()) {
@@ -1843,6 +1892,20 @@ enum cache_request_status data_cache::wr_miss_wa_lazy_fetch_on_read(
       wb->set_parition(mf->get_tlx_addr().sub_partition);
       wb->set_id(mf->get_id());
       send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
+                         time, events);
+    } else if (m_config.m_move_policy == ENABLE_META_MOVE && evicted.m_modified_size > 0) {
+      mem_fetch *mv = m_memfetch_creator->alloc(
+          evicted.m_block_addr, META_MOVE, mf->get_access_warp_mask(),
+          evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+          true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+          NULL);
+      // the evicted block may have wrong chip id when advanced L2 hashing  is
+      // used, so set the right chip address from the original mf
+      mv->set_data_type(mf->get_data_type());
+      mv->set_chip(mf->get_tlx_addr().chip);
+      mv->set_parition(mf->get_tlx_addr().sub_partition);
+      mv->set_id(mf->get_id());
+      send_write_request(mv, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                          time, events);
     }
     return MISS;
@@ -1927,6 +1990,20 @@ enum cache_request_status data_cache::rd_miss_base(
       wb->set_parition(mf->get_tlx_addr().sub_partition);
       wb->set_id(mf->get_id());
       send_write_request(wb, WRITE_BACK_REQUEST_SENT, time, events);
+    } else if (m_config.m_move_policy == ENABLE_META_MOVE && evicted.m_modified_size > 0) {
+      mem_fetch *mv = m_memfetch_creator->alloc(
+          evicted.m_block_addr, META_MOVE, mf->get_access_warp_mask(),
+          evicted.m_byte_mask, evicted.m_sector_mask, evicted.m_modified_size,
+          true, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, -1, -1, -1,
+          NULL);
+      // the evicted block may have wrong chip id when advanced L2 hashing  is
+      // used, so set the right chip address from the original mf
+      mv->set_data_type(mf->get_data_type());
+      mv->set_chip(mf->get_tlx_addr().chip);
+      mv->set_parition(mf->get_tlx_addr().sub_partition);
+      mv->set_id(mf->get_id());
+      send_write_request(mv, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
+                         time, events);
     }
     return MISS;
   }

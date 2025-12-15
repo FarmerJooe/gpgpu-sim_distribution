@@ -553,6 +553,8 @@ enum write_policy_t {
   LOCAL_WB_GLOBAL_WT
 };
 
+enum move_policy_t { DISABLE_META_MOVE, ENABLE_META_MOVE };
+
 enum allocation_policy_t { ON_MISS, ON_FILL, STREAMING };
 
 enum write_allocate_policy_t {
@@ -595,17 +597,18 @@ class cache_config {
     m_config_stringPrefShared = NULL;
     m_data_port_width = 0;
     m_set_index_function = LINEAR_SET_FUNCTION;
+    m_move_policy = DISABLE_META_MOVE;
     m_is_streaming = false;
     m_wr_percent = 0;
   }
   void init(char *config, FuncCache status) {
     cache_status = status;
     assert(config);
-    char ct, rp, wp, ap, mshr_type, wap, sif;
+    char ct, rp, wp, ap, mshr_type, wap, sif, mv;
 
     int ntok =
-        sscanf(config, "%c:%u:%u:%u,%c:%c:%c:%c:%c,%c:%u:%u,%u:%u,%u", &ct,
-               &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap, &wap, &sif,
+        sscanf(config, "%c:%u:%u:%u,%c:%c:%c:%c:%c:%c,%c:%u:%u,%u:%u,%u", &ct,
+               &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap, &wap, &sif, &mv,
                &mshr_type, &m_mshr_entries, &m_mshr_max_merge,
                &m_miss_queue_size, &m_result_fifo_entries, &m_data_port_width);
 
@@ -695,11 +698,11 @@ class cache_config {
     switch (mshr_type) {
       case 'F':
         m_mshr_type = TEX_FIFO;
-        assert(ntok == 14);
+        assert(ntok == 15);
         break;
       case 'T':
         m_mshr_type = SECTOR_TEX_FIFO;
-        assert(ntok == 14);
+        assert(ntok == 15);
         break;
       case 'A':
         m_mshr_type = ASSOC;
@@ -714,7 +717,9 @@ class cache_config {
     m_nset_log2 = LOGB2(m_nset);
     m_valid = true;
     m_atom_sz = (m_cache_type == SECTOR) ? SECTOR_SIZE : m_line_sz;
-    m_sector_sz_log2 = LOGB2(SECTOR_SIZE);
+    m_sector_size = SECTOR_SIZE;
+    m_sector_chunks = SECTOR_CHUNCK_SIZE;
+    m_sector_sz_log2 = LOGB2(m_sector_size);
     original_m_assoc = m_assoc;
 
     // For more details about difference between FETCH_ON_WRITE and WRITE
@@ -763,8 +768,8 @@ class cache_config {
           "cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
     }
     if (m_cache_type == SECTOR) {
-      assert(m_line_sz / SECTOR_SIZE == SECTOR_CHUNCK_SIZE &&
-             m_line_sz % SECTOR_SIZE == 0);
+      assert(m_line_sz / m_sector_size == m_sector_chunks &&
+             m_line_sz % m_sector_size == 0);
     }
 
     // default: port to data array width and granularity = line size
@@ -792,12 +797,39 @@ class cache_config {
       default:
         exit_parse_error();
     }
+    switch (mv) {
+      case 'D':
+        m_move_policy = DISABLE_META_MOVE;
+        /* code */
+        break;
+      case 'M':
+        m_move_policy = ENABLE_META_MOVE;
+        /* code */
+        break;
+      default:
+        m_move_policy = DISABLE_META_MOVE;
+        break;
+    }
   }
+
+  
   bool disabled() const { return m_disabled; }
   unsigned get_line_sz() const {
     assert(m_valid);
     return m_line_sz;
   }
+  void set_line_sz(unsigned sz) {
+    m_line_sz = sz;
+    m_line_sz_log2 = LOGB2(m_line_sz);
+    m_atom_sz = (m_cache_type == SECTOR) ? m_sector_size : m_line_sz;
+  }
+  unsigned get_sector_size() const { return m_sector_size; }
+  unsigned get_sector_chunks() const { return m_sector_chunks; }
+  void set_sector_size(unsigned sz) {
+    m_sector_size = sz;
+    m_sector_sz_log2 = LOGB2(m_sector_size);
+  }
+  void set_sector_chunks(unsigned c) { m_sector_chunks = c; }
   unsigned get_atom_sz() const {
     assert(m_valid);
     return m_atom_sz;
@@ -922,6 +954,7 @@ class cache_config {
   unsigned m_data_port_width;  //< number of byte the cache can access per cycle
   enum set_index_function
       m_set_index_function;  // Hash, linear, or custom set index function
+  enum move_policy_t m_move_policy;
 
   friend class tag_array;
   friend class baseline_cache;

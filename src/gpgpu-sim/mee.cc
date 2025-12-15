@@ -216,7 +216,7 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 
     new_addr_type CTR_addr  = get_addr(sub_partition_id, partition_addr);
     CTR_addr |= CTR_base;
-    if (wr) {
+    if (meta_acc == META_ACC_W) {
         (*m_ctrModCount)[CTR_addr]++;
         assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
         (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
@@ -1147,7 +1147,7 @@ void mee::META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
     
     if (!m_unit->dram_mee_queue_empty(m_data_type)) {
         mem_fetch *mf_return = NULL;
-        #ifdef CTR_HIERACHY
+#ifdef CTR_HIERACHY
         if (m_data_type == CTR) {
             if (!m_unit->m_L2_ctr_bundle_queue->empty())
                 mf_return = m_unit->m_L2_ctr_bundle_queue->top();
@@ -1156,17 +1156,17 @@ void mee::META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
         } else {
             mf_return = m_unit->dram_mee_queue_top(m_data_type);
         }
-        #else
+#else
         mf_return = m_unit->dram_mee_queue_top(m_data_type);
-        #endif
+#endif
         
-        #ifdef BMT_Enable
+#ifdef BMT_Enable
         if (m_data_type == CTR && (mf_return->get_access_type() == META_ACC_R || mf_return->get_access_type() == META_ACC_W))
             if (!m_META_RET_queue->full()) 
                 m_META_RET_queue->push(mf_return);
             else
                 return;
-        #endif
+#endif
         if ((mf_return->get_data_type() == m_data_type) && m_METAcache->waiting_for_fill(mf_return)) {
             // print_addr("wating for fill:\t\t", mf); 
             if (m_METAcache->fill_port_free()) {
@@ -1213,16 +1213,16 @@ void mee::simple_cycle(unsigned cycle) {
     META_fill_responses(m_BMTcache, m_BMT_RET_queue, BMT_mask[1]);
     // }
     // META_fill_responses(m_BMTcache);
-    #ifdef CTR_HIERACHY
+#ifdef CTR_HIERACHY
     CTR_fill(); // todo: CTR L1 cache fill
-    #else
+#else
     META_fill(m_CTRcache, m_CTR_BMT_Buffer, NULL, CTR_mask, CTR_base, CTR);
-    #endif
+#endif
     META_fill(m_MACcache, m_MAC_RET_queue, NULL, MAC_mask, MAC_base, MAC);
     META_fill(m_BMTcache, m_BMT_RET_queue, NULL, BMT_mask[1], BMT_base[1], BMT);
 
     // dram ctr to mee
-    #ifdef CTR_HIERACHY
+#ifdef CTR_HIERACHY
     if (!m_unit->dram_mee_queue_empty(CTR)) {
         mem_fetch *mf_return = m_unit->dram_mee_queue_top(CTR);
         int spid = m_unit->global_sub_partition_id_to_local_id(mf_return->get_sub_partition_id());
@@ -1239,7 +1239,7 @@ void mee::simple_cycle(unsigned cycle) {
     } else if (!m_unit->mee_dram_queue_empty()) {
         // printf("SSSSSSSSSSSSSSS %d\n", );
     }
-    #endif
+#endif
 
     // dram data to mee
     if (!m_unit->dram_mee_queue_empty(NORM)) {
@@ -1309,7 +1309,7 @@ void mee::simple_cycle(unsigned cycle) {
         
         int spid = (p + last_issued_partition + 1) %
                 m_config->m_n_sub_partition_per_memory_channel;
-        #ifdef CTR_HIERACHY
+#ifdef CTR_HIERACHY
         // CTR to mee
         if (!m_unit->L2_mee_queue_empty(spid, CTR)) {
             mem_fetch *mf = m_unit->L2_mee_queue_top(spid, CTR);
@@ -1335,7 +1335,7 @@ void mee::simple_cycle(unsigned cycle) {
         // L2 to mee
         if (!m_unit->L2_mee_queue_empty(spid, NORM)) {
             mem_fetch *mf = m_unit->L2_mee_queue_top(spid, NORM);
-        #else
+#else
         if (!m_unit->L2_mee_queue_empty(spid)) {
 #ifndef AES_Enable
             mem_fetch *mf_original = m_unit->L2_mee_queue_top(spid);
@@ -1343,7 +1343,7 @@ void mee::simple_cycle(unsigned cycle) {
 #else
             mem_fetch *mf = m_unit->L2_mee_queue_top(spid);
 #endif
-        #endif
+#endif
             assert(mf->is_raw());
             // printf("TTTTTTTTTTTTTTTT\n");
             // mee to dram
@@ -1386,14 +1386,14 @@ void mee::simple_cycle(unsigned cycle) {
                         gen_CTR_mf(mf, false,  META_ACC_W, 128, mf_id);
                     }
 
-                    #ifdef MAC_Enable
+#ifdef MAC_Enable
                     if (m_config->m_META_config.m_cache_type == SECTOR)
-                        // gen_MAC_mf(mf, true, META_ACC_W, 4, mf_id);
-                        gen_MAC_mf(mf, false, META_ACC_W, 4, mf_id);
+                        gen_MAC_mf(mf, true, META_ACC_W, 4, mf_id);
+                        // gen_MAC_mf(mf, false, META_ACC_W, 4, mf_id);
                     else
-                        // gen_MAC_mf(mf, true, META_ACC_W, 8, mf_id);
-                        gen_MAC_mf(mf, false, META_ACC_W, 8, mf_id);
-                    #endif
+                        gen_MAC_mf(mf, true, META_ACC_W, 8, mf_id);
+                        // gen_MAC_mf(mf, false, META_ACC_W, 8, mf_id);
+#endif
 
                     // m_AES_queue->push(mf);  //写密文请求，将明文送入AES中加密
 #ifdef AES_Enable
@@ -1418,18 +1418,18 @@ void mee::simple_cycle(unsigned cycle) {
                         gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);
                     }
                     // gen_CTR_mf(mf, false, META_ACC_R, 128, mf_counter);
-                    #ifdef MAC_Enable
+#ifdef MAC_Enable
                     if (m_config->m_META_config.m_cache_type == SECTOR)
                         gen_MAC_mf(mf, false, META_ACC_R, 4, mf_id);
                     else
                         gen_MAC_mf(mf, false, META_ACC_R, 8, mf_id);
-                    #endif
+#endif
                 }
-                #ifdef CTR_HIERACHY
+#ifdef CTR_HIERACHY
                 m_unit->L2_mee_queue_pop(spid, NORM);
-                #else
+#else
                 m_unit->L2_mee_queue_pop(spid);
-                #endif
+#endif
 #ifndef AES_Enable
                 mf_original->set_id(mf->get_id());
                 m_unit->mee_dram_queue_push(mf_original, NORM);

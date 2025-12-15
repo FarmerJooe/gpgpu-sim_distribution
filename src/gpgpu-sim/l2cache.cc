@@ -1076,7 +1076,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
       bool port_free = m_L2cache->data_port_free();
       #ifdef EXC_EN
       enum cache_request_status probe_status = m_L2cache->probe(mf->get_addr(), mf);
-      if (!output_full && port_free && probe_status != RESERVATION_FAIL && probe_status!= HIT) {
+      if (!output_full && port_free && probe_status != RESERVATION_FAIL && probe_status!= HIT && mf->get_access_type() != META_MOVE) {
         m_L2_mee_queue[CTR]->push(mf);
         m_ctr_L2_queue->pop();
       } else
