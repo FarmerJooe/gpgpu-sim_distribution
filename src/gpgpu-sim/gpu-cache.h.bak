@@ -717,7 +717,9 @@ class cache_config {
     m_nset_log2 = LOGB2(m_nset);
     m_valid = true;
     m_atom_sz = (m_cache_type == SECTOR) ? SECTOR_SIZE : m_line_sz;
-    m_sector_sz_log2 = LOGB2(SECTOR_SIZE);
+    m_sector_size = SECTOR_SIZE;
+    m_sector_chunks = SECTOR_CHUNCK_SIZE;
+    m_sector_sz_log2 = LOGB2(m_sector_size);
     original_m_assoc = m_assoc;
 
     // For more details about difference between FETCH_ON_WRITE and WRITE
@@ -766,8 +768,8 @@ class cache_config {
           "cannot work properly with ON_FILL policy. Cache must be ON_MISS. ");
     }
     if (m_cache_type == SECTOR) {
-      assert(m_line_sz / SECTOR_SIZE == SECTOR_CHUNCK_SIZE &&
-             m_line_sz % SECTOR_SIZE == 0);
+      assert(m_line_sz / m_sector_size == m_sector_chunks &&
+             m_line_sz % m_sector_size == 0);
     }
 
     // default: port to data array width and granularity = line size
@@ -816,6 +818,18 @@ class cache_config {
     assert(m_valid);
     return m_line_sz;
   }
+  void set_line_sz(unsigned sz) {
+    m_line_sz = sz;
+    m_line_sz_log2 = LOGB2(m_line_sz);
+    m_atom_sz = (m_cache_type == SECTOR) ? m_sector_size : m_line_sz;
+  }
+  unsigned get_sector_size() const { return m_sector_size; }
+  unsigned get_sector_chunks() const { return m_sector_chunks; }
+  void set_sector_size(unsigned sz) {
+    m_sector_size = sz;
+    m_sector_sz_log2 = LOGB2(m_sector_size);
+  }
+  void set_sector_chunks(unsigned c) { m_sector_chunks = c; }
   unsigned get_atom_sz() const {
     assert(m_valid);
     return m_atom_sz;
