@@ -128,24 +128,171 @@ public:
         m_tot_used_sigments--;
     }
 
-    unsigned get_ctr_data_sigments(new_addr_type addr) {
-        unsigned cnt = 0;
-        int min = 256;
-        int max = 0;
+    // 压缩格式枚举
+    enum ctr_compress_format {
+        CTR_COMPRESS_NONE = 0,            // 无法压缩，需要4 L-line (8 seg)
+        CTR_COMPRESS_BASE_1BIT = 1,       // 基础1-bit编码，需要1 L-line (2 seg)
+        CTR_COMPRESS_BASE_2_3BIT = 2,     // 基础2-3bit编码，需要2 L-line (4 seg)
+        CTR_COMPRESS_DUAL_LENGTH = 3,     // 双长度编码，需要2 L-line (4 seg)
+        CTR_COMPRESS_DUAL_BASE_DELTA = 4  // 双Base-Delta编码，需要2 L-line (4 seg)
+    };
 
-        for (unsigned offset = 1; offset < 32; offset++) {
-            int minor_cnt = (*m_ctrModCount)[addr + offset];
-            min = std::min(min, minor_cnt);
-            max = std::max(max, minor_cnt);
+    // 计算值的位宽
+    inline int get_bit_width(int value) {
+        if (value <= 0) return 1;
+        int width = 0;
+        while (value > 0) {
+            width++;
+            value >>= 1;
         }
+        return width;
+    }
 
-        if (max - min < 2) {
-            return 1;
-        } else if (max - min < 8){
-            return 2;
-        } 
+    // 判断压缩格式并返回所需的 L-line 数量
+    // 返回值: 1 = 基础1-bit压缩 (1 L-line = 2 seg = 64 bits)
+    //         2 = 压缩成功 (2 L-line = 4 seg = 128 bits)
+    //         4 = 无法压缩 (4 L-line = 8 seg = 256 bits)
+    unsigned get_ctr_data_sigments(new_addr_type addr) {
+        int min_value = 256;
+        int max_value = 0;
+        int minors[32];
+        
+        // 收集32个7-bit minor值
+        for (unsigned offset = 0; offset < 32; offset++) {
+            int minor_cnt = (*m_ctrModCount)[addr + offset];
+            minors[offset] = minor_cnt;
+            min_value = std::min(min_value, minor_cnt);
+            max_value = std::max(max_value, minor_cnt);
+        }
+        
+        int max_delta = max_value - min_value;
+        int max_delta_width = get_bit_width(max_delta);
+        
+        // 基础格式1：1-bit编码
+        // 条件：max_delta <= 1，每个值只需1-bit
+        // 数据区：32×1 = 32 bits delta，加上 major 区共 64 bits = 1 L-line
+        if (max_delta_width <= 1) {
+            return 1;  // 需要1 L-line
+        }
+        
+        // 基础格式2：2-3bit编码
+        // 条件：1 < max_delta <= 7，每个值需2-3 bits
+        // 数据区：32×3 = 96 bits delta，加上 major 区共 128 bits = 2 L-line
+        if (max_delta_width <= 3) {
+            return 2;  // 需要2 L-line
+        }
+        
+        // // 格式3：双长度编码
+        // // 将32个值分成4个slice，每个slice 8个值
+        // // 3个slice用2-bit delta，1个slice用3-bit delta
+        // int extend_slice_count = 0;
+        // for (int slice = 0; slice < 4; slice++) {
+        //     int slice_max = 0;
+        //     for (int i = 0; i < 8; i++) {
+        //         slice_max = std::max(slice_max, minors[slice * 8 + i]);
+        //     }
+        //     // 判断该slice需要的编码长度
+        //     if (slice_max - min_value > 3) {
+        //         extend_slice_count += 2;  // 需要更长编码，权重+2
+        //     } else if (slice_max - min_value > 1) {
+        //         extend_slice_count += 1;  // 需要3-bit编码，权重+1
+        //     }
+        //     // slice_max - min_value <= 1 时使用2-bit编码，不增加权重
+        // }
+        
+        // // 最多只有1个slice需要扩展编码时可压缩
+        // // 数据区：24×2 + 8×3 = 72 bits + 24 bits padding = 96 bits
+        // if (extend_slice_count <= 1) {
+        //     return 2;  // 压缩成功，需要2 L-line
+        // }
+        
+        // // 格式4：双Base-Delta编码
+        // // Base1 = min_value（常规值用 Base1 + 2-bit delta，delta ∈ {0,1,2,3}）
+        // // Base2 = 异常值的最小值（异常值用 Base2 + 2-bit delta）
+        // // 条件：异常值也能用 2-bit delta 表示（max_value - base2 <= 3）
+        // int base2 = -1;  // 异常值的最小值
+        // for (int i = 0; i < 32; i++) {
+        //     int delta = minors[i] - min_value;
+        //     if (delta > 3) {  // 不在 {0,1,2,3} 范围内的是异常值
+        //         if (base2 < 0) {
+        //             base2 = minors[i];
+        //         } else {
+        //             base2 = std::min(base2, minors[i]);
+        //         }
+        //     }
+        // }
+        
+        // // 如果没有异常值，或者异常值可以用 base2 + 2-bit delta 表示
+        // if (base2 < 0 || max_value - base2 <= 3) {
+        //     return 2;  // 压缩成功，需要2 L-line
+        // }
+        
+        return 4;  // 无法压缩，需要4 L-line
+    }
 
-        return 4;
+    // 获取压缩格式类型（用于统计和调试）
+    ctr_compress_format get_ctr_compress_format(new_addr_type addr) {
+        int min_value = 256;
+        int max_value = 0;
+        int minors[32];
+        
+        for (unsigned offset = 0; offset < 32; offset++) {
+            int minor_cnt = (*m_ctrModCount)[addr + offset];
+            minors[offset] = minor_cnt;
+            min_value = std::min(min_value, minor_cnt);
+            max_value = std::max(max_value, minor_cnt);
+        }
+        
+        int max_delta = max_value - min_value;
+        int max_delta_width = get_bit_width(max_delta);
+        
+        // 检查基础1-bit编码条件
+        if (max_delta_width <= 1) {
+            return CTR_COMPRESS_BASE_1BIT;
+        }
+        
+        // 检查基础2-3bit编码条件
+        if (max_delta_width <= 3) {
+            return CTR_COMPRESS_BASE_2_3BIT;
+        }
+        
+        // 检查双长度编码条件
+        int extend_slice_count = 0;
+        for (int slice = 0; slice < 4; slice++) {
+            int slice_max = 0;
+            for (int i = 0; i < 8; i++) {
+                slice_max = std::max(slice_max, minors[slice * 8 + i]);
+            }
+            if (slice_max - min_value > 3) {
+                extend_slice_count += 2;
+            } else if (slice_max - min_value > 1) {
+                extend_slice_count += 1;
+            }
+        }
+        
+        if (extend_slice_count <= 1) {
+            return CTR_COMPRESS_DUAL_LENGTH;
+        }
+        
+        // 检查双Base-Delta编码条件
+        // Base1 = min_value, Base2 = 异常值的最小值
+        int base2 = -1;
+        for (int i = 0; i < 32; i++) {
+            int delta = minors[i] - min_value;
+            if (delta > 3) {
+                if (base2 < 0) {
+                    base2 = minors[i];
+                } else {
+                    base2 = std::min(base2, minors[i]);
+                }
+            }
+        }
+        
+        if (base2 < 0 || max_value - base2 <= 3) {
+            return CTR_COMPRESS_DUAL_BASE_DELTA;
+        }
+        
+        return CTR_COMPRESS_NONE;
     }
 
     void update_ctr_cache_segments_stats() {

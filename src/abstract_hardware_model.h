@@ -31,7 +31,7 @@
 // #define MEE_SIMPLE
 #define BMT_Enable
 #define MAC_Enable
-// #define COMPRESSION_Enable
+#define COMPRESSION_Enable
 // #define CTR_HIERACHY
 // #define EXC_EN
 #define AES_Enable
