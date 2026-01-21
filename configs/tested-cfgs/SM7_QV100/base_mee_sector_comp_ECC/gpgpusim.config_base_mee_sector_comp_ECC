@@ -166,11 +166,12 @@
 #-gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P:D,A:192:4,32:0,32
 -gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P:D,A:192:4,32:0,32
 #-gpgpu_cache:dmeta N:4:128:4,L:B:m:W:P:D,A:64:4,32:0,32
--gpgpu_cache:dmeta S:8:128:2,L:B:m:L:L:D,A:64:64,32,0,32
--gpgpu_cache:ctr S:8:128:2,L:B:m:L:L:D,A:64:64,32,0,32
+-gpgpu_cache:dmeta S:8:128:2,L:B:m:L:P:D,A:64:64,32:0,32
+-gpgpu_cache:ctr S:8:128:8,L:B:m:L:P:D,A:64:64,32:0,32
+-gpgpu_ecc_1bit_err 0
+-gpgpu_ecc_2bit_err 0
 -gpgpu_cache:dl2_texture_only 0
 -gpgpu_dram_partition_queues 64:64:64:64
-# -gpgpu_dram_partition_queues 16384:131072:16384:16384
 -gpgpu_perf_sim_memcpy 0
 -gpgpu_memory_partition_indexing 2
 
@@ -241,22 +242,12 @@
 -visualizer_enabled 0
 
 # tracing functionality
--trace_enabled 1
-# -trace_components LIVENESS,MEMORY_PARTITION_UNIT,MEMORY_SUBPARTITION_UNIT
+#-trace_enabled 0
 #-trace_components WARP_SCHEDULER,SCOREBOARD
-# -trace_sampling_core 0
-# -trace_sampling_memory_partition -1
-
--gpgpu_cache_trace_enabled 1
--gpgpu_cache_trace_l2 0
--gpgpu_cache_trace_ctr 1
--gpgpu_cache_trace_mac 0
--gpgpu_cache_trace_bmt 0
-# -gpgpu_cache_trace_format csv
-# -gpgpu_cache_trace_file cache_trace.csv
+#-trace_sampling_core 0
 
 # power simulation
-# -power_simulation_enabled 1 
-# -power_simulation_mode 0
-# -accelwattch_xml_file accelwattch_sass_sim.xml
+-power_simulation_enabled 1 
+-power_simulation_mode 0
+-accelwattch_xml_file accelwattch_sass_sim.xml
 
