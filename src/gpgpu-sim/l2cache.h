@@ -162,6 +162,7 @@ class memory_partition_unit {
   #else
   class meta_cache *m_CTRcache;
   #endif
+  class meta_cache *m_PARcache;
   class meta_cache *m_MACcache;
   class meta_cache *m_BMTcache;
   class mee *m_mee;
@@ -169,6 +170,7 @@ class memory_partition_unit {
   class metainterface *m_BMTinterface;
   class metainterface *m_CTRinterface;
   class metainterface *m_MACinterface;
+  class metainterface *m_PARinterface;
   partition_mf_allocator *m_mf_allocator;
 
  public:

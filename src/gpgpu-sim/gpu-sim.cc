@@ -1576,7 +1576,8 @@ void gpgpu_sim::gpu_print_stat_pw() {
   }
   fprintf(statfout, "\n");
   // partition stats
-  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+  // for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+  for (unsigned i = 0; i < 1; i++) {
     m_memory_partition_unit[i]->partition_print_stat_pw();
   }
   // for (unsigned i = 0; i < m_memory_config->m_n_mem_sub_partition; i++) {

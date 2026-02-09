@@ -116,8 +116,10 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
 
   char CTRc_name[32];
   char MACc_name[32];
+  char PARc_name[32];
   char BMTc_name[32];
   snprintf(CTRc_name, 32, "CTR_bank_%03d\0", m_id);
+  snprintf(PARc_name, 32, "PAR_bank_%03d\0", m_id);
   snprintf(MACc_name, 32, "MAC_bank_%03d\0", m_id);
   snprintf(BMTc_name, 32, "BMT_bank_%03d\0", m_id);
   // m_metainterface = new metainterface(this);
@@ -136,6 +138,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   m_CTRinterface = new metainterface(m_mee_dram_queue[CTR], m_gpu, m_stats);
   #endif
   m_MACinterface = new metainterface(m_mee_dram_queue[MAC], m_gpu, m_stats);
+  m_PARinterface = new metainterface(m_mee_dram_queue[PAR], m_gpu, m_stats);
   m_mf_allocator = new partition_mf_allocator(config);
 
   if (!m_config->m_META_config.disabled()) {
@@ -150,6 +153,11 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
     m_ctrModCount = new counterMap();
     #endif
+
+    m_PARcache =
+        new meta_cache(PARc_name, m_config->m_META_config, -1, -1, m_PARinterface,
+                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
+
     m_MACcache =
         new meta_cache(MACc_name, m_config->m_META_config, -1, -1, m_MACinterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
@@ -159,11 +167,12 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
 
     // Initialize cache trace for meta caches
     m_CTRcache->init_cache_trace(&m_config->m_cache_trace_config);
+    m_PARcache->init_cache_trace(&m_config->m_cache_trace_config);
     m_MACcache->init_cache_trace(&m_config->m_cache_trace_config);
     m_BMTcache->init_cache_trace(&m_config->m_cache_trace_config);
   }
 
-  m_mee = new mee(this, m_CTRcache, m_MACcache, m_BMTcache, m_config, m_ctrModCount, m_gpu, m_ecc);
+  m_mee = new mee(this, m_CTRcache, m_PARcache, m_MACcache, m_BMTcache, m_config, m_ctrModCount, m_gpu, m_ecc);
 
   m_sub_partition = new memory_sub_partition
       *[m_config->m_n_sub_partition_per_memory_channel];
@@ -1732,6 +1741,8 @@ enum meta_access_type get_data_type2meta_access_type(enum data_type dtype) {
       return META_ACCESS_BMT;
     case MAC:
       return META_ACCESS_MAC;
+    case PAR:
+      return META_ACCESS_PAR;
     case NORM:
       return NUM_META_ACCESS_TYPE; // NORM access are recorded as CTR type
     default:

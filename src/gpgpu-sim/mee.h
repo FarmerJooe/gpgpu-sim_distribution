@@ -14,7 +14,7 @@
 
 class mee {
     public:
-        mee(class memory_partition_unit *unit, class data_cache *CTRcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, counterMap *ctrModCount, class gpgpu_sim *gpu, class ECCEngine *ecc);
+        mee(class memory_partition_unit *unit, class data_cache *CTRcache, class data_cache *PARcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, counterMap *ctrModCount, class gpgpu_sim *gpu, class ECCEngine *ecc);
         void cycle(unsigned cycle);
         void simple_cycle(unsigned cycle);
         bool busy() const;
@@ -27,6 +27,7 @@ class mee {
         void meta_access(fifo_pipeline<mem_fetch> *m_META_queue, new_addr_type addr, mem_access_type type, 
             unsigned size, bool wr, unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc, 
             mem_fetch *original_mf, unsigned mf_id, enum data_type m_data_type, enum BMT_Layer m_Layer) const;
+        void PAR_cycle();
         void CTR_cycle();
         void HASH_cycle();
         void MAC_cycle();
@@ -43,6 +44,7 @@ class mee {
         unsigned next_mf_id();
 
         unsigned int get_BMT_Layer(new_addr_type addr);
+        void gen_PAR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id);
         void gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id);
         void gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id);
         void gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id);
@@ -67,18 +69,21 @@ class mee {
             bool wr;
         };
         class data_cache *m_CTRcache;
+        class data_cache *m_PARcache;
         class meta_cache *m_MACcache;
         class meta_cache *m_BMTcache;
         class memory_partition_unit *m_unit;
         const memory_config *m_config;
         class gpgpu_sim *m_gpu;
         class ECCEngine *m_ecc;
+        fifo_pipeline<mem_fetch> *m_PAR_queue;
         fifo_pipeline<mem_fetch> *m_CTR_queue;
         fifo_pipeline<mem_fetch> *m_Ciphertext_queue;
         fifo_pipeline<mem_fetch> *m_mee_dram_sync_queue;
         fifo_pipeline<mem_fetch> *m_MAC_queue;
         fifo_pipeline<mem_fetch> *m_BMT_queue;
 
+        fifo_pipeline<mem_fetch> *m_PAR_RET_queue;
         fifo_pipeline<mem_fetch> *m_CTR_RET_queue;
         fifo_pipeline<mem_fetch> *m_MAC_RET_queue;
         fifo_pipeline<mem_fetch> *m_BMT_RET_queue;
@@ -107,6 +112,7 @@ class mee {
         
         const new_addr_type CTR_mask = 0xFE000000;//1111 000x xxxx xxxx xxxx xxxx xxxx xxxx
         const new_addr_type MAC_mask = 0xF0000000;//1110 xxxx xxxx xxxx xxxx xxxx xxxx x000
+        const new_addr_type PAR_mask = 0xD0000000;
         
         //CTR: 1111 000x xxxx xxxx xxxx xxxx xxxx xxxx
         //L1 : 1111 0010 000x xxxx xxxx xxxx xxxx x000
@@ -118,6 +124,7 @@ class mee {
         
         const new_addr_type CTR_base = 0xF0000000;//1111 000x xxxx xxxx xxxx xxxx xxxx xxxx
         const new_addr_type MAC_base = 0xE0000000;//1110 xxxx xxxx xxxx xxxx xxxx xxxx x000
+        const new_addr_type PAR_base = 0xD0000000;
 
         const int m_memcpy_cycle_offset = 0;
         const int mee_busy_mask = 0;

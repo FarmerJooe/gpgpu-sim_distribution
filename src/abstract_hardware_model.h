@@ -30,8 +30,8 @@
 #define MEE_Enable
 // #define MEE_SIMPLE
 #define BMT_Enable
-#define MAC_Enable
-#define COMPRESSION_Enable
+// #define MAC_Enable
+// #define COMPRESSION_Enable
 // #define CTR_HIERACHY
 // #define EXC_EN
 #define AES_Enable
@@ -61,6 +61,7 @@ enum data_type {
   CTR,
   NORM,
   MAC,
+  PAR,
   NUM_DATA_TYPE
 };
 
@@ -74,6 +75,7 @@ enum cache_form {
   CTR_CACHE,
   MAC_CACHE,
   BMT_CACHE,
+  PAR_CACHE,
   NUM_CACHE_TYPES
 };
 
