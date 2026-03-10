@@ -62,6 +62,7 @@ enum data_type {
   NORM,
   MAC,
   PAR,
+  CCSM,
   NUM_DATA_TYPE
 };
 

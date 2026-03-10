@@ -39,41 +39,41 @@
 
 static void print_router_extended_stats(const xbar_router *router,
                                         const char *prefix) {
-  if (!router) return;
+  // if (!router) return;
 
-  unsigned total_inputs = router->in_buffer_full_events_by_input.size();
-  unsigned total_outputs = router->blocked_by_output_busy_by_output.size();
+  // unsigned total_inputs = router->in_buffer_full_events_by_input.size();
+  // unsigned total_outputs = router->blocked_by_output_busy_by_output.size();
 
-  for (unsigned in = 0; in < router->conflict_matrix.size(); ++in) {
-    for (unsigned out = 0; out < router->conflict_matrix[in].size(); ++out) {
-      unsigned long long value = router->conflict_matrix[in][out];
-      if (value)
-        printf("%s_conflict_matrix[%u->%u] = %llu\n", prefix, in, out, value);
-    }
-  }
+  // for (unsigned in = 0; in < router->conflict_matrix.size(); ++in) {
+  //   for (unsigned out = 0; out < router->conflict_matrix[in].size(); ++out) {
+  //     unsigned long long value = router->conflict_matrix[in][out];
+  //     if (value)
+  //       printf("%s_conflict_matrix[%u->%u] = %llu\n", prefix, in, out, value);
+  //   }
+  // }
 
-  for (unsigned out = 0; out < total_outputs; ++out) {
-    unsigned long long busy = router->blocked_by_output_busy_by_output[out];
-    unsigned long long full = router->blocked_by_full_buffer_by_output[out];
-    unsigned long long full_events = router->out_buffer_full_events_by_output[out];
-    if (busy || full || full_events)
-      printf("%s_output[%u]_busy_conflicts = %llu blocked_by_full = %llu full_events = %llu\n",
-             prefix, out, busy, full, full_events);
-  }
+  // for (unsigned out = 0; out < total_outputs; ++out) {
+  //   unsigned long long busy = router->blocked_by_output_busy_by_output[out];
+  //   unsigned long long full = router->blocked_by_full_buffer_by_output[out];
+  //   unsigned long long full_events = router->out_buffer_full_events_by_output[out];
+  //   if (busy || full || full_events)
+  //     printf("%s_output[%u]_busy_conflicts = %llu blocked_by_full = %llu full_events = %llu\n",
+  //            prefix, out, busy, full, full_events);
+  // }
 
-  for (unsigned in = 0; in < total_inputs; ++in) {
-    unsigned long long busy = router->blocked_by_output_busy_by_input[in];
-    unsigned long long full = router->blocked_by_full_buffer_by_input[in];
-    unsigned long long events = router->in_buffer_full_events_by_input[in];
-    if (busy || full || events) {
-      unsigned long long avg_wait =
-          events ? router->in_buffer_full_wait_sum_by_input[in] / events : 0;
-      printf(
-          "%s_input[%u]_busy_conflicts = %llu blocked_by_full = %llu in_buf_full = %llu avg_wait = %llu max_wait = %llu\n",
-          prefix, in, busy, full, events, avg_wait,
-          router->in_buffer_full_wait_max_by_input[in]);
-    }
-  }
+  // for (unsigned in = 0; in < total_inputs; ++in) {
+  //   unsigned long long busy = router->blocked_by_output_busy_by_input[in];
+  //   unsigned long long full = router->blocked_by_full_buffer_by_input[in];
+  //   unsigned long long events = router->in_buffer_full_events_by_input[in];
+  //   if (busy || full || events) {
+  //     unsigned long long avg_wait =
+  //         events ? router->in_buffer_full_wait_sum_by_input[in] / events : 0;
+  //     printf(
+  //         "%s_input[%u]_busy_conflicts = %llu blocked_by_full = %llu in_buf_full = %llu avg_wait = %llu max_wait = %llu\n",
+  //         prefix, in, busy, full, events, avg_wait,
+  //         router->in_buffer_full_wait_max_by_input[in]);
+  //   }
+  // }
 }
 
 xbar_router::xbar_router(unsigned router_id, enum Interconnect_type m_type,

@@ -172,7 +172,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
     m_BMTcache->init_cache_trace(&m_config->m_cache_trace_config);
   }
 
-  m_mee = new mee(this, m_CTRcache, m_PARcache, m_MACcache, m_BMTcache, m_config, m_ctrModCount, m_gpu, m_ecc);
+  m_mee = new mee(this, m_CTRcache, m_PARcache, m_MACcache, m_BMTcache, m_config, m_ctrModCount, stats, m_gpu, m_ecc);
 
   m_sub_partition = new memory_sub_partition
       *[m_config->m_n_sub_partition_per_memory_channel];
@@ -225,6 +225,7 @@ void memory_partition_unit::handle_memcpy_to_gpu(
       addr, p, global_subpart_id, mystring.c_str());
   m_sub_partition[p]->force_l2_tag_update(
       addr, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, mask, NORM);
+  // common counter CCSM updated
 }
 
 memory_partition_unit::~memory_partition_unit() {
@@ -434,7 +435,7 @@ void memory_partition_unit::mee_to_dram_cycle() {
     m_mee_dram_queue[TOT]->push(m_mee_dram_queue[dtype]->top());
     // print_addr("mee_to_dram", m_mee_dram_queue[dtype]->top(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     m_n_mf[dtype]++;
-    // if (get_mpid() == 14)
+    // if (get_mpid() == 0)
     //   printf("mpid: %d m_n_mf[%d]=%d append %x acc_type: %d\n", get_mpid(), dtype, m_n_mf[dtype], m_mee_dram_queue[dtype]->top()->get_addr(), m_mee_dram_queue[dtype]->top()->get_access_type());
     m_mee_dram_queue[dtype]->pop();
     return;
@@ -806,6 +807,10 @@ void memory_partition_unit::accumulate_METAcache_stats(
     m_METAcache = m_MACcache;
   } else if (strcmp(META, "BMT") == 0) {
     m_METAcache = m_BMTcache;
+  } else if (strcmp(META, "PAR") == 0) {
+    m_METAcache = m_PARcache;
+  } else if (strcmp(META, "CCSM") == 0) {
+    m_METAcache = m_mee->m_common_ctr->m_METAcache;
   } else {
     // 如果 s 不是预期的值,可以在这里添加错误处理逻辑
     assert(0);
@@ -824,6 +829,10 @@ void memory_partition_unit::get_METAcache_sub_stats(
     m_METAcache = m_MACcache;
   } else if (strcmp(META, "BMT") == 0) {
     m_METAcache = m_BMTcache;
+  } else if (strcmp(META, "PAR") == 0) {
+    m_METAcache = m_PARcache;
+  } else if (strcmp(META, "CCSM") == 0) {
+    m_METAcache = m_mee->m_common_ctr->m_METAcache;
   } else {
     // 如果 s 不是预期的值,可以在这里添加错误处理逻辑
     assert(0);
@@ -1427,6 +1436,18 @@ void memory_partition_unit::mee_L2_queue_push(unsigned spid, class mem_fetch *mf
   m_sub_partition[spid]->m_mee_L2_queue->push(mf); //TODO
 }
 
+void memory_partition_unit::update_region_map(new_addr_type addr) {
+  m_mee->m_common_ctr->update_region_map(addr);
+}
+
+void memory_partition_unit::scanning_proceduce() {
+  counterMap::iterator it = m_mee->m_common_ctr->m_updated_mem_region_map->begin();
+  for (;it != m_mee->m_common_ctr->m_updated_mem_region_map->end(); it++) {
+    if (it->second)
+      m_mee->m_common_ctr->scan_region(it->first);
+  }
+}
+
 void memory_sub_partition::print_cache_stat(unsigned &accesses,
                                             unsigned &misses) const {
   FILE *fp = stdout;
@@ -1743,6 +1764,8 @@ enum meta_access_type get_data_type2meta_access_type(enum data_type dtype) {
       return META_ACCESS_MAC;
     case PAR:
       return META_ACCESS_PAR;
+    case CCSM:
+      return META_ACCESS_CCSM;
     case NORM:
       return NUM_META_ACCESS_TYPE; // NORM access are recorded as CTR type
     default:

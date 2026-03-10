@@ -5,16 +5,20 @@
 // class new_addr_type;
 // class mem_access_type;
 // class memory_config;
+#ifndef MEE_H
+#define MEE_H
+
 #include "mem_fetch.h"
 #include "l2cache.h"
 #include "shader.h"
 #include "gpu-sim.h"
 #include "ecc.h"
 #include "mem_latency_stat.h"
+#include "common_ctr.h"
 
 class mee {
     public:
-        mee(class memory_partition_unit *unit, class data_cache *CTRcache, class data_cache *PARcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, counterMap *ctrModCount, class gpgpu_sim *gpu, class ECCEngine *ecc);
+        mee(class memory_partition_unit *unit, class data_cache *CTRcache, class meta_cache *PARcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, counterMap *ctrModCount, class memory_stats_t *stats, class gpgpu_sim *gpu, class ECCEngine *ecc);
         void cycle(unsigned cycle);
         void simple_cycle(unsigned cycle);
         bool busy() const;
@@ -37,8 +41,8 @@ class mee {
         void MAC_CHECK_cycle();
         void ECC_CHECK_cycle();
         void BMT_CHECK_cycle();
-        new_addr_type get_partition_addr(mem_fetch *mf);
-        new_addr_type get_sub_partition_id(mem_fetch *mf);
+        new_addr_type get_partition_addr(new_addr_type addr);
+        new_addr_type get_sub_partition_id(new_addr_type addr);
         new_addr_type get_addr(new_addr_type partition_id, new_addr_type partition_addr);
         void push_cipher_request(mem_fetch *mf);
         unsigned next_mf_id();
@@ -53,6 +57,9 @@ class mee {
         void META_fill_responses(class data_cache *m_METAcache,  fifo_pipeline<mem_fetch> *m_META_RET_queue, const new_addr_type MASK);
         void CTR_fill();
         void META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_META_RET_queue, mem_fetch *mf, const new_addr_type MASK, const new_addr_type BASE, enum data_type m_data_type);
+
+        bool OTP_queue_full() const;
+        void OTP_queue_push(unsigned OTP_id);
 
         bool CTR_busy();
         bool MAC_busy();
@@ -69,11 +76,12 @@ class mee {
             bool wr;
         };
         class data_cache *m_CTRcache;
-        class data_cache *m_PARcache;
+        class meta_cache *m_PARcache;
         class meta_cache *m_MACcache;
         class meta_cache *m_BMTcache;
         class memory_partition_unit *m_unit;
         const memory_config *m_config;
+        class memory_stats_t *m_stats;
         class gpgpu_sim *m_gpu;
         class ECCEngine *m_ecc;
         fifo_pipeline<mem_fetch> *m_PAR_queue;
@@ -161,6 +169,10 @@ class mee {
         counterMap* get_ctrModCount() { return m_ctrModCount; }
         counterMap *m_ctrMajor;
         // counterMap* get_ctrModCount() { return m_ctrModCount; }
+        common_ctr *m_common_ctr;
         counterSet *m_ctrSet;
         counterSet* get_ctrSet() { return m_ctrSet; }
+
 };
+
+#endif

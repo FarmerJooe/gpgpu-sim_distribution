@@ -1,7 +1,8 @@
 #include "mee.h"
+#include "common_ctr.h"
 #include <list>
 
-mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class data_cache *PARcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, counterMap *ctrModCount, class gpgpu_sim *gpu, class ECCEngine *ecc) : 
+mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class meta_cache *PARcache, class meta_cache *MACcache, class meta_cache *BMTcache, const memory_config *config, counterMap *ctrModCount, class memory_stats_t *stats, class gpgpu_sim *gpu, class ECCEngine *ecc) : 
     m_unit(unit),
     m_CTRcache(CTRcache),
     m_PARcache(PARcache),
@@ -9,6 +10,7 @@ mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class da
     m_BMTcache(BMTcache),
     m_config(config),
     m_ctrModCount(ctrModCount),
+    m_stats(stats),
     m_gpu(gpu),
     m_ecc(ecc) {
     unsigned int icnt_L2;
@@ -49,6 +51,8 @@ mee::mee(class memory_partition_unit *unit, class data_cache *CTRcache, class da
     m_ctrSet = new counterSet;
 
     BMT_busy = false;
+
+    m_common_ctr = new common_ctr(this, m_unit, m_config, stats, m_gpu);
 }
 
 void mee::print_mee_fifo_busy() const{
@@ -140,7 +144,7 @@ void mee::print_status(class data_cache *m_METAcache, mem_fetch *mf) {
 }
 
 void mee::print_tag() {
-    // if (get_sub_partition_id(mf) == 0) {
+    // if (get_sub_partition_id(mf->get_addr()) == 0) {
         // for (unsigned i = 0; i < m_config->m_META_config.get_num_lines(); i++) {
         for (unsigned i = 188; i < 192; i++) {
             // printf("line %d:\t", i);
@@ -173,16 +177,17 @@ void mee::print_ctr(new_addr_type sub_partition_id, new_addr_type partition_addr
     fclose(log);
 }
 
-new_addr_type mee::get_partition_addr(mem_fetch *mf) {
-    new_addr_type partition_addr = mf->get_addr() >> (8 + 6) << 8;
-    partition_addr |= mf->get_addr() & ((1 << 8) - 1);
-    return mf->get_partition_addr();
+new_addr_type mee::get_partition_addr(new_addr_type addr) {
+    new_addr_type partition_addr = addr >> (8 + 6) << 8;
+    partition_addr |= addr & ((1 << 8) - 1);
+    return partition_addr;
 }
 
-new_addr_type mee::get_sub_partition_id(mem_fetch *mf) {
-    // return (mf->get_addr() >> 8) & ((1 << 6) - 1);
+new_addr_type mee::get_sub_partition_id(new_addr_type addr) {
+    return (addr >> 8) & ((1 << 6) - 1);
+    // assert(((addr >> 8) & ((1 << 6) - 1)) == mf->get_sub_partition_id());
     
-    return mf->get_sub_partition_id();
+    // return mf->get_sub_partition_id();
 }
 
 unsigned int mee::get_BMT_Layer(new_addr_type addr) {
@@ -206,8 +211,8 @@ new_addr_type mee::get_addr(new_addr_type sub_partition_id, new_addr_type partit
 }
 
 void mee::gen_PAR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
-    new_addr_type partition_addr = get_partition_addr(mf);
-    new_addr_type sub_partition_id = get_sub_partition_id(mf);
+    new_addr_type partition_addr = get_partition_addr(mf->get_addr());
+    new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
     if (m_config->m_META_config.m_cache_type == SECTOR)
         partition_addr = partition_addr >> 5 << 2;
     else 
@@ -221,13 +226,14 @@ void mee::gen_PAR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 }
 
 void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
-    new_addr_type partition_addr = get_partition_addr(mf);
-    new_addr_type sub_partition_id = get_sub_partition_id(mf);
+    new_addr_type partition_addr = get_partition_addr(mf->get_addr());
+    new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
+    assert(mf->get_partition_addr() == partition_addr);
     // new_addr_type minor_addr = (partition_addr >> 7) & 127;
     // minor_addr = 128 + minor_addr * 7;
     // bool res = minor_addr & 7 > 1;
     // minor_addr >>= 3;
-    partition_addr = (partition_addr >> 7);
+    partition_addr = (partition_addr >> 5); // per minor ctr map to 32B cache line
 
     // if (meta_acc == META_ACC)
     //     partition_addr |= minor_addr;
@@ -255,8 +261,8 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 }
 
 void mee::gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
-    new_addr_type partition_addr = get_partition_addr(mf);
-    new_addr_type sub_partition_id = get_sub_partition_id(mf);
+    new_addr_type partition_addr = get_partition_addr(mf->get_addr());
+    new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
     if (m_config->m_META_config.m_cache_type == SECTOR)
         partition_addr = partition_addr >> 6 << 2;
     else
@@ -270,8 +276,8 @@ void mee::gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 }
 
 void mee::gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
-    new_addr_type partition_addr = get_partition_addr(mf);
-    new_addr_type sub_partition_id = get_sub_partition_id(mf);
+    new_addr_type partition_addr = get_partition_addr(mf->get_addr());
+    new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
     // unsigned int Layer = get_BMT_Layer(mf->get_addr());
     // if (Layer == 4) //由L4生成ROOT，由于ROOT是单独的寄存器，这里不生成访存请求
     //     return;
@@ -602,6 +608,14 @@ void mee::AES_cycle() {
     stats->record_stage_stall(AES_INPUT_STALL);
     stats->record_aes_idle();
   }
+}
+
+bool mee::OTP_queue_full() const {
+    return m_OTP_queue->full();
+}
+
+void mee::OTP_queue_push(unsigned OTP_id) {
+    m_OTP_queue->push(new unsigned(OTP_id));
 }
 
 void mee::HASH_cycle() {
@@ -1000,7 +1014,7 @@ void mee::MAC_cycle() {
             print_status(m_MACcache, mf);
             stats->record_stage_stall(MAC_META_RESERVATION_STALL);
             // m_MACcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
-            // if (get_sub_partition_id(mf) == 0)
+            // if (get_sub_partition_id(mf->get_addr()) == 0)
             //     enum cache_request_status status = m_CTRcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
             // print_addr("MAC cycle RESERVATION_FAIL:\t", mf);
             assert(!write_sent);
@@ -1416,7 +1430,8 @@ void mee::simple_cycle(unsigned cycle) {
 #ifndef AES_Enable
                 && !m_unit->mee_dram_queue_full(NORM)
 #endif    
-                && !m_MAC_queue->full() && !m_PAR_queue->full() && !m_Ciphertext_queue->full()) {
+                && !m_MAC_queue->full() && !m_PAR_queue->full() && !m_Ciphertext_queue->full()
+                && !m_common_ctr->full()) {
                 // mf->get_access_size() 可能大于32？
                 // assert(mf->get_access_size() <= 32);
                 // last_issued_partition = spid;
@@ -1436,12 +1451,16 @@ void mee::simple_cycle(unsigned cycle) {
                     // gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);//Lazy_ftech_on_read
                     // gen_CTR_mf(mf, true,  META_ACC, 128, mf_counter);
 
+                    m_common_ctr->update_region_map(mf->get_addr());
+                    m_common_ctr->update_CCSM(mf->get_addr(), 1);
+
                     if (m_config->m_META_config.m_cache_type == SECTOR) {
 #ifndef MEE_SIMPLE
                         gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);//Lazy_ftech_on_read
 #endif
                         // gen_CTR_mf(mf, true,  META_ACC_W, 32, mf_id);
                         gen_CTR_mf(mf, false,  META_ACC_W, 32, mf_id);
+                        m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
                     }
                     else {
 #ifndef MEE_SIMPLE
@@ -1449,6 +1468,7 @@ void mee::simple_cycle(unsigned cycle) {
 #endif
                         // gen_CTR_mf(mf, true,  META_ACC_W, 128, mf_id);
                         gen_CTR_mf(mf, false,  META_ACC_W, 128, mf_id);
+                        m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, 0);
                     }
 
 #ifdef MAC_Enable
@@ -1480,10 +1500,20 @@ void mee::simple_cycle(unsigned cycle) {
                     push_cipher_request(mf);
 #endif
                     if (m_config->m_META_config.m_cache_type == SECTOR) {
-                        gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);
+                        if (m_common_ctr->CCSM_scope(mf->get_addr())) {
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, mf_id);
+                        } else {
+                            gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);    
+                        }
                     }
                     else {
-                        gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);
+                        if (m_common_ctr->CCSM_scope(mf->get_addr())) {
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, mf_id);
+                        } else {
+                            gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, 0);    
+                        }
                     }
                     // gen_CTR_mf(mf, false, META_ACC_R, 128, mf_counter);
 #ifdef MAC_Enable
@@ -1550,6 +1580,7 @@ void mee::simple_cycle(unsigned cycle) {
     AES_cycle();
     CTR_cycle();
     CT_cycle();
+    m_common_ctr->cycle();
 }
 
 void mee::cycle(unsigned cycle) {

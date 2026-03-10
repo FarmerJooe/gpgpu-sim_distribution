@@ -80,6 +80,7 @@ enum meta_access_type {
   META_ACCESS_MAC,
   META_ACCESS_BMT,
   META_ACCESS_PAR,
+  META_ACCESS_CCSM,
   NUM_META_ACCESS_TYPE
 };
 
