@@ -55,14 +55,22 @@ class gpgpu_context;
 #define MAX_INPUT_VALUES 24
 #define MAX_OUTPUT_VALUES 8
 
+enum read_only_prediction_status {
+  PREDICTED_READ_ONLY = 0,
+  PREDICTED_NON_READ_ONLY = 1
+};
+
+enum streaming_prediction_status {
+  PREDICTED_STREAMING = 0,
+  PREDICTED_NON_STREAMING = 1
+};
+
 enum data_type {
   TOT = 0,
   BMT,
   CTR,
   NORM,
   MAC,
-  PAR,
-  CCSM,
   NUM_DATA_TYPE
 };
 
@@ -76,7 +84,6 @@ enum cache_form {
   CTR_CACHE,
   MAC_CACHE,
   BMT_CACHE,
-  PAR_CACHE,
   NUM_CACHE_TYPES
 };
 

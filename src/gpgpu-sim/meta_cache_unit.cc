@@ -1,6 +1,6 @@
-#include "common_ctr.h"
+#include "META_CACHE_UNIT.h"
 
-void common_ctr::print_addr(char s[], mem_fetch *mf) const{
+void META_CACHE_UNIT::print_addr(char s[], mem_fetch *mf) const{
     // if (m_unit->get_mpid() == 0) {
     //     printf("%s\t", s);
     //     // if (mf->get_original_mf())
@@ -9,14 +9,14 @@ void common_ctr::print_addr(char s[], mem_fetch *mf) const{
     // }
 }
 
-new_addr_type common_ctr::get_global_addr(new_addr_type sub_partition_id, new_addr_type partition_addr) {
+new_addr_type META_CACHE_UNIT::get_global_addr(new_addr_type sub_partition_id, new_addr_type partition_addr) {
     new_addr_type new_addr = partition_addr >> 8 << (8 + 6);
     new_addr |= partition_addr & ((1 << 8) - 1);
     new_addr |= sub_partition_id << 8;
     return new_addr;
 }
 
-void common_ctr::gen_META_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
+void META_CACHE_UNIT::gen_META_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
 
     new_addr_type partition_addr = m_mee->get_partition_addr(mf->get_addr());
     new_addr_type sub_partition_id = m_mee->get_sub_partition_id(mf->get_addr());
@@ -34,7 +34,7 @@ void common_ctr::gen_META_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, u
             mf->get_wid(), mf->get_sid(), mf->get_tpc(), mf, mf_id, DEFAULT);
 }
 
-void common_ctr::meta_access(new_addr_type addr, mem_access_type type, unsigned size, bool wr,
+void META_CACHE_UNIT::meta_access(new_addr_type addr, mem_access_type type, unsigned size, bool wr,
         unsigned long long cycle, unsigned wid, unsigned sid, unsigned tpc,
         mem_fetch *original_mf, unsigned mf_id, enum BMT_Layer m_Layer) const {
 
@@ -98,7 +98,7 @@ void common_ctr::meta_access(new_addr_type addr, mem_access_type type, unsigned 
     }
 }
 
-common_ctr::common_ctr(class mee* _mee, class memory_partition_unit *unit, const memory_config *config, class memory_stats_t *stats, class gpgpu_sim *gpu):
+META_CACHE_UNIT::META_CACHE_UNIT(class mee* _mee, class memory_partition_unit *unit, const memory_config *config, class memory_stats_t *stats, class gpgpu_sim *gpu):
     m_mee(_mee),
     m_unit(unit),
     m_config(config),
@@ -133,11 +133,11 @@ common_ctr::common_ctr(class mee* _mee, class memory_partition_unit *unit, const
 
 }
 
-bool common_ctr::full() {
+bool META_CACHE_UNIT::full() {
     return m_META_queue->full();
 }
 
-void common_ctr::META_fill_responses() {
+void META_CACHE_UNIT::META_fill_responses() {
     if (m_METAcache->access_ready() && !m_META_RET_queue->full()) {
         mem_fetch *mf = m_METAcache->next_access();
         enum data_type m_data_type = mf->get_data_type();
@@ -182,7 +182,7 @@ void common_ctr::META_fill_responses() {
     }
 }
 
-void common_ctr::META_fill() {
+void META_CACHE_UNIT::META_fill() {
     
     if (!m_unit->dram_mee_queue_empty(m_data_type)) {
         mem_fetch *mf_return = NULL;
@@ -205,7 +205,7 @@ void common_ctr::META_fill() {
     }
 }
 
-void common_ctr::META_cache_cycle() {
+void META_CACHE_UNIT::META_cache_cycle() {
     if (!m_META_RET_queue->empty()) {
         mem_fetch *mf_return = m_META_RET_queue->top();
         assert(mf_return->get_id());
@@ -249,109 +249,10 @@ void common_ctr::META_cache_cycle() {
     }
 }
 
-void common_ctr::cycle() {
+void META_CACHE_UNIT::cycle() {
     META_fill_responses();
     META_fill();
     META_cache_cycle();
     
 }
 
-void common_ctr::CCSM_handing(unsigned OTP_id) {
-    if (OTP_id == 0) {
-        return;
-    } else {
-        m_mee->OTP_queue_push(OTP_id);
-    }
-}
-
-new_addr_type common_ctr::get_CCSM_index(new_addr_type addr) {
-    new_addr_type partition_addr = m_mee->get_partition_addr(addr);
-    new_addr_type sub_partition_id = m_mee->get_sub_partition_id(addr);
-
-    partition_addr = partition_addr >> (m_meta_scale_shift - 1) << (m_meta_scale_shift - 1);
-
-    new_addr_type META_addr = get_global_addr(sub_partition_id, partition_addr);
-
-    return META_addr;
-}
-
-bool common_ctr::CCSM_scope(new_addr_type addr) {
-    new_addr_type CCSM_index = get_CCSM_index(addr);
-    return (*m_CCSM_map)[CCSM_index] == 0;
-}
-
-void common_ctr::update_CCSM(new_addr_type addr, unsigned CCSM_val) {
-    new_addr_type CCSM_index = get_CCSM_index(addr);
-    (*m_CCSM_map)[CCSM_index] = CCSM_val;
-}
-
-void common_ctr::update_region_map(new_addr_type addr) {
-
-    new_addr_type region_addr = addr & m_region_block_mask;
-
-    (*m_updated_mem_region_map)[region_addr] = 1;
-}
-
-void common_ctr::scan_region(new_addr_type region_addr) {
-    new_addr_type offset = m_region_offset_mask;
-    unsigned and_sum = 0xffffffff;
-    unsigned or_sum = 0;
-    bool common_valid = 1;
-
-    do {
-        new_addr_type sector_addr = region_addr | offset;
-
-        new_addr_type partition_addr = m_mee->get_partition_addr(sector_addr);
-        new_addr_type sub_partition_id = m_mee->get_sub_partition_id(sector_addr);
-
-        // if (meta_acc == META_ACC)
-        //     partition_addr |= minor_addr;
-
-        new_addr_type segment_addr  = get_global_addr(sub_partition_id, partition_addr);
-        
-        scan_segment(segment_addr);
-
-        offset = (offset - 1) & m_region_offset_mask;
-    } while(offset != m_region_offset_mask);
-
-    (*m_updated_mem_region_map)[region_addr] = 0;
-}
-
-void common_ctr::scan_segment(new_addr_type segment_addr) {
-    new_addr_type offset = m_segment_offset_mask;
-    unsigned and_sum = 0xffffffff;
-    unsigned or_sum = 0;
-    bool common_valid = 1;
-
-    do {
-        new_addr_type sector_addr = segment_addr | offset;
-
-        new_addr_type partition_addr = m_mee->get_partition_addr(sector_addr);
-        new_addr_type sub_partition_id = m_mee->get_sub_partition_id(sector_addr);
-        partition_addr = (partition_addr >> 5); // per minor ctr map to 32B cache line
-
-        // if (meta_acc == META_ACC)
-        //     partition_addr |= minor_addr;
-
-        new_addr_type CTR_addr  = get_global_addr(sub_partition_id, partition_addr);
-        
-        and_sum &= (*m_mee->m_ctrModCount)[CTR_addr];
-        or_sum  |= (*m_mee->m_ctrModCount)[CTR_addr];
-        if (and_sum != or_sum) {
-            common_valid = 1;
-            break;
-        }
-
-        offset = (offset - 1) & m_segment_offset_mask;
-    } while(offset != m_segment_offset_mask);
-
-    if (common_valid) {
-        new_addr_type CCSM_index = get_CCSM_index(segment_addr);
-
-        (*m_CCSM_map)[CCSM_index] = 0;
-    } else {
-        new_addr_type CCSM_index = get_CCSM_index(segment_addr);
-
-        (*m_CCSM_map)[CCSM_index] = 1;
-    }
-}

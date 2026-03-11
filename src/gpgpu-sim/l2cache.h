@@ -149,9 +149,6 @@ class memory_partition_unit {
 
   class memory_sub_partition **m_sub_partition;
   counterMap *m_ctrModCount;
-
-  void update_region_map(new_addr_type addr);
-  void scanning_proceduce();
   
  private:
   unsigned m_id;

@@ -933,11 +933,7 @@ unsigned gpgpu_sim::finished_kernel() {
   return result;
 }
 
-void gpgpu_sim::set_kernel_done(kernel_info_t *kernel) { // todo-CCSM
-
-  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
-    m_memory_partition_unit[i]->scanning_proceduce();
-  } 
+void gpgpu_sim::set_kernel_done(kernel_info_t *kernel) {
 
   unsigned uid = kernel->get_uid();
   m_finished_kernel.push_back(uid);
@@ -2420,7 +2416,7 @@ void shader_core_ctx::dump_warp_state(FILE *fout) const {
     m_warp[w]->print(fout);
 }
 
-void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) { // todo-CCSM
+void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) {
   if (m_memory_config->m_perf_sim_memcpy) {
     // if(!m_config.trace_driven_mode)    //in trace-driven mode, CUDA runtime
     // can start nre data structure at any position 	assert (dst_start_addr %
@@ -2439,12 +2435,8 @@ void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) { // tod
       m_memory_partition_unit[partition_id]->handle_memcpy_to_gpu(
           wr_addr, raw_addr.sub_partition, mask);
 
-      m_memory_partition_unit[partition_id]->update_region_map(wr_addr);
     }
 
-    for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
-      m_memory_partition_unit[i]->scanning_proceduce();
-    }
   }
 }
 
