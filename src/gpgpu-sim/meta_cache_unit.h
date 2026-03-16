@@ -6,7 +6,7 @@
 class META_CACHE_UNIT {
 public:
 
-    META_CACHE_UNIT(class mee* _mee, class memory_partition_unit *unit, const memory_config *config, class memory_stats_t *stats, class gpgpu_sim *gpu);
+    META_CACHE_UNIT(class mee* _mee, class memory_partition_unit *unit, const memory_config *config, class memory_stats_t *stats, class gpgpu_sim *gpu, enum data_type _data_type);
     
     new_addr_type get_global_addr(new_addr_type partition_id, new_addr_type partition_addr);
 

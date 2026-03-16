@@ -5,6 +5,10 @@
 // class new_addr_type;
 // class mem_access_type;
 // class memory_config;
+class predictor;
+class read_only_predictor;
+class streaming_predictor;
+
 #ifndef MEE_H
 #define MEE_H
 
@@ -14,7 +18,6 @@
 #include "gpu-sim.h"
 #include "ecc.h"
 #include "mem_latency_stat.h"
-#include "prediction.h"
 
 class mee {
     public:
@@ -40,9 +43,9 @@ class mee {
         void MAC_CHECK_cycle();
         void ECC_CHECK_cycle();
         void BMT_CHECK_cycle();
-        new_addr_type get_partition_addr(new_addr_type addr);
-        new_addr_type get_sub_partition_id(new_addr_type addr);
-        new_addr_type get_addr(new_addr_type partition_id, new_addr_type partition_addr);
+        static new_addr_type get_partition_addr(new_addr_type addr);
+        static new_addr_type get_sub_partition_id(new_addr_type addr);
+        static new_addr_type get_global_addr(new_addr_type partition_id, new_addr_type partition_addr);
         void push_cipher_request(mem_fetch *mf);
         unsigned next_mf_id();
 
@@ -168,6 +171,7 @@ class mee {
         // counterMap* m_streaming_predicator;
 
         read_only_predictor *m_rd_pred;
+        streaming_predictor *m_str_pred;
 
 };
 

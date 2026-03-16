@@ -166,8 +166,8 @@
 #-gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P:D,A:192:4,32:0,32
 -gpgpu_cache:dl2 S:32:128:24,L:B:m:L:P:D,A:192:4,32:0,32
 #-gpgpu_cache:dmeta S:2:128:8,L:B:m:L:P:D,A:64:64,32:0,32
--gpgpu_cache:dmeta S:2:128:8,L:B:m:L:P:D,A:64:64,32:0,32
--gpgpu_cache:ctr S:2:128:8,L:B:m:L:P:D,A:64:64,32:0,32
+-gpgpu_cache:dmeta S:8:128:2,L:B:m:L:P:D,A:64:64,32:0,32
+-gpgpu_cache:ctr S:8:128:2,L:B:m:L:P:D,A:64:64,32:0,32
 -gpgpu_ecc_1bit_err 0
 -gpgpu_ecc_2bit_err 0
 -gpgpu_cache:dl2_texture_only 0

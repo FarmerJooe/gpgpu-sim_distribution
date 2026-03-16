@@ -1,4 +1,4 @@
-#include "META_CACHE_UNIT.h"
+#include "meta_cache_unit.h"
 
 void META_CACHE_UNIT::print_addr(char s[], mem_fetch *mf) const{
     // if (m_unit->get_mpid() == 0) {
@@ -98,12 +98,14 @@ void META_CACHE_UNIT::meta_access(new_addr_type addr, mem_access_type type, unsi
     }
 }
 
-META_CACHE_UNIT::META_CACHE_UNIT(class mee* _mee, class memory_partition_unit *unit, const memory_config *config, class memory_stats_t *stats, class gpgpu_sim *gpu):
+META_CACHE_UNIT::META_CACHE_UNIT(class mee* _mee, class memory_partition_unit *unit, const memory_config *config, class memory_stats_t *stats, class gpgpu_sim *gpu, enum data_type _data_type):
     m_mee(_mee),
     m_unit(unit),
     m_config(config),
     m_stats(stats),
-    m_gpu(gpu) {
+    m_gpu(gpu),
+    m_data_type(_data_type) {
+
     unsigned int icnt_L2;
     unsigned int L2_dram;
     unsigned int dram_L2;
@@ -114,7 +116,7 @@ META_CACHE_UNIT::META_CACHE_UNIT(class mee* _mee, class memory_partition_unit *u
     unsigned m_id = m_unit->get_mpid();
 
     m_mf_allocator = new partition_mf_allocator(m_config);
-    m_METAinterface = new metainterface(m_unit->m_mee_dram_queue[CCSM], m_gpu, m_stats);
+    m_METAinterface = new metainterface(m_unit->get_mee_dram_queue(m_data_type), m_gpu, m_stats);
 
     m_META_queue = new fifo_pipeline<mem_fetch>("meta-CCSM-queue", m_id, 0, len);
     m_META_RET_queue = new fifo_pipeline<mem_fetch>("meta-CCSM-RET-queue", m_id, 0, len);
@@ -126,10 +128,7 @@ META_CACHE_UNIT::META_CACHE_UNIT(class mee* _mee, class memory_partition_unit *u
         new meta_cache(METAc_name, m_config->m_META_config, -1, -1, m_METAinterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
 
-    m_data_type = CCSM;
-            
-    m_updated_mem_region_map = new counterMap;
-    m_CCSM_map = new counterMap;
+    
 
 }
 
@@ -210,7 +209,7 @@ void META_CACHE_UNIT::META_cache_cycle() {
         mem_fetch *mf_return = m_META_RET_queue->top();
         assert(mf_return->get_id());
         if (!m_mee->OTP_queue_full()) {
-            CCSM_handing(mf_return->get_id());
+            // CCSM_handing(mf_return->get_id());
             m_META_RET_queue->pop();
         }
     }
@@ -237,7 +236,7 @@ void META_CACHE_UNIT::META_cache_cycle() {
             if (mf->is_write()) {
                 print_addr("META Write Hit:\t", mf);
             } else {
-                CCSM_handing(mf->get_id());
+                // CCSM_handing(mf->get_id());
             }
         } else if (status != RESERVATION_FAIL) {
             print_addr("META MISS:\t", mf);

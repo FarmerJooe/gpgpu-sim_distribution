@@ -1777,9 +1777,9 @@ void gpgpu_sim::gpu_print_stat() {
   // BMT cache stats
   gpu_print_METACache_stat("BMT");
 
-  gpu_print_METACache_stat("PAR");
+  // gpu_print_METACache_stat("PAR");
 
-  gpu_print_METACache_stat("CCSM");
+  // gpu_print_METACache_stat("CCSM");
   
   // mf data type breakdown
   gpu_print_METACache_data_type_breakdown();
