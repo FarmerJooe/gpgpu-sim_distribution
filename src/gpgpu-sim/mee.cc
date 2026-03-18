@@ -209,7 +209,7 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
     // minor_addr = 128 + minor_addr * 7;
     // bool res = minor_addr & 7 > 1;
     // minor_addr >>= 3;
-    partition_addr = (partition_addr >> 7);
+    partition_addr = (partition_addr >> 5);
 
     // if (meta_acc == META_ACC)
     //     partition_addr |= minor_addr;
