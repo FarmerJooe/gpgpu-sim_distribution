@@ -217,7 +217,7 @@ void common_ctr::META_cache_cycle() {
 
     m_METAcache->cycle();
     
-    bool output_full = m_META_RET_queue->full();
+    bool output_full = m_META_RET_queue->full() || m_mee->OTP_queue_full();
     bool port_free = m_METAcache->data_port_free();
 
     if (!m_META_queue->empty() && !m_unit->mee_dram_queue_full(m_data_type) && !output_full && port_free) {
