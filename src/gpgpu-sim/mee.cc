@@ -177,9 +177,9 @@ new_addr_type mee::get_partition_addr(mem_fetch *mf) {
 }
 
 new_addr_type mee::get_sub_partition_id(mem_fetch *mf) {
-    // return (mf->get_addr() >> 8) & ((1 << 6) - 1);
+    return (mf->get_addr() >> 8) & ((1 << 6) - 1);
     
-    return mf->get_sub_partition_id();
+    // return mf->get_sub_partition_id();
 }
 
 unsigned int mee::get_BMT_Layer(new_addr_type addr) {

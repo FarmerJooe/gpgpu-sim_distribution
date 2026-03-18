@@ -107,7 +107,7 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
     tlx->burst = addrdec_packbits(addrdec_mask[BURST], addr,
                                   addrdec_mkhigh[BURST], addrdec_mklow[BURST]);
     rest_of_addr_high_bits =
-        (addr >> (ADDR_CHIP_S + (log2channel + log2sub_partition)));
+        (addr >> (ADDR_CHIP_S + (log2channel + log2sub_partition) + 4));
 
   } else {
     // Split the given address at ADDR_CHIP_S into (MSBs,LSBs)
