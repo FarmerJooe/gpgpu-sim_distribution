@@ -1370,7 +1370,7 @@ void mee::simple_cycle(unsigned cycle) {
                 && !m_unit->mee_dram_queue_full(NORM)
 #endif    
                 && !m_MAC_queue->full() && !m_Ciphertext_queue->full()
-                && !m_HASH_queue->full()
+                && !m_HASH_queue->full() && !m_OTP_queue->full()
                 ) {
                 // mf->get_access_size() 可能大于32？
                 // assert(mf->get_access_size() <= 32);
