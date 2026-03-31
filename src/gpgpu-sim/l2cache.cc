@@ -530,7 +530,9 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
         bool read_sent = was_read_sent(events);
         MEM_SUBPART_DPRINTF("Probing L2 cache Address=%llx, status=%u\n",
                             mf->get_addr(), status);
-
+        if (get_id() / 2 == 13)
+        printf("%s\taccess status:%d\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\n", "L2 access:",
+                            status, mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type());
         if (status == HIT) {
           if (!write_sent) {
             // L2 cache replies

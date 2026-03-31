@@ -1160,6 +1160,12 @@ PowerscalingCoefficients *gpgpu_sim::get_scaling_coeffs()
   return m_gpgpusim_wrapper->get_scaling_coeffs();
 }
 
+void gpgpu_sim::gpu_print_stat_pw() {
+  FILE *statfout = stdout;
+  fprintf(statfout, "cycle = %d\tipc = %12.4f\n", gpu_sim_cycle + gpu_tot_sim_cycle, 
+                          (float)(gpu_tot_sim_insn + gpu_sim_insn) / (gpu_tot_sim_cycle + gpu_sim_cycle));
+}
+
 void gpgpu_sim::print_stats() {
   gpgpu_ctx->stats->ptx_file_line_stats_write_file();
   gpu_print_stat();
@@ -2030,6 +2036,10 @@ void gpgpu_sim::cycle() {
           }
         }
       }
+    }
+
+    if ((gpu_sim_cycle + gpu_tot_sim_cycle) % 10000 == 0) {
+      gpu_print_stat_pw();
     }
 
     if (!(gpu_sim_cycle % m_config.gpu_stat_sample_freq)) {

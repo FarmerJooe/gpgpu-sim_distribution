@@ -569,6 +569,7 @@ class gpgpu_sim : public gpgpu_t {
 
   const gpgpu_sim_config &get_config() const { return m_config; }
   void gpu_print_stat();
+  void gpu_print_stat_pw();
   void dump_pipeline(int mask, int s, int m) const;
 
   void perf_memcpy_to_gpu(size_t dst_start_addr, size_t count);
