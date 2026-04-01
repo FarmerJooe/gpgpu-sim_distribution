@@ -56,6 +56,20 @@ class mee {
         bool MAC_busy();
         bool BMT_busy;
         void pr(fifo_pipeline<mem_fetch> *m_META_RET_queue);
+
+        mem_fetch* mee_L2_output_buffer_top();
+        mem_fetch* L2_mee_input_buffer_top();
+        void mee_L2_output_buffer_push(mem_fetch *mf);
+        void L2_mee_input_buffer_push(mem_fetch *mf);
+        void mee_L2_output_buffer_pop();
+        void L2_mee_input_buffer_pop();
+        bool mee_L2_output_buffer_empty();
+        bool L2_mee_input_buffer_empty();
+        bool mee_L2_output_buffer_full();
+        bool L2_mee_input_buffer_full();
+
+        void mee_to_dispather_cycle();
+        void dispather_to_mee_cycle();
         
 
         
@@ -96,6 +110,10 @@ class mee {
         fifo_pipeline<mem_fetch> *m_BMT_CHECK_queue;
         // fifo_pipeline<unsigned> *m_HASH_queue;
         fifo_pipeline<mem_fetch> *m_CTR_BMT_Buffer;
+
+        fifo_pipeline<mem_fetch> *m_mee_L2_output_buffer;
+        fifo_pipeline<mem_fetch> *m_L2_mee_input_buffer;
+
 
         //CTR: 1111 1110 0000 0000 0000 0000 0000 0000
         //L1 : 1111 1111 1110 0000 0000 0000 0000 0000
