@@ -374,7 +374,7 @@ void memory_partition_unit::dram_cycle() {
       MEMPART_DPRINTF(
           "Issue mem_fetch request %p from sub partition %d to dram\n", mf,
           spid);
-      print_trace("issue to dram: ", mf);
+      print_trace("dram latency inqueue: ", mf);
       dram_delay_t d;
       d.req = mf;
       d.ready_cycle = m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
