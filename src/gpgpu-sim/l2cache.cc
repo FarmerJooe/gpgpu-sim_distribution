@@ -314,6 +314,9 @@ void memory_partition_unit::dram_cycle() {
         m_sub_partition[dest_spid]->set_done(mf_return);
         delete mf_return;
       } else {
+        if (get_mpid() == 13)
+        printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "dram return:",
+                            mf_return->get_addr(), mf_return->get_sub_partition_id(), mf_return->get_is_write(), mf_return->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         m_sub_partition[dest_spid]->dram_L2_queue_push(mf_return);
         mf_return->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,
                               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -349,6 +352,9 @@ void memory_partition_unit::dram_cycle() {
       MEMPART_DPRINTF(
           "Issue mem_fetch request %p from sub partition %d to dram\n", mf,
           spid);
+      if (get_mpid() == 13)
+        printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "dram latency inqueue:",
+                            mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
       dram_delay_t d;
       d.req = mf;
       d.ready_cycle = m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
@@ -471,6 +477,10 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
         mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                        m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         m_L2_icnt_queue->push(mf);
+        if (get_id() / 2 == 13)
+        printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "L2 fill response:",
+                            mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+
       } else {
         if (m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE) {
           mem_fetch *original_wr_mf = mf->get_original_wr_mf();
@@ -531,8 +541,8 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
         MEM_SUBPART_DPRINTF("Probing L2 cache Address=%llx, status=%u\n",
                             mf->get_addr(), status);
         if (get_id() / 2 == 13)
-        printf("%s\taccess status:%d\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\n", "L2 access:",
-                            status, mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type());
+        printf("%s\taccess status:%d\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "L2 access:",
+                            status, mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         if (status == HIT) {
           if (!write_sent) {
             // L2 cache replies
