@@ -77,6 +77,8 @@ class memory_partition_unit {
                         class memory_stats_t *stats, class gpgpu_sim *gpu);
   ~memory_partition_unit();
 
+  void print_trace(char s[], mem_fetch *mf) const;
+
   void print_mem_part_fifo_busy() const;
   void partition_print_stat_pw();
 
@@ -258,6 +260,8 @@ class memory_sub_partition {
   memory_sub_partition(unsigned sub_partition_id, const memory_config *config,
                        class memory_stats_t *stats, class gpgpu_sim *gpu);
   ~memory_sub_partition();
+
+  void print_trace(char s[], mem_fetch *mf) const;
 
   void print_sub_partition_fifo_busy() const;
 

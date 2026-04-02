@@ -181,6 +181,28 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   m_cache_meta_wb = 0;
 }
 
+void memory_partition_unit::print_trace(char s[], mem_fetch *mf) const {
+  if(get_mpid() == 13) {
+    printf("%s\t", s);
+    printf("addr: %x\t", mf->get_addr());
+    printf("sp_id: %d\t", mf->get_sub_partition_id());
+    printf("wr: %d\t", mf->get_is_write());
+    printf("access type:%d\t", mf->get_access_type());
+    printf("cycle: %lld\n", m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+  }
+}
+
+void memory_sub_partition::print_trace(char s[], mem_fetch *mf) const {
+  if(get_id() / 2 == 13) {
+    printf("%s\t", s);
+    printf("addr: %x\t", mf->get_addr());
+    printf("sp_id: %d\t", mf->get_sub_partition_id());
+    printf("wr: %d\t", mf->get_is_write());
+    printf("access type:%d\t", mf->get_access_type());
+    printf("cycle: %lld\n", m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+  }
+}
+
 void memory_partition_unit::print_mem_part_fifo_busy() const {
   for (unsigned i = 0; i < NUM_DATA_TYPE; i++) {
     m_mee_dispather_queue[i]->print_busy();
@@ -595,9 +617,7 @@ void memory_partition_unit::simple_dram_model_cycle() {
 void memory_partition_unit::dispather_to_dram_cycle() {
   if (!mee_dispather_queue_empty()) {
     mem_fetch *mf = mee_dispather_queue_top();
-    if (get_mpid() == 13)
-    printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "dram latency inqueue:",
-                        mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+    print_trace("dram latency inqueue: ", mf);
     dram_delay_t d;
     d.req = mf;
     d.ready_cycle = m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
@@ -640,9 +660,7 @@ void memory_partition_unit::dram_to_dispather_cycle() {
         m_sub_partition[dest_spid]->set_done(mf_return);
         delete mf_return;
       } else {
-        if (get_mpid() == 13)
-        printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "dram return:",
-                            mf_return->get_addr(), mf_return->get_sub_partition_id(), mf_return->get_is_write(), mf_return->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+        print_trace("dram return: ", mf_return);
         dram_dispather_queue_push(mf_return);
         // mf_return->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,
         //                       m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -662,6 +680,8 @@ void memory_partition_unit::L2_to_mee_cycle() {
   // L2->DRAM queue to DRAM latency queue
   // Arbitrate among multiple L2 subpartitions
   int last_issued_partition = m_arbitration_metadata.last_borrower();
+  if (get_mpid() == 13)
+    printf("last_issued_partition: %d\tcycle: %lld\n", last_issued_partition, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
   for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
        p++) {
     int spid = (p + last_issued_partition + 1) %
@@ -959,10 +979,8 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
         else
         #endif
           m_L2_icnt_queue->push(mf);
-        if (get_id() / 2 == 13)
-        printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "L2 fill response:",
-                            mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
-
+        print_trace("L2 to icnt: ", mf);
+        print_trace("L2 fill response: ", mf);
         // if (m_id >> 1 == 17)
         //   printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\tdata_type:%d\tmf_id:%d\t\n", "L2 fill responses:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id());
   
@@ -980,6 +998,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
           else
           #endif
             m_L2_icnt_queue->push(original_wr_mf);
+            print_trace("L2 to icnt: ", original_wr_mf);
           // if (m_id >> 1 == 17)
           //   printf("%saddr: %x\tsp_id: %d\tsp_addr: %x\taccess type:%d\tdata_type:%d\tmf_id:%d\t\n", "L2 fill responses:\t", mf->get_addr(), mf->get_sid(), mf->get_partition_addr(), mf->get_access_type(), mf->get_data_type(), mf->get_id());
     
@@ -1049,6 +1068,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
         mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                        m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
       m_L2_icnt_queue->push(mf);
+      print_trace("L2 to icnt: ", mf);
       m_mee_L2_queue->pop();
     }
   }
@@ -1187,6 +1207,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
               mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                              m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
               m_L2_icnt_queue->push(mf);
+              print_trace("L2 to icnt: ", mf);
             }
             m_icnt_L2_queue->pop();
           } else {
@@ -1211,6 +1232,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
               mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                              m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
               m_L2_icnt_queue->push(mf);
+              print_trace("L2 to icnt: ", mf);
             }
           }
           // L2 cache accepted request
@@ -1242,6 +1264,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
     mem_fetch *mf = m_rop.front().req;
     m_rop.pop();
     m_icnt_L2_queue->push(mf);
+    print_trace("icnt to L2 (rop): ", mf);
     mf->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,
                    m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
   }
@@ -1625,6 +1648,7 @@ void memory_sub_partition::push(mem_fetch *m_req, unsigned long long cycle) {
           req->set_subpartition_arrival_time(now);
         if (req->istexture()) {
           m_icnt_L2_queue->push(req);
+          print_trace("icnt to L2: ", req);
           req->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,
                           m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         } else {
