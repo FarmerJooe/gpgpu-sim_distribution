@@ -93,6 +93,28 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   }
 }
 
+void memory_partition_unit::print_trace(char s[], mem_fetch *mf) const {
+  if (get_mpid() == 13) {
+    printf("%s\t", s);
+    printf("addr: %x\t", mf->get_addr());
+    printf("sp_id: %d\t", mf->get_sub_partition_id());
+    printf("wr: %d\t", mf->get_is_write());
+    printf("access type:%d\t", mf->get_access_type());
+    printf("cycle: %lld\n", m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+  }
+}
+
+void memory_sub_partition::print_trace(char s[], mem_fetch *mf) const {
+  if (get_id() / 2 == 13) {
+    printf("%s\t", s);
+    printf("addr: %x\t", mf->get_addr());
+    printf("sp_id: %d\t", mf->get_sub_partition_id());
+    printf("wr: %d\t", mf->get_is_write());
+    printf("access type:%d\t", mf->get_access_type());
+    printf("cycle: %lld\n", m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+  }
+}
+
 void memory_partition_unit::handle_memcpy_to_gpu(
     size_t addr, unsigned global_subpart_id, mem_access_sector_mask_t mask) {
   unsigned p = global_sub_partition_id_to_local_id(global_subpart_id);
@@ -314,9 +336,7 @@ void memory_partition_unit::dram_cycle() {
         m_sub_partition[dest_spid]->set_done(mf_return);
         delete mf_return;
       } else {
-        if (get_mpid() == 13)
-        printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "dram return:",
-                            mf_return->get_addr(), mf_return->get_sub_partition_id(), mf_return->get_is_write(), mf_return->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+        print_trace("dram return: ", mf_return);
         m_sub_partition[dest_spid]->dram_L2_queue_push(mf_return);
         mf_return->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,
                               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -339,6 +359,8 @@ void memory_partition_unit::dram_cycle() {
   // L2->DRAM queue to DRAM latency queue
   // Arbitrate among multiple L2 subpartitions
   int last_issued_partition = m_arbitration_metadata.last_borrower();
+  if (get_mpid() == 13)
+  printf("last_issued_partition: %d\tcycle: %lld\n", last_issued_partition, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
   for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
        p++) {
     int spid = (p + last_issued_partition + 1) %
@@ -352,9 +374,7 @@ void memory_partition_unit::dram_cycle() {
       MEMPART_DPRINTF(
           "Issue mem_fetch request %p from sub partition %d to dram\n", mf,
           spid);
-      if (get_mpid() == 13)
-        printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "dram latency inqueue:",
-                            mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+      print_trace("issue to dram: ", mf);
       dram_delay_t d;
       d.req = mf;
       d.ready_cycle = m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
@@ -451,7 +471,7 @@ memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,
          &dram_L2, &L2_icnt);
   m_icnt_L2_queue = new fifo_pipeline<mem_fetch>("icnt-to-L2", 0, icnt_L2);
   m_L2_dram_queue = new fifo_pipeline<mem_fetch>("L2-to-dram", 0, L2_dram);
-  m_dram_L2_queue = new fifo_pipeline<mem_fetch>("dram-to-L2", 0, dram_L2);
+  m_dram_L2_queue = new fifo_pipeline<mem_fetch>("dram-to-L2", 2, dram_L2 + 2);
   m_L2_icnt_queue = new fifo_pipeline<mem_fetch>("L2-to-icnt", 0, L2_icnt);
   wb_addr = -1;
 }
@@ -477,10 +497,8 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
         mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                        m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         m_L2_icnt_queue->push(mf);
-        if (get_id() / 2 == 13)
-        printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "L2 fill response:",
-                            mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
-
+        print_trace("L2 to icnt: ", mf);
+        print_trace("L2 fill response: ", mf);
       } else {
         if (m_config->m_L2_config.m_write_alloc_policy == FETCH_ON_WRITE) {
           mem_fetch *original_wr_mf = mf->get_original_wr_mf();
@@ -490,6 +508,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
               IN_PARTITION_L2_TO_ICNT_QUEUE,
               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
           m_L2_icnt_queue->push(original_wr_mf);
+          print_trace("L2 to icnt: ", original_wr_mf);
         }
         m_request_tracker.erase(mf);
         delete mf;
@@ -500,7 +519,9 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
   // DRAM to L2 (texture) and icnt (not texture)
   if (!m_dram_L2_queue->empty()) {
     mem_fetch *mf = m_dram_L2_queue->top();
-    if (!m_config->m_L2_config.disabled() && m_L2cache->waiting_for_fill(mf)) {
+    if (!mf)
+      m_dram_L2_queue->pop();
+    else if (!m_config->m_L2_config.disabled() && m_L2cache->waiting_for_fill(mf)) {
       if (m_L2cache->fill_port_free()) {
         mf->set_status(IN_PARTITION_L2_FILL_QUEUE,
                        m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -513,6 +534,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
         mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                        m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
       m_L2_icnt_queue->push(mf);
+      print_trace("L2 to icnt: ", mf);
       m_dram_L2_queue->pop();
     }
   }
@@ -555,6 +577,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
               mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                              m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
               m_L2_icnt_queue->push(mf);
+              print_trace("L2 to icnt: ", mf);
             }
             m_icnt_L2_queue->pop();
           } else {
@@ -575,6 +598,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
               mf->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                              m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
               m_L2_icnt_queue->push(mf);
+              print_trace("L2 to icnt: ", mf);
             }
           }
           // L2 cache accepted request
@@ -600,6 +624,7 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
     mem_fetch *mf = m_rop.front().req;
     m_rop.pop();
     m_icnt_L2_queue->push(mf);
+    print_trace("icnt to L2 (rop): ", mf);
     mf->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,
                    m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
   }
@@ -805,6 +830,7 @@ void memory_sub_partition::push(mem_fetch *m_req, unsigned long long cycle) {
       m_request_tracker.insert(req);
       if (req->istexture()) {
         m_icnt_L2_queue->push(req);
+        print_trace("icnt to L2: ", req);
         req->set_status(IN_PARTITION_ICNT_TO_L2_QUEUE,
                         m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
       } else {
