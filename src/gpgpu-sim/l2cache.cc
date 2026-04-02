@@ -595,6 +595,9 @@ void memory_partition_unit::simple_dram_model_cycle() {
 void memory_partition_unit::dispather_to_dram_cycle() {
   if (!mee_dispather_queue_empty()) {
     mem_fetch *mf = mee_dispather_queue_top();
+    if (get_mpid() == 13)
+    printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "dram latency inqueue:",
+                        mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     dram_delay_t d;
     d.req = mf;
     d.ready_cycle = m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle +
@@ -637,6 +640,9 @@ void memory_partition_unit::dram_to_dispather_cycle() {
         m_sub_partition[dest_spid]->set_done(mf_return);
         delete mf_return;
       } else {
+        if (get_mpid() == 13)
+        printf("%s\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "dram return:",
+                            mf_return->get_addr(), mf_return->get_sub_partition_id(), mf_return->get_is_write(), mf_return->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         dram_dispather_queue_push(mf_return);
         // mf_return->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,
         //                       m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -703,11 +709,11 @@ void memory_partition_unit::dram_cycle() {
   // L2_to_mee_cycle();
   // m_mee->mee_to_dispather_cycle();
   // mee_dispath_cycle();
-  dispather_to_dram_cycle();
-
-  m_dram->cycle();
-
+  
   dram_to_dispather_cycle();
+  m_dram->cycle();
+  dispather_to_dram_cycle();
+  
   // dram_dispath_cycle();
   // m_mee->dispather_to_mee_cycle();
   // mee_to_L2_cycle();
