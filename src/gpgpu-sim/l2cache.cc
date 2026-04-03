@@ -71,6 +71,20 @@ mem_fetch *partition_mf_allocator::alloc(
                     wid, sid, tpc, m_memory_config, cycle, original_mf);
   return mf;
 }
+
+void memory_partition_unit::partition_print_stat_pw() {
+  for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
+       p++) {
+    m_sub_partition[p]->sub_partition_print_stat_pw();
+  }
+}
+
+void memory_sub_partition::sub_partition_print_stat_pw() {
+  printf("Memory Sub Partition %u L2 Cache input buffer used: %d\n", m_id, m_icnt_L2_queue->get_n_element());
+  if (!m_config->m_L2_config.disabled()) m_L2cache->cache_print_stat_pw();
+
+}
+
 memory_partition_unit::memory_partition_unit(unsigned partition_id,
                                              const memory_config *config,
                                              class memory_stats_t *stats,

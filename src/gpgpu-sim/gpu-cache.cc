@@ -978,6 +978,95 @@ void cache_stats::sample_cache_port_utility(bool data_port_busy,
   }
 }
 
+void baseline_cache::cache_print_stat_pw() {
+  struct cache_sub_stats_pw css;
+  m_stats.get_sub_stats_pw(css);
+
+  // 1. 计算MF跟踪统计信息（注意：这些是per-window的统计）
+  // total_mf_received = 本窗口内累计接收的所有access请求（不包括RESERVATION_FAIL）
+  css.total_mf_received = css.read_hits + css.write_hits + css.read_misses + css.read_pending_hits;
+
+  // total_mf_returned = 本窗口内累计返回的所有请求：
+  // - HIT的请求立即返回：read_hits + write_hits
+  // - MISS/PENDING_HIT的请求延迟返回：mf_count统计（通过inc_mf_latency累加）
+  // 注意：RESERVATION_FAIL不算在returned中，因为它们被拒绝了（也不算在accesses中）
+  css.total_mf_returned = css.read_hits + css.write_hits + css.mf_count;
+
+  // current_mf_processing = 当前瞬时正在处理的mf数量（实时计数器）
+  // 使用m_stats.get_pending_requests()获取实时追踪的未完成请求数
+  // 该计数器在MISS/SECTOR_MISS/HIT_RESERVED时+1，在fill时-1
+  css.current_mf_processing = m_stats.get_pending_requests();
+
+  // 2. 计算RESERVED cacheline占比
+  css.total_lines = m_tag_array->size();
+  css.total_sets = m_config.m_nset;
+  css.reserved_lines = 0;
+  css.fully_reserved_sets = 0;
+
+  // 遍历所有set，统计RESERVED line和fully reserved set
+  for (unsigned set_idx = 0; set_idx < m_config.m_nset; set_idx++) {
+    unsigned reserved_in_set = 0;
+    for (unsigned way = 0; way < m_config.m_assoc; way++) {
+      unsigned line_idx = set_idx * m_config.m_assoc + way;
+      cache_block_t *line = m_tag_array->get_block(line_idx);
+      if (line && line->is_reserved_line()) {
+        css.reserved_lines++;
+        reserved_in_set++;
+      }
+    }
+    // 如果set中所有line都是RESERVED状态，则该set为fully reserved
+    if (reserved_in_set == m_config.m_assoc) {
+      css.fully_reserved_sets++;
+    }
+  }
+
+  // 3. 计算MSHR使用情况
+  css.mshr_total_entries = m_config.m_mshr_entries;
+  css.mshr_max_merge = m_config.m_mshr_max_merge;
+
+  // 使用mshr_table的get_stats方法获取准确的统计信息
+  m_mshrs.get_stats(css.mshr_used_entries, css.mshr_full_entries);
+
+  // 打印基本统计信息
+  printf(
+      "Cache %s - Accesses: %u, Read Hits: %u, Write Hits: %u, Read Misses: "
+      "%u, Write Misses: %u, Read Pending Hits: %u, Write Pending Hits: %u, "
+      "Read Res Fails: %u, Write Res Fails: %u, Avg MF Latency: %.2f\n",
+      m_name.c_str(), css.accesses, css.read_hits, css.write_hits,
+      css.read_misses, css.write_misses, css.read_pending_hits,
+      css.write_pending_hits, css.read_res_fails, css.write_res_fails,
+      (css.mf_count > 0)
+          ? ((float)css.avg_mf_latency / (float)css.mf_count)
+          : 0.0f);
+
+  // 打印新增的统计信息
+  // 1. MF跟踪信息
+  // 注意：Received和Returned是per-window累计值，Processing是当前瞬时值
+  // Pending = Received - Returned (窗口内仍在处理中的累计数量)
+  unsigned pending_in_window = css.total_mf_received - css.total_mf_returned;
+  printf("  MF Tracking - Received(PW): %u, Returned(PW): %u, Pending(PW): %u, Processing(Now): %u\n",
+         css.total_mf_received, css.total_mf_returned, pending_in_window, css.current_mf_processing);
+
+  // 2. RESERVED cacheline占比
+  float reserved_line_ratio = (css.total_lines > 0)
+      ? (float)css.reserved_lines / (float)css.total_lines * 100.0f : 0.0f;
+  float fully_reserved_set_ratio = (css.total_sets > 0)
+      ? (float)css.fully_reserved_sets / (float)css.total_sets * 100.0f : 0.0f;
+  printf("  Cache Status - Reserved Lines: %u/%u (%.2f%%), Fully Reserved Sets: %u/%u (%.2f%%)\n",
+         css.reserved_lines, css.total_lines, reserved_line_ratio,
+         css.fully_reserved_sets, css.total_sets, fully_reserved_set_ratio);
+
+  // 3. MSHR使用情况
+  float mshr_used_ratio = (css.mshr_total_entries > 0)
+      ? (float)css.mshr_used_entries / (float)css.mshr_total_entries * 100.0f : 0.0f;
+  float mshr_full_ratio = (css.mshr_used_entries > 0)
+      ? (float)css.mshr_full_entries / (float)css.mshr_used_entries * 100.0f : 0.0f;
+  printf("  MSHR Status - Used Entries: %u/%u (%.2f%%), Full Entries: %u/%u (%.2f%%)\n",
+         css.mshr_used_entries, css.mshr_total_entries, mshr_used_ratio,
+         css.mshr_full_entries, css.mshr_used_entries, mshr_full_ratio);
+}
+
+
 baseline_cache::bandwidth_management::bandwidth_management(cache_config &config)
     : m_config(config) {
   m_data_port_occupied_cycles = 0;

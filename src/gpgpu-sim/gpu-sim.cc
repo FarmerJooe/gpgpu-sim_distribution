@@ -1164,6 +1164,10 @@ void gpgpu_sim::gpu_print_stat_pw() {
   FILE *statfout = stdout;
   fprintf(statfout, "cycle = %d\tipc = %12.4f\n", gpu_sim_cycle + gpu_tot_sim_cycle, 
                           (float)(gpu_tot_sim_insn + gpu_sim_insn) / (gpu_tot_sim_cycle + gpu_sim_cycle));
+
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+    m_memory_partition_unit[i]->partition_print_stat_pw();
+  }
 }
 
 void gpgpu_sim::print_stats() {
