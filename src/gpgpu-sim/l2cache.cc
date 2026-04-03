@@ -97,7 +97,7 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   sscanf(m_config->gpgpu_L2_queue_config, "%u:%u:%u:%u", &icnt_L2, &L2_dram,
          &dram_L2, &L2_icnt);
 
-  dram_L2 += 1064;
+  dram_L2 = 256;
   
   char fifo_mee_dram_name[32];
   char fifo_dram_mee_name[32];
@@ -107,9 +107,9 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   send_trigger_threshold = L2_dram;
   receive_stop_threshold = dram_L2;
   
-  // m_mee_dispather_queue[TOT] = new fifo_pipeline<mem_fetch>(fifo_mee_dram_name, 0, 1);
-  // m_dram_dispather_queue[TOT] = new fifo_pipeline<mem_fetch>(fifo_dram_mee_name, 0, 1);
-  for (unsigned i = 0; i < NUM_DATA_TYPE; i++) { 
+  m_mee_dispather_queue[TOT] = new fifo_pipeline<mem_fetch>(fifo_mee_dram_name, 0, 64);
+  m_dram_dispather_queue[TOT] = new fifo_pipeline<mem_fetch>(fifo_dram_mee_name, 0, 64);
+  for (unsigned i = 1; i < NUM_DATA_TYPE; i++) { 
     snprintf(fifo_mee_dram_name, 32, "mee-to-dram-%d_%03d\0", i, m_id);
     snprintf(fifo_dram_mee_name, 32, "dram-to-mee-%d_%03d\0", i, m_id);
     m_mee_dispather_queue[i] = new fifo_pipeline<mem_fetch>(fifo_mee_dram_name, 0, L2_dram);
