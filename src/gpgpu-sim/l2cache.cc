@@ -732,9 +732,10 @@ void memory_partition_unit::dram_cycle() {
   // m_mee->mee_to_dispather_cycle();
   // mee_dispath_cycle();
   
-  dram_to_dispather_cycle();
-  m_dram->cycle();
+  
   dispather_to_dram_cycle();
+  m_dram->cycle();
+  dram_to_dispather_cycle();
   
   // dram_dispath_cycle();
   // m_mee->dispather_to_mee_cycle();
