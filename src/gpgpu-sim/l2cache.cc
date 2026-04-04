@@ -241,16 +241,7 @@ void memory_partition_unit::cache_cycle(unsigned cycle) {
   // }
   if (!m_dram) return;
   assert(m_dram);
-  mem_fetch *mf_return = m_dram->return_queue_top();
-  if (mf_return) {
-    if (!m_dram_L2_queue_buffer->full()) {
-      m_dram_L2_queue_buffer->push(mf_return);
-      print_trace("dram return: ", mf_return);
-      m_dram->return_queue_pop();
-    }
-  } else {
-    m_dram->return_queue_pop();
-  }
+  
 }
 
 void memory_partition_unit::visualizer_print(gzFile visualizer_file) const {
@@ -379,6 +370,17 @@ void memory_partition_unit::dram_cycle() {
     }
   // } else {
   //   m_dram->return_queue_pop();
+  }
+
+  mem_fetch *mf_return = m_dram->return_queue_top();
+  if (mf_return) {
+    if (!m_dram_L2_queue_buffer->full()) {
+      m_dram_L2_queue_buffer->push(mf_return);
+      // print_trace("dram return: ", mf_return);
+      m_dram->return_queue_pop();
+    }
+  } else {
+    m_dram->return_queue_pop();
   }
 
   m_dram->cycle();
