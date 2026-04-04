@@ -356,7 +356,7 @@ void memory_partition_unit::dram_cycle() {
         m_sub_partition[dest_spid]->set_done(mf_return);
         delete mf_return;
       } else {
-        print_trace("dram to L2: ", mf_return);
+        // print_trace("dram to L2: ", mf_return);
         m_sub_partition[dest_spid]->dram_L2_queue_push(mf_return);
         mf_return->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,
                               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -376,7 +376,7 @@ void memory_partition_unit::dram_cycle() {
   if (mf_return) {
     if (!m_dram_L2_queue_buffer->full()) {
       m_dram_L2_queue_buffer->push(mf_return);
-      // print_trace("dram return: ", mf_return);
+      print_trace("dram return: ", mf_return);
       m_dram->return_queue_pop();
     }
   } else {
