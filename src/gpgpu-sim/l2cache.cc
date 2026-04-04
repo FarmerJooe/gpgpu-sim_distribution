@@ -346,6 +346,17 @@ void memory_partition_unit::dram_cycle() {
   // pop completed memory request from dram and push it to dram-to-L2 queue
   // of the original sub partition
   
+  mem_fetch *mf_return = m_dram->return_queue_top();
+  if (mf_return) {
+    if (!m_dram_L2_queue_buffer->full()) {
+      m_dram_L2_queue_buffer->push(mf_return);
+      print_trace("dram return: ", mf_return);
+      m_dram->return_queue_pop();
+    }
+  } else {
+    m_dram->return_queue_pop();
+  }
+
   if (!m_dram_L2_queue_buffer->empty()) {
     mem_fetch *mf_return = m_dram_L2_queue_buffer->top();
     unsigned dest_global_spid = mf_return->get_sub_partition_id();
@@ -372,16 +383,7 @@ void memory_partition_unit::dram_cycle() {
   //   m_dram->return_queue_pop();
   }
 
-  mem_fetch *mf_return = m_dram->return_queue_top();
-  if (mf_return) {
-    if (!m_dram_L2_queue_buffer->full()) {
-      m_dram_L2_queue_buffer->push(mf_return);
-      print_trace("dram return: ", mf_return);
-      m_dram->return_queue_pop();
-    }
-  } else {
-    m_dram->return_queue_pop();
-  }
+
 
   m_dram->cycle();
   m_dram->dram_log(SAMPLELOG);
