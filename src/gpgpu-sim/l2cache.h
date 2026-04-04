@@ -117,6 +117,7 @@ class memory_partition_unit {
   class memory_stats_t *m_stats;
   class memory_sub_partition **m_sub_partition;
   class dram_t *m_dram;
+  fifo_pipeline<mem_fetch> *m_dram_L2_queue_buffer;
 
   class arbitration_metadata {
    public:

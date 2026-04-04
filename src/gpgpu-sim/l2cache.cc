@@ -96,6 +96,8 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
       m_gpu(gpu) {
   m_dram = new dram_t(m_id, m_config, m_stats, this, gpu);
 
+  m_dram_L2_queue_buffer = new fifo_pipeline<mem_fetch>("dram-to-L2-buffer", 0, 64);
+
   m_sub_partition = new memory_sub_partition
       *[m_config->m_n_sub_partition_per_memory_channel];
   for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
@@ -233,9 +235,21 @@ bool memory_partition_unit::busy() const {
 }
 
 void memory_partition_unit::cache_cycle(unsigned cycle) {
-  for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
-       p++) {
-    m_sub_partition[p]->cache_cycle(cycle);
+  // for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
+  //      p++) {
+  //   m_sub_partition[p]->cache_cycle(cycle);
+  // }
+  if (!m_dram) return;
+  assert(m_dram);
+  mem_fetch *mf_return = m_dram->return_queue_top();
+  if (mf_return) {
+    if (!m_dram_L2_queue_buffer->full()) {
+      m_dram_L2_queue_buffer->push(mf_return);
+      print_trace("dram return: ", mf_return);
+      m_dram->return_queue_pop();
+    }
+  } else {
+    m_dram->return_queue_pop();
   }
 }
 
@@ -340,8 +354,9 @@ void memory_partition_unit::simple_dram_model_cycle() {
 void memory_partition_unit::dram_cycle() {
   // pop completed memory request from dram and push it to dram-to-L2 queue
   // of the original sub partition
-  mem_fetch *mf_return = m_dram->return_queue_top();
-  if (mf_return) {
+  
+  if (!m_dram_L2_queue_buffer->empty()) {
+    mem_fetch *mf_return = m_dram_L2_queue_buffer->top();
     unsigned dest_global_spid = mf_return->get_sub_partition_id();
     int dest_spid = global_sub_partition_id_to_local_id(dest_global_spid);
     assert(m_sub_partition[dest_spid]->get_id() == dest_global_spid);
@@ -350,7 +365,7 @@ void memory_partition_unit::dram_cycle() {
         m_sub_partition[dest_spid]->set_done(mf_return);
         delete mf_return;
       } else {
-        print_trace("dram return: ", mf_return);
+        print_trace("dram to L2: ", mf_return);
         m_sub_partition[dest_spid]->dram_L2_queue_push(mf_return);
         mf_return->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,
                               m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
@@ -359,10 +374,11 @@ void memory_partition_unit::dram_cycle() {
             "mem_fetch request %p return from dram to sub partition %d\n",
             mf_return, dest_spid);
       }
-      m_dram->return_queue_pop();
+      // m_dram->return_queue_pop();
+      m_dram_L2_queue_buffer->pop();
     }
-  } else {
-    m_dram->return_queue_pop();
+  // } else {
+  //   m_dram->return_queue_pop();
   }
 
   m_dram->cycle();
@@ -410,6 +426,7 @@ void memory_partition_unit::dram_cycle() {
     mem_fetch *mf = m_dram_latency_queue.front().req;
     m_dram_latency_queue.pop_front();
     m_dram->push(mf);
+    print_trace("dram push: ", mf);
   }
 }
 
@@ -485,7 +502,7 @@ memory_sub_partition::memory_sub_partition(unsigned sub_partition_id,
          &dram_L2, &L2_icnt);
   m_icnt_L2_queue = new fifo_pipeline<mem_fetch>("icnt-to-L2", 0, icnt_L2);
   m_L2_dram_queue = new fifo_pipeline<mem_fetch>("L2-to-dram", 0, L2_dram);
-  m_dram_L2_queue = new fifo_pipeline<mem_fetch>("dram-to-L2", 2, dram_L2 + 2);
+  m_dram_L2_queue = new fifo_pipeline<mem_fetch>("dram-to-L2", 0, dram_L2);
   m_L2_icnt_queue = new fifo_pipeline<mem_fetch>("L2-to-icnt", 0, L2_icnt);
   wb_addr = -1;
 }

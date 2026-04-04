@@ -1943,6 +1943,9 @@ void gpgpu_sim::cycle() {
         if (mf) partiton_reqs_in_parallel_per_cycle++;
       }
       m_memory_sub_partition[i]->cache_cycle(gpu_sim_cycle + gpu_tot_sim_cycle);
+      if (i % 2) {
+        m_memory_partition_unit[i / 2]->cache_cycle(gpu_sim_cycle + gpu_tot_sim_cycle);
+      }
       m_memory_sub_partition[i]->accumulate_L2cache_stats(
           m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX]);
     }
