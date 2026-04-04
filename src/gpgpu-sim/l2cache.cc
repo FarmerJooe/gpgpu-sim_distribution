@@ -368,19 +368,19 @@ void memory_partition_unit::cache_cycle(unsigned cycle) {
 
   // printf("memory_partition_unit cycle: %d\n", cycle);
     
-  L2_to_mee_cycle();
-  #ifndef MEE_Enable
-  m_mee->mee_to_dispather_cycle();
-  #endif
-  mee_dispath_cycle();
-  #ifdef MEE_Enable
-  m_mee->simple_cycle(cycle);
-  #endif
-  dram_dispath_cycle();
-  #ifndef MEE_Enable
-  m_mee->dispather_to_mee_cycle();
-  #endif
-  mee_to_L2_cycle();
+  // L2_to_mee_cycle();
+  // #ifndef MEE_Enable
+  // m_mee->mee_to_dispather_cycle();
+  // #endif
+  // mee_dispath_cycle();
+  // #ifdef MEE_Enable
+  // m_mee->simple_cycle(cycle);
+  // #endif
+  // dram_dispath_cycle();
+  // #ifndef MEE_Enable
+  // m_mee->dispather_to_mee_cycle();
+  // #endif
+  // mee_to_L2_cycle();
 
 
 }
@@ -730,18 +730,17 @@ void memory_partition_unit::mee_to_L2_cycle() {
 
 void memory_partition_unit::dram_cycle() {
   
-  // L2_to_mee_cycle();
-  // m_mee->mee_to_dispather_cycle();
-  // mee_dispath_cycle();
-  
   dram_to_dispather_cycle();
+  dram_dispath_cycle();
+  m_mee->dispather_to_mee_cycle();
+  mee_to_L2_cycle();
   
   m_dram->cycle();
   
+  L2_to_mee_cycle();
+  m_mee->mee_to_dispather_cycle();
+  mee_dispath_cycle();
   dispather_to_dram_cycle();
-  // dram_dispath_cycle();
-  // m_mee->dispather_to_mee_cycle();
-  // mee_to_L2_cycle();
 
 }
 
