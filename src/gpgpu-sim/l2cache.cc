@@ -637,6 +637,7 @@ void memory_partition_unit::dispather_to_dram_cycle() {
     mem_fetch *mf = m_dram_latency_queue.front().req;
     m_dram_latency_queue.pop_front();
     m_dram->push(mf);
+    print_trace("dram push: ", mf);
 
     if (mf->get_access_type() == META_WRBK_ACC) 
       m_cache_meta_wb++;
@@ -715,6 +716,7 @@ void memory_partition_unit::mee_to_L2_cycle() {
     assert(m_sub_partition[dest_spid]->get_id() == dest_global_spid);
     if (!mee_L2_queue_full(dest_spid)) {
       mee_L2_queue_push(dest_spid, mf_return);
+      print_trace("dram to L2: ", mf_return);
       mf_return->set_status(IN_PARTITION_DRAM_TO_L2_QUEUE,
                             m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
       m_arbitration_metadata.return_credit(dest_spid);
