@@ -1491,6 +1491,7 @@ void mee::simple_cycle(unsigned cycle) {
 }
 
 void mee::mee_to_dispather_cycle() {
+#ifndef MEE_Enable
     if (!m_L2_mee_input_buffer->empty()) {
         mem_fetch *mf = m_L2_mee_input_buffer->top();
         if (!m_unit->mee_dispather_queue_full(NORM)) {
@@ -1498,9 +1499,11 @@ void mee::mee_to_dispather_cycle() {
             m_L2_mee_input_buffer->pop();
         }
     }
+#endif
 }
 
 void mee::dispather_to_mee_cycle() {
+#ifndef MEE_Enable
     if (!m_unit->dram_dispather_queue_empty(NORM)) {
         mem_fetch *mf_return = m_unit->dram_dispather_queue_top(NORM);
         if (!m_mee_L2_output_buffer->full()) {
@@ -1508,12 +1511,13 @@ void mee::dispather_to_mee_cycle() {
             m_unit->dram_dispather_queue_pop(NORM);
         }
     }
+#endif
 }
 
 void mee::cycle(unsigned cycle) {
     #ifndef CTR_HIERACHY
-    // dispather_to_mee_cycle();
-    // mee_to_dispather_cycle();    
+    dispather_to_mee_cycle();
+    mee_to_dispather_cycle();    
     #endif
 }
 

@@ -184,25 +184,25 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
 }
 
 void memory_partition_unit::print_trace(char s[], mem_fetch *mf) const {
-  if(get_mpid() == 13) {
-    printf("%s\t", s);
-    printf("addr: %x\t", mf->get_addr());
-    printf("sp_id: %d\t", mf->get_sub_partition_id());
-    printf("wr: %d\t", mf->get_is_write());
-    printf("access type:%d\t", mf->get_access_type());
-    printf("cycle: %lld\n", m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
-  }
+  // if(get_mpid() == 13) {
+  //   printf("%s\t", s);
+  //   printf("addr: %x\t", mf->get_addr());
+  //   printf("sp_id: %d\t", mf->get_sub_partition_id());
+  //   printf("wr: %d\t", mf->get_is_write());
+  //   printf("access type:%d\t", mf->get_access_type());
+  //   printf("cycle: %lld\n", m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+  // }
 }
 
 void memory_sub_partition::print_trace(char s[], mem_fetch *mf) const {
-  if(get_id() / 2 == 13) {
-    printf("%s\t", s);
-    printf("addr: %x\t", mf->get_addr());
-    printf("sp_id: %d\t", mf->get_sub_partition_id());
-    printf("wr: %d\t", mf->get_is_write());
-    printf("access type:%d\t", mf->get_access_type());
-    printf("cycle: %lld\n", m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
-  }
+  // if(get_id() / 2 == 13) {
+  //   printf("%s\t", s);
+  //   printf("addr: %x\t", mf->get_addr());
+  //   printf("sp_id: %d\t", mf->get_sub_partition_id());
+  //   printf("wr: %d\t", mf->get_is_write());
+  //   printf("access type:%d\t", mf->get_access_type());
+  //   printf("cycle: %lld\n", m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+  // }
 }
 
 void memory_partition_unit::print_mem_part_fifo_busy() const {
@@ -373,9 +373,11 @@ void memory_partition_unit::cache_cycle(unsigned cycle) {
   // m_mee->mee_to_dispather_cycle();
   // #endif
   // mee_dispath_cycle();
-  // #ifdef MEE_Enable
-  // m_mee->simple_cycle(cycle);
-  // #endif
+#ifdef MEE_Enable
+  m_mee->simple_cycle(cycle);
+#else
+  m_mee->cycle(cycle);
+#endif
   // dram_dispath_cycle();
   // #ifndef MEE_Enable
   // m_mee->dispather_to_mee_cycle();
@@ -683,8 +685,8 @@ void memory_partition_unit::L2_to_mee_cycle() {
   // L2->DRAM queue to DRAM latency queue
   // Arbitrate among multiple L2 subpartitions
   int last_issued_partition = m_arbitration_metadata.last_borrower();
-  if (get_mpid() == 13)
-    printf("last_issued_partition: %d\tcycle: %lld\n", last_issued_partition, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+  // if (get_mpid() == 13)
+  //   printf("last_issued_partition: %d\tcycle: %lld\n", last_issued_partition, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
   for (unsigned p = 0; p < m_config->m_n_sub_partition_per_memory_channel;
        p++) {
     int spid = (p + last_issued_partition + 1) %
@@ -692,6 +694,7 @@ void memory_partition_unit::L2_to_mee_cycle() {
     if (!L2_mee_queue_empty(spid) && can_issue_to_dram(spid)) {
       mem_fetch *mf = L2_mee_queue_top(spid);
       if (m_mee->L2_mee_input_buffer_full()) break;
+      // if (m_dram->full(mf->is_write())) break;
 
       m_mee->L2_mee_input_buffer_push(mf);
 
@@ -728,19 +731,26 @@ void memory_partition_unit::mee_to_L2_cycle() {
   }
 }
 
+// void memory_partition_unit::L2_to_dram_cycle() {
+
+// }
+
+// void memory_partition_unit::dram_to_L2_cycle() {
+// }
+
 void memory_partition_unit::dram_cycle() {
   
-  dram_to_dispather_cycle();
-  dram_dispath_cycle();
-  m_mee->dispather_to_mee_cycle();
-  mee_to_L2_cycle();
+  // dram_to_dispather_cycle();
+  // dram_dispath_cycle();
+  // m_mee->dispather_to_mee_cycle();
+  // mee_to_L2_cycle();
   
   m_dram->cycle();
   
-  L2_to_mee_cycle();
-  m_mee->mee_to_dispather_cycle();
-  mee_dispath_cycle();
-  dispather_to_dram_cycle();
+  // L2_to_mee_cycle();
+  // m_mee->mee_to_dispather_cycle();
+  // mee_dispath_cycle();
+  // dispather_to_dram_cycle();
 
 }
 
@@ -1195,9 +1205,9 @@ void memory_sub_partition::cache_cycle(unsigned cycle) {
         bool read_sent = was_read_sent(events);
         MEM_SUBPART_DPRINTF("Probing L2 cache Address=%llx, status=%u\n",
                             mf->get_addr(), status);
-        if (get_id() / 2 == 13)
-        printf("%s\taccess status:%d\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "L2 access:",
-                            status, mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+        // if (get_id() / 2 == 13)
+        // printf("%s\taccess status:%d\taddr: %x\tsp_id: %d\twr: %d\taccess type:%d\tcycle: %lld\n", "L2 access:",
+        //                     status, mf->get_addr(), mf->get_sub_partition_id(), mf->get_is_write(), mf->get_access_type(),m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
         if (status == HIT) {
           m_L2cache->inc_acc(mf);
           // print_addr("L2 access HIT", mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);

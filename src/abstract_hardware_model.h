@@ -28,7 +28,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 // #define MEE_Enable
-// #define MEE_SIMPLE
+// // #define MEE_SIMPLE
 // #define BMT_Enable
 // #define MAC_Enable
 // #define COMPRESSION_Enable
