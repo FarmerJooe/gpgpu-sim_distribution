@@ -27,9 +27,15 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+<<<<<<< HEAD
 #define MEE_Enable
 // #define MEE_SIMPLE
 #define BMT_Enable
+=======
+// #define MEE_Enable
+// // #define MEE_SIMPLE
+// #define BMT_Enable
+>>>>>>> origin/mee_sys
 // #define MAC_Enable
 // #define COMPRESSION_Enable
 // #define CTR_HIERACHY

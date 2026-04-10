@@ -77,13 +77,20 @@ class memory_partition_unit {
                         class memory_stats_t *stats, class gpgpu_sim *gpu);
   ~memory_partition_unit();
 
+  void print_trace(char s[], mem_fetch *mf) const;
+
   void print_mem_part_fifo_busy() const;
   void partition_print_stat_pw();
 
   bool busy() const;
 
-  void dram_to_mee_cycle();
-  void mee_to_dram_cycle();
+  void dram_to_dispather_cycle();
+  void dispather_to_dram_cycle();
+  void mee_dispath_cycle();
+  void dram_dispath_cycle();
+  void mee_to_L2_cycle();
+  void L2_to_mee_cycle();
+
   bool dram_busy() const;
   void cache_cycle(unsigned cycle);
   void dram_cycle();
@@ -131,18 +138,18 @@ class memory_partition_unit {
   void L2_mee_queue_pop(unsigned spid);
   #endif
 
-  bool mee_dram_queue_empty() const;
-  class mem_fetch *mee_dram_queue_top() const;
-  void mee_dram_queue_pop();
-  bool mee_dram_queue_full(enum data_type dtype) const;
-  bool mee_dram_queue_full(int size, enum data_type dtype) const;
-  void mee_dram_queue_push(class mem_fetch *mf, enum data_type dtype);
+  bool mee_dispather_queue_empty() const;
+  class mem_fetch *mee_dispather_queue_top() const;
+  void mee_dispather_queue_pop();
+  bool mee_dispather_queue_full(enum data_type dtype) const;
+  bool mee_dispather_queue_full(int size, enum data_type dtype) const;
+  void mee_dispather_queue_push(class mem_fetch *mf, enum data_type dtype);
 
-  bool dram_mee_queue_empty(enum data_type dtype) const;
-  class mem_fetch *dram_mee_queue_top(enum data_type dtype) const;
-  void dram_mee_queue_pop(enum data_type dtype);
-  bool dram_mee_queue_full() const;
-  void dram_mee_queue_push(class mem_fetch *mf);
+  bool dram_dispather_queue_empty(enum data_type dtype) const;
+  class mem_fetch *dram_dispather_queue_top(enum data_type dtype) const;
+  void dram_dispather_queue_pop(enum data_type dtype);
+  bool dram_dispather_queue_full() const;
+  void dram_dispather_queue_push(class mem_fetch *mf);
 
   void mee_L2_queue_push(unsigned spid, class mem_fetch *mf);
   bool mee_L2_queue_full(unsigned spid) const;
@@ -185,8 +192,8 @@ class memory_partition_unit {
   void pop_n_mf(enum data_type dtype) { m_n_mf[dtype]--; }
 
  private:
-  fifo_pipeline<mem_fetch> *m_mee_dram_queue[NUM_DATA_TYPE]; 
-  fifo_pipeline<mem_fetch> *m_dram_mee_queue[NUM_DATA_TYPE]; 
+  fifo_pipeline<mem_fetch> *m_mee_dispather_queue[NUM_DATA_TYPE]; 
+  fifo_pipeline<mem_fetch> *m_dram_dispather_queue[NUM_DATA_TYPE];
   fifo_pipeline<mem_fetch> *m_ctr_L2_bundle_queue;
   fifo_pipeline<mem_fetch> *m_L2_ctr_bundle_queue;
   unsigned m_n_mf[NUM_DATA_TYPE] = {0, 0, 0, 0, 0};
@@ -260,6 +267,8 @@ class memory_sub_partition {
                        class memory_stats_t *stats, class gpgpu_sim *gpu);
   ~memory_sub_partition();
 
+  void print_trace(char s[], mem_fetch *mf) const;
+
   void print_sub_partition_fifo_busy() const;
 
   unsigned get_id() const { return m_id; }
@@ -283,21 +292,21 @@ class memory_sub_partition {
   class mem_fetch *L2_mee_queue_top() const;
   void L2_mee_queue_pop();
 
-  // interface to mee_dram_queue
-  bool mee_dram_queue_full() const;
-  void mee_dram_queue_push(class mem_fetch *mf);
+  // interface to mee_dispather_queue
+  bool mee_dispather_queue_full() const;
+  void mee_dispather_queue_push(class mem_fetch *mf);
 
-  bool mee_dram_queue_empty() const;
-  class mem_fetch *mee_dram_queue_top() const;
-  void mee_dram_queue_pop();
+  bool mee_dispather_queue_empty() const;
+  class mem_fetch *mee_dispather_queue_top() const;
+  void mee_dispather_queue_pop();
 
-  // interface to dram_mee_queue
-  bool dram_mee_queue_full() const;
-  void dram_mee_queue_push(class mem_fetch *mf);
+  // interface to dram_dispather_queue
+  bool dram_dispather_queue_full() const;
+  void dram_dispather_queue_push(class mem_fetch *mf);
 
-  bool dram_mee_queue_empty() const;
-  class mem_fetch *dram_mee_queue_top() const;
-  void dram_mee_queue_pop();
+  bool dram_dispather_queue_empty() const;
+  class mem_fetch *dram_dispather_queue_top() const;
+  void dram_dispather_queue_pop();
 
   // interface to mee_L2_queue
   bool mee_L2_queue_full() const;
@@ -350,8 +359,8 @@ class memory_sub_partition {
   #else
   fifo_pipeline<mem_fetch> *m_L2_mee_queue;
   #endif
-  // fifo_pipeline<mem_fetch> *m_mee_dram_queue; 
-  // fifo_pipeline<mem_fetch> *m_dram_mee_queue; 
+  // fifo_pipeline<mem_fetch> *m_mee_dispather_queue; 
+  // fifo_pipeline<mem_fetch> *m_dram_dispather_queue; 
   fifo_pipeline<mem_fetch> *m_mee_L2_queue;
   fifo_pipeline<mem_fetch> *m_L2_ctr_queue;
   fifo_pipeline<mem_fetch> *m_L2_icnt_queue;  // L2 cache hit response queue
@@ -452,14 +461,14 @@ class metainterface : public mem_fetch_interface {
   virtual ~metainterface() {}
   virtual bool full(unsigned size, bool write) const {
     // assume read and write packets all same size
-    // return m_unit->mee_dram_queue_full();
+    // return m_unit->mee_dispather_queue_full();
     return pipeline->full();
   }
   virtual void push(mem_fetch *mf) {
     mf->set_status(IN_PARTITION_L2_TO_DRAM_QUEUE, 0 /*FIXME*/);
     // printf("%saddr: %x\tmf_type: %d\tsp_addr: %x\taccess type:%d\n", "mee to dram:\t", mf->get_addr(), mf->get_data_type(), mf->get_partition_addr(), mf->get_access_type());
 
-    // m_unit->mee_dram_queue_push(mf);
+    // m_unit->mee_dispather_queue_push(mf);
     unsigned long long now =
         m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
 
