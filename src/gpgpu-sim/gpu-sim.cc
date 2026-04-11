@@ -2198,6 +2198,20 @@ void gpgpu_sim::cycle() {
 
   if (clock_mask & DRAM) {
     for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+      m_memory_partition_unit[i]->dram_to_dispather_cycle();
+    }
+  }
+
+  if (clock_mask & L2) {
+    for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+      m_memory_partition_unit[i]->dram_dispath_cycle();
+      // m_memory_partition_unit[i]->m_mee->dispather_to_mee_cycle();
+      m_memory_partition_unit[i]->mee_to_L2_cycle();
+    }
+  }
+
+  if (clock_mask & DRAM) {
+    for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
       if (m_memory_config->simple_dram_model)
         m_memory_partition_unit[i]->simple_dram_model_cycle();
       else
@@ -2214,6 +2228,20 @@ void gpgpu_sim::cycle() {
           m_power_stats->pwr_mem_stat->n_wr[CURRENT_STAT_IDX][i],
           m_power_stats->pwr_mem_stat->n_wr_WB[CURRENT_STAT_IDX][i],
           m_power_stats->pwr_mem_stat->n_req[CURRENT_STAT_IDX][i]);
+    }
+  }
+
+  if (clock_mask & L2) {
+    for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+      m_memory_partition_unit[i]->L2_to_mee_cycle();
+      // m_memory_partition_unit[i]->m_mee->mee_to_dispather_cycle();
+      m_memory_partition_unit[i]->mee_dispath_cycle();
+    }
+  }
+
+  if (clock_mask & DRAM) {
+    for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+      m_memory_partition_unit[i]->dispather_to_dram_cycle();
     }
   }
 
@@ -2234,11 +2262,11 @@ void gpgpu_sim::cycle() {
         m_memory_sub_partition[i]->push(mf, gpu_sim_cycle + gpu_tot_sim_cycle);
         if (mf) partiton_reqs_in_parallel_per_cycle++;
       }
-      if (i & 1)
-        m_memory_partition_unit[i >> 1]->cache_cycle(gpu_sim_cycle + gpu_tot_sim_cycle);
       m_memory_sub_partition[i]->cache_cycle(gpu_sim_cycle + gpu_tot_sim_cycle);
       m_memory_sub_partition[i]->accumulate_L2cache_stats(
           m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX]);
+      if (i & 1)
+        m_memory_partition_unit[i >> 1]->cache_cycle(gpu_sim_cycle + gpu_tot_sim_cycle);
     }
   }
   partiton_reqs_in_parallel += partiton_reqs_in_parallel_per_cycle;

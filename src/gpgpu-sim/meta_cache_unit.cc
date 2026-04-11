@@ -116,7 +116,7 @@ META_CACHE_UNIT::META_CACHE_UNIT(class mee* _mee, class memory_partition_unit *u
     unsigned m_id = m_unit->get_mpid();
 
     m_mf_allocator = new partition_mf_allocator(m_config);
-    m_METAinterface = new metainterface(m_unit->get_mee_dram_queue(m_data_type), m_gpu, m_stats);
+    m_METAinterface = new metainterface(m_unit->get_mee_dispather_queue(m_data_type), m_gpu, m_stats);
 
     m_META_queue = new fifo_pipeline<mem_fetch>("meta-CCSM-queue", m_id, 0, len);
     m_META_RET_queue = new fifo_pipeline<mem_fetch>("meta-CCSM-RET-queue", m_id, 0, len);
@@ -183,9 +183,9 @@ void META_CACHE_UNIT::META_fill_responses() {
 
 void META_CACHE_UNIT::META_fill() {
     
-    if (!m_unit->dram_mee_queue_empty(m_data_type)) {
+    if (!m_unit->dram_dispather_queue_empty(m_data_type)) {
         mem_fetch *mf_return = NULL;
-        mf_return = m_unit->dram_mee_queue_top(m_data_type);
+        mf_return = m_unit->dram_dispather_queue_top(m_data_type);
         
         if ((mf_return->get_data_type() == m_data_type) && m_METAcache->waiting_for_fill(mf_return)) {
             if (m_METAcache->fill_port_free()) {
@@ -193,13 +193,13 @@ void META_CACHE_UNIT::META_fill() {
                 m_METAcache->fill(mf_return, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
                 
                 assert(!mf_return->is_write());
-                m_unit->dram_mee_queue_pop(m_data_type);
+                m_unit->dram_dispather_queue_pop(m_data_type);
             }
         } else if (mf_return->get_data_type() == m_data_type) {
             if (mf_return->is_write() && mf_return->get_type() == WRITE_ACK)
                 mf_return->set_status(IN_PARTITION_L2_TO_ICNT_QUEUE,
                             m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
-            m_unit->dram_mee_queue_pop(m_data_type);
+            m_unit->dram_dispather_queue_pop(m_data_type);
         }
     }
 }
@@ -219,7 +219,7 @@ void META_CACHE_UNIT::META_cache_cycle() {
     bool output_full = m_META_RET_queue->full();
     bool port_free = m_METAcache->data_port_free();
 
-    if (!m_META_queue->empty() && !m_unit->mee_dram_queue_full(m_data_type) && !output_full && port_free) {
+    if (!m_META_queue->empty() && !m_unit->mee_dispather_queue_full(m_data_type) && !output_full && port_free) {
         mem_fetch *mf = m_META_queue->top();
         print_addr("META cycle access:\t\t", mf);
         memory_stats_t *stats = m_gpu->get_memory_stats();
