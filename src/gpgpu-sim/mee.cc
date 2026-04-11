@@ -792,7 +792,7 @@ void mee::PAR_cycle() {
     bool output_full = m_PAR_RET_queue->full();
     bool port_free = m_unit->m_PARcache->data_port_free();
 
-    if (!m_PAR_queue->empty() && !m_unit->mee_dram_queue_full(PAR) && !output_full && port_free) {
+    if (!m_PAR_queue->empty() && !m_unit->mee_dispather_queue_full(PAR) && !output_full && port_free) {
         mem_fetch *mf = m_PAR_queue->top();
         print_addr("PAR cycle access:\t\t", mf);
         memory_stats_t *stats = m_gpu->get_memory_stats();
@@ -818,7 +818,7 @@ void mee::PAR_cycle() {
         }
     } else if (!m_PAR_queue->empty()) {
         // memory_stats_t *stats = m_gpu->get_memory_stats();
-        // if (m_unit->mee_dram_queue_full(PAR))
+        // if (m_unit->mee_dispather_queue_full(PAR))
         //     stats->record_stage_stall(MEE_DRAM_QUEUE_FULL_STALL_CTR);
         // if (output_full) stats->record_stage_stall(CTR_META_RESERVATION_STALL);
         // if (!port_free) stats->record_stage_stall(CTR_META_RESERVATION_STALL);
