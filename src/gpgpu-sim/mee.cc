@@ -232,7 +232,6 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 
     new_addr_type CTR_addr  = get_global_addr(sub_partition_id, partition_addr);
     CTR_addr |= CTR_base;
-<<<<<<< HEAD
     if (meta_acc == META_ACC_W) {
         (*m_ctrModCount)[CTR_addr]++;
         assert(CTR_addr == (CTR_base | get_global_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
@@ -242,19 +241,6 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
         // (*m_ctrModCount)[CTR_addr] += 0;
         (*m_ctrSet).insert(CTR_base | get_global_addr(sub_partition_id, (partition_addr >> 5) << 5));
         assert(CTR_addr == (CTR_base | get_global_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
-=======
-    if (mf_id) {
-        if (meta_acc == META_ACC_W) {
-            (*m_ctrModCount)[CTR_addr]++;
-            assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
-            (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
-            print_ctr(sub_partition_id, partition_addr);
-        } else {
-            // (*m_ctrModCount)[CTR_addr] += 0;
-            (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
-            assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
-        }
->>>>>>> mee_sys
     }
     // printf("CTR_addr:\t%xCTR_sector_addr:%x\n", CTR_addr, (CTR_base | get_global_addr(sub_partition_id, (partition_addr >> 5) << 5)));
 
