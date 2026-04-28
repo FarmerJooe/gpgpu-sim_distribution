@@ -246,15 +246,17 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 
     new_addr_type CTR_addr  = get_addr(sub_partition_id, partition_addr);
     CTR_addr |= CTR_base;
-    if (meta_acc == META_ACC_W) {
-        (*m_ctrModCount)[CTR_addr]++;
-        assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
-        (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
-        print_ctr(sub_partition_id, partition_addr);
-    } else {
-        // (*m_ctrModCount)[CTR_addr] += 0;
-        (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
-        assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
+    if (mf_id) {
+        if (meta_acc == META_ACC_W) {
+            (*m_ctrModCount)[CTR_addr]++;
+            assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
+            (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
+            print_ctr(sub_partition_id, partition_addr);
+        } else {
+            // (*m_ctrModCount)[CTR_addr] += 0;
+            (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
+            assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
+        }
     }
     // printf("CTR_addr:\t%xCTR_sector_addr:%x\n", CTR_addr, (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)));
 
@@ -406,7 +408,7 @@ void mee::CT_cycle() {
             if (m_MAC_set[mf->get_id()]) {
                 print_addr("sync Wdata to dram:\t", mf);
                 m_unit->mee_dispather_queue_push(mf, NORM);
-                m_MAC_set[mf->get_id()]--;  //生成的MAC与写密文一起写入DRAM
+                // m_MAC_set[mf->get_id()]--;  //生成的MAC与写密文一起写入DRAM
                 m_mee_dram_sync_queue->pop();
             } else 
                 print_addr("sync Wdata pending:\t", mf);
@@ -730,13 +732,17 @@ void mee::BMT_CHECK_cycle() {
             } else {
                 if (mf->is_write()) {
                     if (m_config->m_META_config.m_cache_type == SECTOR) {
-                        // gen_BMT_mf(mf, mf->is_write(), META_ACC_W, 2, HASH_id); // Lazy fetch on read策略下，写操作不会发给dram
+#ifdef META_WB
+                        gen_BMT_mf(mf, mf->is_write(), META_ACC_W, 2, 0); // Lazy fetch on read策略下，写操作不会发给dram
+#endif
                         assert(!m_BMT_queue->full());
-                        gen_BMT_mf(mf, false, META_ACC_R, 32, HASH_id);
+                        gen_BMT_mf(mf, false, META_ACC_W, 32, HASH_id);
                     } else {
-                        // gen_BMT_mf(mf, mf->is_write(), META_ACC_W, 8, HASH_id); // Lazy fetch on read策略下，写操作不会发给dram
+#ifdef META_WB
+                        gen_BMT_mf(mf, mf->is_write(), META_ACC_W, 8, 0); // Lazy fetch on read策略下，写操作不会发给dram
+#endif
                         assert(!m_BMT_queue->full());
-                        gen_BMT_mf(mf, false, META_ACC_R, 128, HASH_id);
+                        gen_BMT_mf(mf, false, META_ACC_W, 128, HASH_id);
                     }
                 } else {
                     if (m_config->m_META_config.m_cache_type == SECTOR) {
@@ -898,7 +904,7 @@ void mee::CTR_cycle() {
                     CTR_counter++;
                 #endif
             }
-            else if (mf->get_access_type() != META_RBW) {
+            if (mf->get_access_type() != META_RBW) {
                 print_addr("CTR Read Hit:\t", mf);
                 if (mf->get_id())
                     m_OTP_queue->push(new unsigned(mf->get_id()));  //CTR HIT后计算OTP用于加密/解密
@@ -943,17 +949,12 @@ void mee::MAC_cycle() {
         m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
     if (!m_MAC_RET_queue->empty()) {
         mem_fetch *mf_return = m_MAC_RET_queue->top();
-        if (mf_return->is_write()) {    //写MAC完成
+        // assert(!mf_return->is_write());
+        if (!m_MAC_CHECK_queue->full()) {
+            m_MAC_CHECK_queue->push(mf_return); //MAC读MISS完成，得到MAC值，发往MAC Check
             m_MAC_RET_queue->pop();
-            // delete mf_return;//删除2
-        } else {    //MAC读MISS返回
-            assert(!mf_return->is_write());
-            if (!m_MAC_CHECK_queue->full()) {
-                m_MAC_CHECK_queue->push(mf_return); //MAC读MISS完成，得到MAC值，发往MAC Check
-                m_MAC_RET_queue->pop();
-            } else {
-                stats->record_stage_stall(HASH_QUEUE_FULL_STALL);
-            }
+        } else {
+            stats->record_stage_stall(HASH_QUEUE_FULL_STALL);
         }
     }
 
@@ -995,12 +996,8 @@ void mee::MAC_cycle() {
             }
         }
         if (status == HIT) {
-            if (mf->is_write()) {   //MAC写HIT，则MAC Hash值使用结束
-                // m_MAC_set[mf->get_id()]--;
-            } else {
-                mf->set_hash_enqueue_time(now);
-                m_MAC_CHECK_queue->push(mf);    //MAC读HIT，得到MAC值，发往MAC Check
-            }
+            mf->set_hash_enqueue_time(now);
+            m_MAC_CHECK_queue->push(mf);    //MAC读HIT，得到MAC值，发往MAC Check
             print_addr("MAC cycle access HIT:\t", mf);
             print_status(m_MACcache, mf);
             m_MAC_queue->pop();
@@ -1039,7 +1036,7 @@ void mee::BMT_cycle() {
     if (!m_BMT_RET_queue->empty()) {
         mem_fetch *mf_return = m_BMT_RET_queue->top();
         // print_addr("MISS OTP:\t\t", mf_return);
-        if (mf_return->get_id() && !mf_return->is_write()) {
+        if (mf_return->get_id()) {
             if (!m_BMT_CHECK_queue->full() && !m_HASH_queue->full()) {
                 m_BMT_CHECK_queue->push(mf_return);
                 m_HASH_queue->push(new hash{BMT, mf_return->get_id(), mf_return->is_write()});
@@ -1100,7 +1097,7 @@ void mee::BMT_cycle() {
         }
         if (status == HIT) {
             print_addr("BMT access HIT:\t", mf);
-            if (mf->get_id() && !mf->is_write()) {
+            if (mf->get_id()) {
                 unsigned long long now =
                     m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
                 mf->set_hash_enqueue_time(now);
@@ -1465,16 +1462,24 @@ void mee::simple_cycle(unsigned cycle) {
                         gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);//Lazy_ftech_on_read
 #endif
                         // gen_CTR_mf(mf, true,  META_ACC_W, 32, mf_id);
-                        gen_CTR_mf(mf, false,  META_ACC_W, 32, mf_id);
+#ifdef META_WB
+                        m_common_ctr->gen_META_mf(mf, true, META_ACC_R, 32, 0);
+                        gen_CTR_mf(mf, true,  META_ACC_W, 32, 0);
+#else
                         m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
+#endif
                     }
                     else {
 #ifndef MEE_SIMPLE
                         gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);//Lazy_ftech_on_read
 #endif
                         // gen_CTR_mf(mf, true,  META_ACC_W, 128, mf_id);
-                        gen_CTR_mf(mf, false,  META_ACC_W, 128, mf_id);
+#ifdef META_WB
+                        m_common_ctr->gen_META_mf(mf, true, META_ACC_R, 128, 0);
+                        gen_CTR_mf(mf, true,  META_ACC_W, 128, 0);
+#else
                         m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, 0);
+#endif
                     }
 
 #ifdef MAC_Enable
