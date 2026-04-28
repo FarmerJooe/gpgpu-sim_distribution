@@ -27,13 +27,14 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-// #define MEE_Enable
-// // #define MEE_SIMPLE
-// #define BMT_Enable
+#define MEE_Enable
+// #define MEE_SIMPLE
+#define BMT_Enable
 // #define MAC_Enable
-// #define COMPRESSION_Enable
+#define COMPRESSION_Enable
 // #define CTR_HIERACHY
 // #define EXC_EN
+#define META_WB
 #define AES_Enable
 #define DEADLOCK_EN
 #define META_IDEAL
