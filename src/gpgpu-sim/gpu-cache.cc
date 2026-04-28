@@ -1287,8 +1287,8 @@ bool baseline_cache::waiting_for_fill(mem_fetch *mf) {
 mem_fetch *data_cache::next_access() {
   // 调用baseline_cache::next_access()，它会减少pending_requests计数器
   mem_fetch *mf = baseline_cache::next_access();
+  mf->set_fill_cycle(get_cache_form(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
   if (mf->get_fill_cycle(get_cache_form()) >= mf->get_miss_cycle(get_cache_form())) {
-    mf->set_fill_cycle(get_cache_form(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     this->inc_mf_latency(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
     // printf("%s fill cycle: %lld\tset cycle: %lld\n", m_name.c_str(), mf->get_fill_cycle(get_cache_form()), mf->get_miss_cycle(get_cache_form()));
   }

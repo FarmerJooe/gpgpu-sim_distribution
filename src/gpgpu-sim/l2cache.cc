@@ -460,7 +460,9 @@ void memory_partition_unit::mee_dispath_cycle() {
     if (dtype == 0) continue;
     if (m_mee_dispather_queue[dtype]->empty()) continue;
     if (min_mf_id < m_mee_dispather_queue[dtype]->top()->get_id()) continue;
-    if (m_n_mf[dtype] + m_dram_dispather_queue[dtype]->get_n_element() >= receive_stop_threshold) continue;
+    if (m_n_mf[dtype] + m_dram_dispather_queue[dtype]->get_n_element() 
+        // + m_dram_dispather_queue[TOT]->get_n_element() + m_mee_dispather_queue[TOT]->get_n_element()
+        >= receive_stop_threshold) continue;
     m_mee_dispather_queue[TOT]->push(m_mee_dispather_queue[dtype]->top());
     // print_addr("mee_to_dram", m_mee_dispather_queue[dtype]->top(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
     m_n_mf[dtype]++;
