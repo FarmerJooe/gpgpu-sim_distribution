@@ -187,6 +187,8 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   }
   m_cache_NORM_acc = 0;
   m_cache_CTR_acc = 0;
+  m_cache_CCSM_acc = 0;
+  m_cache_PAR_acc = 0;
   m_cache_MAC_acc = 0;
   m_cache_BMT_acc = 0;
   m_cache_meta_wb = 0;
@@ -659,6 +661,10 @@ void memory_partition_unit::dispather_to_dram_cycle() {
       m_cache_NORM_acc++;
     else if (mf->get_data_type() == CTR)
       m_cache_CTR_acc++;
+    else if (mf->get_data_type() == CCSM)
+      m_cache_CCSM_acc++;
+    else if (mf->get_data_type() == PAR)
+      m_cache_PAR_acc++;
     else if (mf->get_data_type() == MAC)
       m_cache_MAC_acc++;
     else if (mf->get_data_type() == BMT)

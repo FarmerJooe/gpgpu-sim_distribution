@@ -1476,6 +1476,8 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
   
   unsigned long long m_cache_tot_NORM_acc = 0;
   unsigned long long m_cache_tot_CTR_acc = 0;
+  unsigned long long m_cache_tot_CCSM_acc = 0;
+  unsigned long long m_cache_tot_PAR_acc = 0;
   unsigned long long m_cache_tot_MAC_acc = 0;
   unsigned long long m_cache_tot_BMT_acc = 0;
   unsigned long long m_cache_tot_meta_wb = 0;
@@ -1483,6 +1485,8 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
   for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
     m_cache_tot_NORM_acc += m_memory_partition_unit[i]->m_cache_NORM_acc;
     m_cache_tot_CTR_acc += m_memory_partition_unit[i]->m_cache_CTR_acc;
+    m_cache_tot_CCSM_acc += m_memory_partition_unit[i]->m_cache_CCSM_acc;
+    m_cache_tot_PAR_acc += m_memory_partition_unit[i]->m_cache_PAR_acc;
     m_cache_tot_MAC_acc += m_memory_partition_unit[i]->m_cache_MAC_acc;
     m_cache_tot_BMT_acc += m_memory_partition_unit[i]->m_cache_BMT_acc;
     m_cache_tot_meta_wb += m_memory_partition_unit[i]->m_cache_meta_wb;
@@ -1490,6 +1494,8 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
 
   printf("m_cache_tot_NORM_acc = %lld\n", m_cache_tot_NORM_acc);
   printf("m_cache_tot_CTR_acc = %lld\n", m_cache_tot_CTR_acc);
+  printf("m_cache_tot_CCSM_acc = %lld\n", m_cache_tot_CCSM_acc);
+  printf("m_cache_tot_PAR_acc = %lld\n", m_cache_tot_PAR_acc);
   printf("m_cache_tot_MAC_acc = %lld\n", m_cache_tot_MAC_acc);
   printf("m_cache_tot_BMT_acc = %lld\n", m_cache_tot_BMT_acc);
   printf("m_cache_tot_meta_wb = %lld\n", m_cache_tot_meta_wb);

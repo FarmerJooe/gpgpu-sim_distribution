@@ -186,6 +186,8 @@ class memory_partition_unit {
  public:
   unsigned long long m_cache_NORM_acc;
   unsigned long long m_cache_CTR_acc;
+  unsigned long long m_cache_CCSM_acc;
+  unsigned long long m_cache_PAR_acc;
   unsigned long long m_cache_MAC_acc;
   unsigned long long m_cache_BMT_acc;
   unsigned long long m_cache_meta_wb;
