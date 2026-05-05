@@ -580,6 +580,7 @@ enum set_index_function {
 };
 
 enum cache_type { NORMAL = 0, SECTOR };
+enum address_mapping_type {PHYSICAL_ADDRESS_MAPPING = 0, LOCAL_ADDRESS_MAPPING};
 
 #define MAX_WARP_PER_SHADER 64
 #define INCT_TOTAL_BUFFER 64
@@ -604,10 +605,10 @@ class cache_config {
   void init(char *config, FuncCache status) {
     cache_status = status;
     assert(config);
-    char ct, rp, wp, ap, mshr_type, wap, sif, mv;
+    char amt, ct, rp, wp, ap, mshr_type, wap, sif, mv;
 
     int ntok =
-        sscanf(config, "%c:%u:%u:%u,%c:%c:%c:%c:%c:%c,%c:%u:%u,%u:%u,%u", &ct,
+        sscanf(config, "%c:%c:%u:%u:%u,%c:%c:%c:%c:%c:%c,%c:%u:%u,%u:%u,%u", &amt, &ct,
                &m_nset, &m_line_sz, &m_assoc, &rp, &wp, &ap, &wap, &sif, &mv,
                &mshr_type, &m_mshr_entries, &m_mshr_max_merge,
                &m_miss_queue_size, &m_result_fifo_entries, &m_data_port_width);
@@ -618,6 +619,17 @@ class cache_config {
         return;
       }
       exit_parse_error();
+    }
+
+    switch (amt) {
+      case 'P':
+        m_address_mapping_type = PHYSICAL_ADDRESS_MAPPING;
+        break;
+      case 'L':
+        m_address_mapping_type = LOCAL_ADDRESS_MAPPING;
+        break;
+      default:
+        exit_parse_error();
     }
 
     switch (ct) {
@@ -698,11 +710,11 @@ class cache_config {
     switch (mshr_type) {
       case 'F':
         m_mshr_type = TEX_FIFO;
-        assert(ntok == 15);
+        assert(ntok == 16);
         break;
       case 'T':
         m_mshr_type = SECTOR_TEX_FIFO;
-        assert(ntok == 15);
+        assert(ntok == 16);
         break;
       case 'A':
         m_mshr_type = ASSOC;
@@ -853,8 +865,9 @@ class cache_config {
     // mapping to the same set, thus the full tag + index is required to check
     // for hit/miss. Tag is now identical to the block address.
 
+    new_addr_type mask = m_address_mapping_type == PHYSICAL_ADDRESS_MAPPING ? 0x00000000 : 0x00001F00;
     // return addr >> (m_line_sz_log2+m_nset_log2);
-    return addr & ~(new_addr_type)(m_line_sz - 1);
+    return addr & ~(new_addr_type)(m_line_sz - 1) & ~mask;
   }
   new_addr_type block_addr(new_addr_type addr) const {
     return addr & ~(new_addr_type)(m_line_sz - 1);
@@ -920,6 +933,8 @@ class cache_config {
       m_alloc_policy;  // 'm' = allocate on miss, 'f' = allocate on fill
   enum mshr_config_t m_mshr_type;
   enum cache_type m_cache_type;
+  enum address_mapping_type m_address_mapping_type;
+  bool m_local_address;
 
   write_allocate_policy_t
       m_write_alloc_policy;  // 'W' = Write allocate, 'N' = No write allocate

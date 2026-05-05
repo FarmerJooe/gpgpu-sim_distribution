@@ -273,6 +273,8 @@ class memory_config {
     m_L2_config.init(&m_address_mapping);
     m_META_config.init(&m_address_mapping);
     m_CTR_config.init(&m_address_mapping);
+    m_MAC_config.init(&m_address_mapping);
+    m_BMT_config.init(&m_address_mapping);
 
     m_valid = true;
 
@@ -286,6 +288,8 @@ class memory_config {
   mutable l2_cache_config m_L2_config;
   mutable l2_cache_config m_META_config;
   mutable l2_cache_config m_CTR_config;
+  mutable l2_cache_config m_MAC_config;
+  mutable l2_cache_config m_BMT_config;
   bool m_L2_texure_only;
 
   // Cache trace configuration

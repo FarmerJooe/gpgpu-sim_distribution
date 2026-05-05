@@ -246,7 +246,7 @@ void memory_config::reg_options(class OptionParser *opp) {
                          "unified banked META data cache config "
                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                          "alloc>,<mshr>:<N>:<merge>,<mq>}",
-                         "64:128:8,L:B:m:N,A:16:4,4");
+                         "L:S:4:128:4,L:B:m:L:P:D,A:64:64,32:0,32");
   option_parser_register(opp, "-gpgpu_ecc_1bit_err", OPT_FLOAT,
                          &m_ecc_1bit_err,
                          "unified ecc 1bit error rate config ", "0");
@@ -258,7 +258,19 @@ void memory_config::reg_options(class OptionParser *opp) {
                           "unified banked CTR data cache config "
                           " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                           "alloc>,<mshr>:<N>:<merge>,<mq>}",
-                          "64:128:8,L:B:m:N,A:16:4,4");
+                          "L:S:4:128:4,L:B:m:L:P:D,A:64:64,32:0,32");
+    option_parser_register(opp, "-gpgpu_cache:mac", OPT_CSTR,
+                          &m_MAC_config.m_config_string,
+                          "unified banked CTR data cache config "
+                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
+                          "alloc>,<mshr>:<N>:<merge>,<mq>}",
+                          "L:S:4:128:4,L:B:m:L:P:D,A:64:64,32:0,32");
+      option_parser_register(opp, "-gpgpu_cache:bmt", OPT_CSTR,
+                          &m_BMT_config.m_config_string,
+                          "unified banked CTR data cache config "
+                          " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
+                          "alloc>,<mshr>:<N>:<merge>,<mq>}",
+                          "L:S:4:128:4,L:B:m:L:P:D,A:64:64,32:0,32");
   option_parser_register(opp, "-gpgpu_cache:dl2_texture_only", OPT_BOOL,
                          &m_L2_texure_only, "L2 cache used for texture only",
                          "1");
