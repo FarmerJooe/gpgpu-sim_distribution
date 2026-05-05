@@ -1226,8 +1226,11 @@ void baseline_cache::cycle() {
 /// in caller)
 void baseline_cache::fill(mem_fetch *mf, unsigned time) {
   // printf("%s cache fill: data size: %d\taccess size:%d\taccess type:%d\n", m_name.c_str(), mf->get_data_size(), mf->get_access_size(), mf->get_access_type());
-  // mf->set_fill_cycle(get_cache_form(), time);
-  // this->inc_mf_latency(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
+  mf->set_fill_cycle(get_cache_form(), time);
+  if (mf->get_fill_cycle(get_cache_form()) >= mf->get_miss_cycle(get_cache_form())) {
+    this->inc_mf_latency(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
+    // printf("%s fill cycle: %lld\tset cycle: %lld\n", m_name.c_str(), mf->get_fill_cycle(get_cache_form()), mf->get_miss_cycle(get_cache_form()));
+  }
   if (m_config.m_mshr_type == SECTOR_ASSOC) {
     assert(mf->get_original_mf());
     extra_mf_fields_lookup::iterator e =
@@ -1287,11 +1290,11 @@ bool baseline_cache::waiting_for_fill(mem_fetch *mf) {
 mem_fetch *data_cache::next_access() {
   // 调用baseline_cache::next_access()，它会减少pending_requests计数器
   mem_fetch *mf = baseline_cache::next_access();
-  mf->set_fill_cycle(get_cache_form(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
-  if (mf->get_fill_cycle(get_cache_form()) >= mf->get_miss_cycle(get_cache_form())) {
-    this->inc_mf_latency(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
-    // printf("%s fill cycle: %lld\tset cycle: %lld\n", m_name.c_str(), mf->get_fill_cycle(get_cache_form()), mf->get_miss_cycle(get_cache_form()));
-  }
+  // mf->set_fill_cycle(get_cache_form(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);
+  // if (mf->get_fill_cycle(get_cache_form()) >= mf->get_miss_cycle(get_cache_form())) {
+  //   this->inc_mf_latency(mf->get_fill_cycle(get_cache_form()) - mf->get_miss_cycle(get_cache_form()));
+  //   // printf("%s fill cycle: %lld\tset cycle: %lld\n", m_name.c_str(), mf->get_fill_cycle(get_cache_form()), mf->get_miss_cycle(get_cache_form()));
+  // }
   return mf;
 }
 

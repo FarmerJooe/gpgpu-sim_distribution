@@ -177,14 +177,14 @@ void mee::print_ctr(new_addr_type sub_partition_id, new_addr_type partition_addr
 }
 
 new_addr_type mee::get_partition_addr(mem_fetch *mf) {
-    new_addr_type partition_addr = mf->get_addr() >> (8 + 6) << 8;
+    new_addr_type partition_addr = mf->get_addr() >> (8 + 5) << 8;
     partition_addr |= mf->get_addr() & ((1 << 8) - 1);
     return partition_addr;
     // return mf->get_partition_addr();
 }
 
 new_addr_type mee::get_sub_partition_id(mem_fetch *mf) {
-    return (mf->get_addr() >> 8) & ((1 << 6) - 1);
+    return (mf->get_addr() >> 8) & ((1 << 5) - 1);
     
     // return mf->get_sub_partition_id();
 }
