@@ -203,7 +203,7 @@ bool mee::META_queue_empty() {
 }
 
 new_addr_type mee::get_addr(new_addr_type sub_partition_id, new_addr_type partition_addr) {
-    new_addr_type new_addr = partition_addr >> 8 << (8 + 6);
+    new_addr_type new_addr = partition_addr >> 8 << (8 + 5);
     new_addr |= partition_addr & ((1 << 8) - 1);
     new_addr |= sub_partition_id << 8;
     return new_addr;
