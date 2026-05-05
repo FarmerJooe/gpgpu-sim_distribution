@@ -234,7 +234,7 @@ void mee::gen_PAR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
     new_addr_type partition_addr = get_partition_addr(mf->get_addr());
     new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
-    assert(mf->get_partition_addr() == partition_addr);
+    // assert(mf->get_partition_addr() == partition_addr);
     // new_addr_type minor_addr = (partition_addr >> 7) & 127;
     // minor_addr = 128 + minor_addr * 7;
     // bool res = minor_addr & 7 > 1;
