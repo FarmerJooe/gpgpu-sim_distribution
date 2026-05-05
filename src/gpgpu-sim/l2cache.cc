@@ -161,10 +161,10 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
 
     m_MACcache =
-        new meta_cache(MACc_name, m_config->m_META_config, -1, -1, m_MACinterface,
+        new meta_cache(MACc_name, m_config->m_MAC_config, -1, -1, m_MACinterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
     m_BMTcache =
-        new meta_cache(BMTc_name, m_config->m_META_config, -1, -1, m_BMTinterface,
+        new meta_cache(BMTc_name, m_config->m_BMT_config, -1, -1, m_BMTinterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
 
     // Initialize cache trace for meta caches

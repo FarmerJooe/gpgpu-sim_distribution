@@ -184,13 +184,13 @@ void mee::print_ctr(new_addr_type sub_partition_id, new_addr_type partition_addr
 }
 
 new_addr_type mee::get_partition_addr(new_addr_type addr) {
-    new_addr_type partition_addr = addr >> (8 + 6) << 8;
+    new_addr_type partition_addr = addr >> (8 + 5) << 8;
     partition_addr |= addr & ((1 << 8) - 1);
     return partition_addr;
 }
 
 new_addr_type mee::get_sub_partition_id(new_addr_type addr) {
-    return (addr >> 8) & ((1 << 6) - 1);
+    return (addr >> 8) & ((1 << 5) - 1);
     // assert(((addr >> 8) & ((1 << 6) - 1)) == mf->get_sub_partition_id());
     
     // return mf->get_sub_partition_id();
@@ -210,7 +210,7 @@ bool mee::META_queue_empty() {
 }
 
 new_addr_type mee::get_addr(new_addr_type sub_partition_id, new_addr_type partition_addr) {
-    new_addr_type new_addr = partition_addr >> 8 << (8 + 6);
+    new_addr_type new_addr = partition_addr >> 8 << (8 + 5);
     new_addr |= partition_addr & ((1 << 8) - 1);
     new_addr |= sub_partition_id << 8;
     return new_addr;
