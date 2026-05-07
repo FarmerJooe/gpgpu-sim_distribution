@@ -328,7 +328,7 @@ void common_ctr::scan_segment(new_addr_type segment_addr) {
 
         new_addr_type partition_addr = m_mee->get_partition_addr(sector_addr);
         new_addr_type sub_partition_id = m_mee->get_sub_partition_id(sector_addr);
-        partition_addr = (partition_addr >> 5); // per minor ctr map to 32B cache line
+        partition_addr = (partition_addr >> 7); // per minor ctr map to 32B cache line
 
         // if (meta_acc == META_ACC)
         //     partition_addr |= minor_addr;

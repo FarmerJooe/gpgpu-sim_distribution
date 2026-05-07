@@ -220,9 +220,9 @@ void mee::gen_PAR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
     new_addr_type partition_addr = get_partition_addr(mf->get_addr());
     new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
     if (m_config->m_META_config.m_cache_type == SECTOR)
-        partition_addr = partition_addr >> 5 << 2;
+        partition_addr = partition_addr >> 7 << 3;
     else 
-        partition_addr = partition_addr >> 6 << 3;
+        partition_addr = partition_addr >> 7 << 3;
     new_addr_type PAR_addr  = get_addr(sub_partition_id, partition_addr);
     PAR_addr |= PAR_base;
 
@@ -239,7 +239,7 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
     // minor_addr = 128 + minor_addr * 7;
     // bool res = minor_addr & 7 > 1;
     // minor_addr >>= 3;
-    partition_addr = (partition_addr >> 5); // per minor ctr map to 32B cache line
+    partition_addr = (partition_addr >> 7); // per minor ctr map to 32B cache line
 
     // if (meta_acc == META_ACC)
     //     partition_addr |= minor_addr;
@@ -272,7 +272,7 @@ void mee::gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
     new_addr_type partition_addr = get_partition_addr(mf->get_addr());
     new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
     if (m_config->m_META_config.m_cache_type == SECTOR)
-        partition_addr = partition_addr >> 6 << 2;
+        partition_addr = partition_addr >> 7 << 3;
     else
         partition_addr = partition_addr >> 7 << 3;
     new_addr_type MAC_addr  = get_addr(sub_partition_id, partition_addr);
