@@ -47,13 +47,13 @@ bool ECCEngine::checkECC() {
   if (rand_num < m_p_accumulated_1bit_err) {  // 1-bit error
     // correctECC();
     m_status_correct_1b_ECC++;
-    m_eccCorrectCountdown = 40;
+    m_eccCorrectCountdown = 128;
     m_p_accumulated_1bit_err = 0;
     m_p_accumulated_2bit_err = 0;
     return true;
   } else if (rand_num < m_p_accumulated_1bit_err + m_p_accumulated_2bit_err) { // 2-bit error
     m_status_correct_2b_ECC++;
-    m_eccCorrectCountdown = 40;
+    m_eccCorrectCountdown = 128;
     m_p_accumulated_1bit_err = 0;
     m_p_accumulated_2bit_err = 0;
     return true;
