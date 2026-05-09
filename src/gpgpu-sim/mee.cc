@@ -249,7 +249,7 @@ void mee::gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
     new_addr_type partition_addr = get_partition_addr(mf);
     new_addr_type sub_partition_id = get_sub_partition_id(mf);
     if (m_config->m_META_config.m_cache_type == SECTOR)
-        partition_addr = partition_addr >> 6 << 2;
+        partition_addr = partition_addr >> 7 << 3;
     else
         partition_addr = partition_addr >> 7 << 3;
     new_addr_type MAC_addr  = get_addr(sub_partition_id, partition_addr);
