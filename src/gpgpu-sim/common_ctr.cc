@@ -17,7 +17,7 @@ new_addr_type common_ctr::get_global_addr(new_addr_type sub_partition_id, new_ad
 }
 
 void common_ctr::gen_META_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
-
+#ifdef CCSM_Enable
     new_addr_type partition_addr = m_mee->get_partition_addr(mf->get_addr());
     new_addr_type sub_partition_id = m_mee->get_sub_partition_id(mf->get_addr());
 
@@ -32,6 +32,7 @@ void common_ctr::gen_META_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, u
     meta_access(META_addr, meta_acc, 
             size, wr, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, 
             mf->get_wid(), mf->get_sid(), mf->get_tpc(), mf, mf_id, DEFAULT);
+#endif
 }
 
 void common_ctr::meta_access(new_addr_type addr, mem_access_type type, unsigned size, bool wr,
@@ -63,15 +64,15 @@ void common_ctr::meta_access(new_addr_type addr, mem_access_type type, unsigned 
         wid, sid, tpc, m_config, cycle, original_mf);
 
     std::vector<mem_fetch *> reqs;
-    if (m_config->m_META_config.m_cache_type == SECTOR)
-        reqs = m_unit->m_sub_partition[0]->breakdown_request_to_sector_requests(mf);
-    else
-        reqs.push_back(mf);
+    // if (m_config->m_META_config.m_cache_type == SECTOR)
+    //     reqs = m_unit->m_sub_partition[0]->breakdown_request_to_sector_requests(mf);
+    // else
+    reqs.push_back(mf);
 
     assert(m_data_type != MAC || reqs.size() == 1);
 
     for (unsigned i = 0; i < reqs.size(); ++i) {
-        assert(reqs.size() == 1);
+        // assert(reqs.size() == 1);
         mem_fetch *req = reqs[i];
         // req->set_id(mf_id);
         req->set_data_type(m_data_type);
@@ -276,8 +277,12 @@ new_addr_type common_ctr::get_CCSM_index(new_addr_type addr) {
 }
 
 bool common_ctr::CCSM_scope(new_addr_type addr) {
+#ifdef CCSM_Enable
     new_addr_type CCSM_index = get_CCSM_index(addr);
     return (*m_CCSM_map)[CCSM_index] == 0;
+#else
+    return false;
+#endif
 }
 
 void common_ctr::update_CCSM(new_addr_type addr, unsigned CCSM_val) {

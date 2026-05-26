@@ -1471,25 +1471,28 @@ void mee::simple_cycle(unsigned cycle) {
                     m_common_ctr->update_CCSM(mf->get_addr(), 1);
 
                     if (m_config->m_CTR_config.m_cache_type == SECTOR) {
-#ifndef MEE_SIMPLE
                         gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);//Lazy_ftech_on_read
+#ifdef META_WB
+                        gen_CTR_mf(mf, true,  META_ACC_W, 32, 0);
 #endif
-                        // gen_CTR_mf(mf, true,  META_ACC_W, 32, mf_id);
+                    }
+                    else {
+                        gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);//Lazy_ftech_on_read
+#ifdef META_WB
+                        gen_CTR_mf(mf, true,  META_ACC_W, m_config->m_CTR_config.m_line_sz, 0);
+#endif
+                    }
+
+                    if (m_config->m_META_config.m_cache_type == SECTOR) {
 #ifdef META_WB
                         m_common_ctr->gen_META_mf(mf, true, META_ACC_R, 32, 0);
-                        gen_CTR_mf(mf, true,  META_ACC_W, 32, 0);
 #else
                         m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
 #endif
                     }
                     else {
-#ifndef MEE_SIMPLE
-                        gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);//Lazy_ftech_on_read
-#endif
-                        // gen_CTR_mf(mf, true,  META_ACC_W, 128, mf_id);
 #ifdef META_WB
                         m_common_ctr->gen_META_mf(mf, true, META_ACC_R, 128, 0);
-                        gen_CTR_mf(mf, true,  META_ACC_W, 128, 0);
 #else
                         m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, 0);
 #endif
@@ -1525,9 +1528,21 @@ void mee::simple_cycle(unsigned cycle) {
 #endif
                     if (m_config->m_CTR_config.m_cache_type == SECTOR) {
                         if (m_common_ctr->CCSM_scope(mf->get_addr())) {
-                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, mf_id);
                         } else {
                             gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);
+                        }
+                    }
+                    else {
+                        if (m_common_ctr->CCSM_scope(mf->get_addr())) {
+                        } else {
+                            gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);
+                        }
+                    }
+
+                    if (m_config->m_META_config.m_cache_type == SECTOR) {
+                        if (m_common_ctr->CCSM_scope(mf->get_addr())) {
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, mf_id);
+                        } else {
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);    
                         }
                     }
@@ -1535,7 +1550,6 @@ void mee::simple_cycle(unsigned cycle) {
                         if (m_common_ctr->CCSM_scope(mf->get_addr())) {
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, mf_id);
                         } else {
-                            gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, 0);    
                         }
                     }
