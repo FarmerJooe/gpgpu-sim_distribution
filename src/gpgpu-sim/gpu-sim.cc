@@ -270,7 +270,7 @@ void memory_config::reg_options(class OptionParser *opp) {
                           "unified banked CTR data cache config "
                           " {<nsets>:<bsize>:<assoc>,<rep>:<wr>:<alloc>:<wr_"
                           "alloc>,<mshr>:<N>:<merge>,<mq>}",
-                          "L:S:4:128:4,L:B:m:L:P:D,A:64:64,32:0,32");
+                          "L:N:4:128:4,L:B:m:L:P:D,A:64:64,32:0,32");
   option_parser_register(opp, "-gpgpu_cache:dl2_texture_only", OPT_BOOL,
                          &m_L2_texure_only, "L2 cache used for texture only",
                          "1");
