@@ -1469,10 +1469,12 @@ void memory_partition_unit::mee_L2_queue_push(unsigned spid, class mem_fetch *mf
 }
 
 void memory_partition_unit::update_region_map(new_addr_type addr) {
+  if (!m_config->m_ccsm_enable) return;
   m_mee->m_common_ctr->update_region_map(addr);
 }
 
 void memory_partition_unit::scanning_proceduce() {
+  if (!m_config->m_ccsm_enable) return;
   counterMap::iterator it = m_mee->m_common_ctr->m_updated_mem_region_map->begin();
   for (;it != m_mee->m_common_ctr->m_updated_mem_region_map->end(); it++) {
     if (it->second)

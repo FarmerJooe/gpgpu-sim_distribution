@@ -245,6 +245,12 @@ void memory_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_meta_compression_enable", OPT_BOOL,
                          &m_compression_enable,
                          "Enable compressed CTR cache implementation", "1");
+  option_parser_register(opp, "-gpgpu_meta_ccsm_enable", OPT_BOOL,
+                         &m_ccsm_enable,
+                         "Enable CCSM common counter metadata path", "1");
+  option_parser_register(opp, "-gpgpu_meta_par_enable", OPT_BOOL,
+                         &m_par_enable,
+                         "Enable PAR metadata generation", "1");
 
   option_parser_register(opp, "-l2_ideal", OPT_BOOL, &l2_ideal,
                          "Use a ideal L2 cache that always hit", "0");

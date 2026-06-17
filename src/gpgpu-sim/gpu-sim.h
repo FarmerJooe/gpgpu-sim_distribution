@@ -295,6 +295,8 @@ class memory_config {
   bool m_bmt_enable;
   bool m_mac_enable;
   bool m_compression_enable;
+  bool m_ccsm_enable;
+  bool m_par_enable;
 
   // Cache trace configuration
   cache_trace_config m_cache_trace_config;

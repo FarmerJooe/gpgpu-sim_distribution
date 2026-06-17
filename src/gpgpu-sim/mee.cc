@@ -1436,8 +1436,10 @@ void mee::simple_cycle(unsigned cycle) {
 #ifndef AES_Enable
                 && !m_unit->mee_dispather_queue_full(NORM)
 #endif    
-                && !m_MAC_queue->full() && !m_PAR_queue->full() && !m_Ciphertext_queue->full()
-                && !m_common_ctr->full()) {
+                && !m_MAC_queue->full()
+                && (!m_config->m_par_enable || !m_PAR_queue->full())
+                && !m_Ciphertext_queue->full()
+                && (!m_config->m_ccsm_enable || !m_common_ctr->full())) {
                 // mf->get_access_size() 可能大于32？
                 // assert(mf->get_access_size() <= 32);
                 // last_issued_partition = spid;
@@ -1457,8 +1459,10 @@ void mee::simple_cycle(unsigned cycle) {
                     // gen_CTR_mf(mf, false, META_ACC, 128, mf_counter);//Lazy_ftech_on_read
                     // gen_CTR_mf(mf, true,  META_ACC, 128, mf_counter);
 
-                    m_common_ctr->update_region_map(mf->get_addr());
-                    m_common_ctr->update_CCSM(mf->get_addr(), 1);
+                    if (m_config->m_ccsm_enable) {
+                        m_common_ctr->update_region_map(mf->get_addr());
+                        m_common_ctr->update_CCSM(mf->get_addr(), 1);
+                    }
 
                     if (m_config->m_META_config.m_cache_type == SECTOR) {
 #ifndef MEE_SIMPLE
@@ -1466,7 +1470,8 @@ void mee::simple_cycle(unsigned cycle) {
 #endif
                         // gen_CTR_mf(mf, true,  META_ACC_W, 32, mf_id);
                         gen_CTR_mf(mf, false,  META_ACC_W, 32, mf_id);
-                        m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
+                        if (m_config->m_ccsm_enable)
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
                     }
                     else {
 #ifndef MEE_SIMPLE
@@ -1474,7 +1479,8 @@ void mee::simple_cycle(unsigned cycle) {
 #endif
                         // gen_CTR_mf(mf, true,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
                         gen_CTR_mf(mf, false,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
-                        m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
+                        if (m_config->m_ccsm_enable)
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
                     }
 
                     if (m_config->m_mac_enable && m_config->m_L2_config.m_cache_type == SECTOR) {
@@ -1485,9 +1491,8 @@ void mee::simple_cycle(unsigned cycle) {
                         // gen_MAC_mf(mf, false, META_ACC_W, 8, mf_id);
                     }
 
-#ifdef PAR_Enable
-                    gen_PAR_mf(mf, false, META_ACC_W, 16, mf_id);
-#endif
+                    if (m_config->m_par_enable)
+                        gen_PAR_mf(mf, false, META_ACC_W, 16, mf_id);
                     // m_AES_queue->push(mf);  //写密文请求，将明文送入AES中加密
 #ifdef AES_Enable
                     push_cipher_request(mf);
@@ -1505,19 +1510,21 @@ void mee::simple_cycle(unsigned cycle) {
                     push_cipher_request(mf);
 #endif
                     if (m_config->m_META_config.m_cache_type == SECTOR) {
-                        if (m_common_ctr->CCSM_scope(mf->get_addr())) {
+                        if (m_config->m_ccsm_enable && m_common_ctr->CCSM_scope(mf->get_addr())) {
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, mf_id);
                         } else {
                             gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);
-                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);    
+                            if (m_config->m_ccsm_enable)
+                                m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
                         }
                     }
                     else {
-                        if (m_common_ctr->CCSM_scope(mf->get_addr())) {
+                        if (m_config->m_ccsm_enable && m_common_ctr->CCSM_scope(mf->get_addr())) {
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);
                         } else {
                             gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);
-                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
+                            if (m_config->m_ccsm_enable)
+                                m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
                         }
                     }
                     // gen_CTR_mf(mf, false, META_ACC_R, 128, mf_counter);
@@ -1579,12 +1586,14 @@ void mee::simple_cycle(unsigned cycle) {
     }
     BMT_CHECK_cycle();
     BMT_cycle();
-    PAR_cycle();
+    if (m_config->m_par_enable)
+        PAR_cycle();
     HASH_cycle();
     AES_cycle();
     CTR_cycle();
     CT_cycle();
-    m_common_ctr->cycle();
+    if (m_config->m_ccsm_enable)
+        m_common_ctr->cycle();
 }
 
 void mee::mee_to_dispather_cycle() {

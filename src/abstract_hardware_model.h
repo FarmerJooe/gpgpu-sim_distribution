@@ -28,7 +28,6 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 // #define MEE_SIMPLE
-#define PAR_Enable
 // #define CTR_HIERACHY
 // #define EXC_EN
 #define AES_Enable
