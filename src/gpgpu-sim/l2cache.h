@@ -156,6 +156,9 @@ class memory_partition_unit {
 
   class memory_sub_partition **m_sub_partition;
   counterMap *m_ctrModCount;
+
+  void update_region_map(new_addr_type addr);
+  void scanning_proceduce();
   
  private:
   unsigned m_id;
@@ -169,6 +172,7 @@ class memory_partition_unit {
   #else
   class meta_cache *m_CTRcache;
   #endif
+  class meta_cache *m_PARcache;
   class meta_cache *m_MACcache;
   class meta_cache *m_BMTcache;
   class mee *m_mee;
@@ -176,6 +180,7 @@ class memory_partition_unit {
   class metainterface *m_BMTinterface;
   class metainterface *m_CTRinterface;
   class metainterface *m_MACinterface;
+  class metainterface *m_PARinterface;
   partition_mf_allocator *m_mf_allocator;
 
  public:
@@ -187,11 +192,11 @@ class memory_partition_unit {
   void pop_n_mf(enum data_type dtype) { m_n_mf[dtype]--; }
 
  private:
-  fifo_pipeline<mem_fetch> *m_mee_dispather_queue[5]; 
-  fifo_pipeline<mem_fetch> *m_dram_dispather_queue[5]; 
+  fifo_pipeline<mem_fetch> *m_mee_dispather_queue[NUM_DATA_TYPE]; 
+  fifo_pipeline<mem_fetch> *m_dram_dispather_queue[NUM_DATA_TYPE];
   fifo_pipeline<mem_fetch> *m_ctr_L2_bundle_queue;
   fifo_pipeline<mem_fetch> *m_L2_ctr_bundle_queue;
-  unsigned m_n_mf[5] = {0, 0, 0, 0, 0};
+  unsigned m_n_mf[NUM_DATA_TYPE] = {0, 0, 0, 0, 0};
   unsigned send_trigger_threshold = 64;
   unsigned receive_stop_threshold = 64;
   unsigned last_send = 0;
@@ -253,6 +258,7 @@ class memory_partition_unit {
   counterSet *get_ctrSet();
   class ECCEngine *m_ecc;
   friend class mee;
+  friend class common_ctr;
 };
 
 class memory_sub_partition {

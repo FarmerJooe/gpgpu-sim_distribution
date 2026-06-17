@@ -966,6 +966,7 @@ class cache_config {
   friend class l2_cache;
   friend class memory_sub_partition;
   friend class mee;
+  friend class common_ctr;
 };
 
 class l1d_cache_config : public cache_config {

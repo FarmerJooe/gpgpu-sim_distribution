@@ -945,7 +945,12 @@ unsigned gpgpu_sim::finished_kernel() {
   return result;
 }
 
-void gpgpu_sim::set_kernel_done(kernel_info_t *kernel) {
+void gpgpu_sim::set_kernel_done(kernel_info_t *kernel) { // todo-CCSM
+
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+    m_memory_partition_unit[i]->scanning_proceduce();
+  } 
+
   unsigned uid = kernel->get_uid();
   m_finished_kernel.push_back(uid);
   std::vector<kernel_info_t *>::iterator k;
@@ -1588,8 +1593,9 @@ void gpgpu_sim::gpu_print_stat_pw() {
   }
   fprintf(statfout, "\n");
   // partition stats
-  for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
-    m_memory_partition_unit[i]->partition_print_stat_pw();
+  // for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+  for (unsigned i = 0; i < 1; i++) {
+    // m_memory_partition_unit[i]->partition_print_stat_pw();
   }
   // for (unsigned i = 0; i < m_memory_config->m_n_mem_sub_partition; i++) {
   //   m_memory_sub_partition[i]->sub_partition_print_stat_pw();
@@ -1786,6 +1792,10 @@ void gpgpu_sim::gpu_print_stat() {
   gpu_print_METACache_stat("MAC");
   // BMT cache stats
   gpu_print_METACache_stat("BMT");
+
+  gpu_print_METACache_stat("PAR");
+
+  gpu_print_METACache_stat("CCSM");
   
   // mf data type breakdown
   gpu_print_METACache_data_type_breakdown();
@@ -2450,7 +2460,7 @@ void shader_core_ctx::dump_warp_state(FILE *fout) const {
     m_warp[w]->print(fout);
 }
 
-void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) {
+void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) { // todo-CCSM
   if (m_memory_config->m_perf_sim_memcpy) {
     // if(!m_config.trace_driven_mode)    //in trace-driven mode, CUDA runtime
     // can start nre data structure at any position 	assert (dst_start_addr %
@@ -2468,6 +2478,12 @@ void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) {
           m_memory_config->m_n_sub_partition_per_memory_channel;
       m_memory_partition_unit[partition_id]->handle_memcpy_to_gpu(
           wr_addr, raw_addr.sub_partition, mask);
+
+      m_memory_partition_unit[partition_id]->update_region_map(wr_addr);
+    }
+
+    for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
+      m_memory_partition_unit[i]->scanning_proceduce();
     }
   }
 }
