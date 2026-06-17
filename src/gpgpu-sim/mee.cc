@@ -184,13 +184,13 @@ void mee::print_ctr(new_addr_type sub_partition_id, new_addr_type partition_addr
 }
 
 new_addr_type mee::get_partition_addr(new_addr_type addr) {
-    new_addr_type partition_addr = addr >> (8 + 6) << 8;
+    new_addr_type partition_addr = addr >> (8 + 5) << 8;
     partition_addr |= addr & ((1 << 8) - 1);
     return partition_addr;
 }
 
-new_addr_type mee::get_sub_partition_id(new_addr_type addr) {
-    return (addr >> 8) & ((1 << 6) - 1);
+new_addr_type mee::get_partition_id(new_addr_type addr) {
+    return (addr >> 8) & ((1 << 5) - 1);
     // assert(((addr >> 8) & ((1 << 6) - 1)) == mf->get_sub_partition_id());
     
     // return mf->get_sub_partition_id();
@@ -210,7 +210,7 @@ bool mee::META_queue_empty() {
 }
 
 new_addr_type mee::get_addr(new_addr_type sub_partition_id, new_addr_type partition_addr) {
-    new_addr_type new_addr = partition_addr >> 8 << (8 + 6);
+    new_addr_type new_addr = partition_addr >> 8 << (8 + 5);
     new_addr |= partition_addr & ((1 << 8) - 1);
     new_addr |= sub_partition_id << 8;
     return new_addr;
@@ -218,7 +218,7 @@ new_addr_type mee::get_addr(new_addr_type sub_partition_id, new_addr_type partit
 
 void mee::gen_PAR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
     new_addr_type partition_addr = get_partition_addr(mf->get_addr());
-    new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
+    new_addr_type sub_partition_id = get_partition_id(mf->get_addr());
     if (m_config->m_META_config.m_cache_type == SECTOR)
         partition_addr = partition_addr >> 5 << 2;
     else 
@@ -233,28 +233,33 @@ void mee::gen_PAR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 
 void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
     new_addr_type partition_addr = get_partition_addr(mf->get_addr());
-    new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
-    assert(mf->get_partition_addr() == partition_addr);
+    new_addr_type sub_partition_id = get_partition_id(mf->get_addr());
+    // assert(mf->get_partition_addr() == partition_addr);
     // new_addr_type minor_addr = (partition_addr >> 7) & 127;
     // minor_addr = 128 + minor_addr * 7;
     // bool res = minor_addr & 7 > 1;
     // minor_addr >>= 3;
-    partition_addr = (partition_addr >> 5); // per minor ctr map to 32B cache line
+    if (m_config->m_L2_config.m_cache_type == SECTOR)
+        partition_addr = partition_addr >> 5;
+    else
+        partition_addr = partition_addr >> 7;
 
     // if (meta_acc == META_ACC)
     //     partition_addr |= minor_addr;
 
     new_addr_type CTR_addr  = get_addr(sub_partition_id, partition_addr);
     CTR_addr |= CTR_base;
-    if (meta_acc == META_ACC_W) {
-        (*m_ctrModCount)[CTR_addr]++;
-        assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
-        (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
-        print_ctr(sub_partition_id, partition_addr);
-    } else {
-        // (*m_ctrModCount)[CTR_addr] += 0;
-        (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
-        assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
+    if (mf_id) {
+        if (meta_acc == META_ACC_W) {
+            (*m_ctrModCount)[CTR_addr]++;
+            assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
+            (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
+            print_ctr(sub_partition_id, partition_addr);
+        } else {
+            // (*m_ctrModCount)[CTR_addr] += 0;
+            (*m_ctrSet).insert(CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5));
+            assert(CTR_addr == (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)) + (partition_addr & 31));
+        }
     }
     // printf("CTR_addr:\t%xCTR_sector_addr:%x\n", CTR_addr, (CTR_base | get_addr(sub_partition_id, (partition_addr >> 5) << 5)));
 
@@ -268,11 +273,18 @@ void mee::gen_CTR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 
 void mee::gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
     new_addr_type partition_addr = get_partition_addr(mf->get_addr());
-    new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
-    if (m_config->m_META_config.m_cache_type == SECTOR)
-        partition_addr = partition_addr >> 6 << 2;
+    new_addr_type sub_partition_id = get_partition_id(mf->get_addr());
+
+    if (m_config->m_L2_config.m_cache_type == SECTOR)
+        partition_addr = partition_addr >> 3;
     else
-        partition_addr = partition_addr >> 7 << 3;
+        partition_addr = partition_addr >> 4;
+
+    if (m_config->m_L2_config.m_cache_type == SECTOR)
+        partition_addr = partition_addr >> 2 << 2;
+    else
+        partition_addr = partition_addr >> 3 << 3;
+
     new_addr_type MAC_addr  = get_addr(sub_partition_id, partition_addr);
     MAC_addr |= MAC_base;
 
@@ -283,15 +295,22 @@ void mee::gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
 
 void mee::gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
     new_addr_type partition_addr = get_partition_addr(mf->get_addr());
-    new_addr_type sub_partition_id = get_sub_partition_id(mf->get_addr());
+    new_addr_type sub_partition_id = get_partition_id(mf->get_addr());
     // unsigned int Layer = get_BMT_Layer(mf->get_addr());
     // if (Layer == 4) //由L4生成ROOT，由于ROOT是单独的寄存器，这里不生成访存请求
     //     return;
     partition_addr = partition_addr & 0x003fffff;
-    if (size == 128)
-        partition_addr = partition_addr >> 11 << 7;
+    if (mf->get_data_type() == CTR && mf->get_access_size() == 32)
+        partition_addr = partition_addr >> 2;
     else
-        partition_addr = partition_addr >> 9 << 5;
+        partition_addr = partition_addr >> 4;
+
+
+    if (m_config->m_BMT_config.m_cache_type == SECTOR)
+        partition_addr = partition_addr >> 1 << 1;
+    else
+        partition_addr = partition_addr >> 3 << 3;
+
     new_addr_type BMT_addr  = get_addr(sub_partition_id, partition_addr);
     BMT_addr |= 0xF2000000;
 
@@ -301,6 +320,7 @@ void mee::gen_BMT_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
             size, wr, m_gpu->gpu_tot_sim_cycle + m_gpu->gpu_sim_cycle, 
             mf->get_wid(), mf->get_sid(), mf->get_tpc(), mf, mf_id, BMT, BMT_type);
 }
+
 
 void mee::meta_access(
         fifo_pipeline<mem_fetch> *m_META_queue, new_addr_type addr, mem_access_type type, unsigned size, bool wr,
@@ -729,17 +749,21 @@ void mee::BMT_CHECK_cycle() {
                     BMT_counter++;
             } else {
                 if (mf->is_write()) {
-                    if (m_config->m_META_config.m_cache_type == SECTOR) {
-                        // gen_BMT_mf(mf, mf->is_write(), META_ACC_W, 2, HASH_id); // Lazy fetch on read策略下，写操作不会发给dram
+                    if (m_config->m_BMT_config.m_cache_type == SECTOR) {
+#ifdef META_WB
+                        gen_BMT_mf(mf, mf->is_write(), META_ACC_W, 2, 0); // Lazy fetch on read策略下，写操作不会发给dram
+#endif
                         assert(!m_BMT_queue->full());
-                        gen_BMT_mf(mf, false, META_ACC_R, 32, HASH_id);
+                        gen_BMT_mf(mf, false, META_ACC_W, 32, HASH_id);
                     } else {
-                        // gen_BMT_mf(mf, mf->is_write(), META_ACC_W, 8, HASH_id); // Lazy fetch on read策略下，写操作不会发给dram
+#ifdef META_WB
+                        gen_BMT_mf(mf, mf->is_write(), META_ACC_W, 8, 0); // Lazy fetch on read策略下，写操作不会发给dram
+#endif
                         assert(!m_BMT_queue->full());
-                        gen_BMT_mf(mf, false, META_ACC_R, 128, HASH_id);
+                        gen_BMT_mf(mf, false, META_ACC_W, 128, HASH_id);
                     }
                 } else {
-                    if (m_config->m_META_config.m_cache_type == SECTOR) {
+                    if (m_config->m_BMT_config.m_cache_type == SECTOR) {
                         gen_BMT_mf(mf, false, META_ACC_R, 32, HASH_id);
                     } else {
                         gen_BMT_mf(mf, false, META_ACC_R, 128, HASH_id);
@@ -1468,17 +1492,23 @@ void mee::simple_cycle(unsigned cycle) {
 #ifndef MEE_SIMPLE
                         gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);//Lazy_ftech_on_read
 #endif
-                        // gen_CTR_mf(mf, true,  META_ACC_W, 32, mf_id);
-                        gen_CTR_mf(mf, false,  META_ACC_W, 32, mf_id);
-                        if (m_config->m_ccsm_enable)
+
+#ifdef META_WB
+                        gen_CTR_mf(mf, true,  META_ACC_W, 32, mf_id);
+#endif
+                        if (m_config->m_ccsm_enable) {
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
+                        }
                     }
                     else {
 #ifndef MEE_SIMPLE
                         gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);//Lazy_ftech_on_read
 #endif
-                        // gen_CTR_mf(mf, true,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
-                        gen_CTR_mf(mf, false,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
+
+#ifdef META_WB
+                        gen_CTR_mf(mf, true,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
+#endif
+                        // gen_CTR_mf(mf, false,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
                         if (m_config->m_ccsm_enable)
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
                     }

@@ -42,7 +42,7 @@ class mee {
         void ECC_CHECK_cycle();
         void BMT_CHECK_cycle();
         new_addr_type get_partition_addr(new_addr_type addr);
-        new_addr_type get_sub_partition_id(new_addr_type addr);
+        new_addr_type get_partition_id(new_addr_type addr);
         new_addr_type get_addr(new_addr_type partition_id, new_addr_type partition_addr);
         void push_cipher_request(mem_fetch *mf);
         unsigned next_mf_id();

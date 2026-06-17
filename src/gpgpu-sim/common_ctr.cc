@@ -10,7 +10,7 @@ void common_ctr::print_addr(char s[], mem_fetch *mf) const{
 }
 
 new_addr_type common_ctr::get_global_addr(new_addr_type sub_partition_id, new_addr_type partition_addr) {
-    new_addr_type new_addr = partition_addr >> 8 << (8 + 6);
+    new_addr_type new_addr = partition_addr >> 8 << (8 + 5);
     new_addr |= partition_addr & ((1 << 8) - 1);
     new_addr |= sub_partition_id << 8;
     return new_addr;
@@ -19,7 +19,7 @@ new_addr_type common_ctr::get_global_addr(new_addr_type sub_partition_id, new_ad
 void common_ctr::gen_META_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
 
     new_addr_type partition_addr = m_mee->get_partition_addr(mf->get_addr());
-    new_addr_type sub_partition_id = m_mee->get_sub_partition_id(mf->get_addr());
+    new_addr_type sub_partition_id = m_mee->get_partition_id(mf->get_addr());
 
     partition_addr = partition_addr >> m_meta_scale_shift << m_meta_slot_shift;
 
@@ -266,7 +266,7 @@ void common_ctr::CCSM_handing(unsigned OTP_id) {
 
 new_addr_type common_ctr::get_CCSM_index(new_addr_type addr) {
     new_addr_type partition_addr = m_mee->get_partition_addr(addr);
-    new_addr_type sub_partition_id = m_mee->get_sub_partition_id(addr);
+    new_addr_type sub_partition_id = m_mee->get_partition_id(addr);
 
     partition_addr = partition_addr >> (m_meta_scale_shift - 1) << (m_meta_scale_shift - 1);
 
@@ -302,7 +302,7 @@ void common_ctr::scan_region(new_addr_type region_addr) {
         new_addr_type sector_addr = region_addr | offset;
 
         new_addr_type partition_addr = m_mee->get_partition_addr(sector_addr);
-        new_addr_type sub_partition_id = m_mee->get_sub_partition_id(sector_addr);
+        new_addr_type sub_partition_id = m_mee->get_partition_id(sector_addr);
 
         // if (meta_acc == META_ACC)
         //     partition_addr |= minor_addr;
@@ -327,7 +327,7 @@ void common_ctr::scan_segment(new_addr_type segment_addr) {
         new_addr_type sector_addr = segment_addr | offset;
 
         new_addr_type partition_addr = m_mee->get_partition_addr(sector_addr);
-        new_addr_type sub_partition_id = m_mee->get_sub_partition_id(sector_addr);
+        new_addr_type sub_partition_id = m_mee->get_partition_id(sector_addr);
         partition_addr = (partition_addr >> 5); // per minor ctr map to 32B cache line
 
         // if (meta_acc == META_ACC)
