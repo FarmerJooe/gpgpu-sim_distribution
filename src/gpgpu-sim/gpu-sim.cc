@@ -233,6 +233,19 @@ void memory_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_dram_partition_queues", OPT_CSTR,
                          &gpgpu_L2_queue_config, "i2$:$2d:d2$:$2i", "8:8:8:8");
 
+  option_parser_register(opp, "-gpgpu_meta_mee_enable", OPT_BOOL,
+                         &m_mee_enable,
+                         "Enable memory encryption engine path", "1");
+  option_parser_register(opp, "-gpgpu_meta_bmt_enable", OPT_BOOL,
+                         &m_bmt_enable,
+                         "Enable BMT metadata generation/checking", "1");
+  option_parser_register(opp, "-gpgpu_meta_mac_enable", OPT_BOOL,
+                         &m_mac_enable,
+                         "Enable MAC metadata generation/checking", "1");
+  option_parser_register(opp, "-gpgpu_meta_compression_enable", OPT_BOOL,
+                         &m_compression_enable,
+                         "Enable compressed CTR cache implementation", "1");
+
   option_parser_register(opp, "-l2_ideal", OPT_BOOL, &l2_ideal,
                          "Use a ideal L2 cache that always hit", "0");
   option_parser_register(opp, "-gpgpu_cache:dl2", OPT_CSTR,

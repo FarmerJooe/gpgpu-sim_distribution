@@ -291,6 +291,10 @@ class memory_config {
   mutable l2_cache_config m_MAC_config;
   mutable l2_cache_config m_BMT_config;
   bool m_L2_texure_only;
+  bool m_mee_enable;
+  bool m_bmt_enable;
+  bool m_mac_enable;
+  bool m_compression_enable;
 
   // Cache trace configuration
   cache_trace_config m_cache_trace_config;

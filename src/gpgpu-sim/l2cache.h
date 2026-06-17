@@ -167,11 +167,7 @@ class memory_partition_unit {
   // class memory_sub_partition **m_sub_partition;
   class dram_t *m_dram;
 
-  #ifdef COMPRESSION_Enable
-  class ctr_cache *m_CTRcache;
-  #else
-  class meta_cache *m_CTRcache;
-  #endif
+  class data_cache *m_CTRcache;
   class meta_cache *m_PARcache;
   class meta_cache *m_MACcache;
   class meta_cache *m_BMTcache;

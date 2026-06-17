@@ -851,7 +851,7 @@ void mee::CTR_cycle() {
     #ifdef CTR_HIERACHY
     output_full |= m_unit->m_ctr_L2_bundle_queue->full();
     #endif
-    bool port_free = m_unit->m_CTRcache->data_port_free();
+    bool port_free = m_CTRcache->data_port_free();
 
     if (!m_CTR_queue->empty() && !m_unit->mee_dispather_queue_full(CTR) && !output_full && port_free) {
         mem_fetch *mf = m_CTR_queue->top();
@@ -891,12 +891,12 @@ void mee::CTR_cycle() {
             if (mf->is_write()) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
                 print_addr("CTR Write Hit:\t", mf);
                 // m_OTP_set[mf->get_id()]--;
-                #ifdef BMT_Enable
-                if (mf->get_id())
-                    m_CTR_BMT_Buffer->push(mf);
-                if (mf->get_id())
-                    CTR_counter++;
-                #endif
+                if (m_config->m_bmt_enable) {
+                    if (mf->get_id())
+                        m_CTR_BMT_Buffer->push(mf);
+                    if (mf->get_id())
+                        CTR_counter++;
+                }
             }
             else if (mf->get_access_type() != META_RBW) {
                 print_addr("CTR Read Hit:\t", mf);
@@ -915,10 +915,8 @@ void mee::CTR_cycle() {
             if (mf->get_access_type() != META_RBW) {
                 if (mf->get_id())
                     OTP_counter++;
-                #ifdef BMT_Enable
-                if (mf->get_id())
+                if (m_config->m_bmt_enable && mf->get_id())
                     CTR_counter++;
-                #endif
             }
         } else {
             assert(!write_sent);
@@ -1186,14 +1184,14 @@ void mee::CTR_fill() {
         mem_fetch *mf_return = m_unit->m_L2_ctr_bundle_queue->top();
         assert(mf_return->get_data_type() == CTR);
         
-        #ifdef BMT_Enable
-        // assert(mf_return->get_access_type() == META_ACC);
-        if (mf_return->get_access_type() == META_ACC_R || mf_return->get_access_type() == META_ACC_W)
-            if (!m_CTR_BMT_Buffer->full()) 
-                m_CTR_BMT_Buffer->push(mf_return);
-            else
-                return;
-        #endif
+        if (m_config->m_bmt_enable) {
+            // assert(mf_return->get_access_type() == META_ACC);
+            if (mf_return->get_access_type() == META_ACC_R || mf_return->get_access_type() == META_ACC_W)
+                if (!m_CTR_BMT_Buffer->full())
+                    m_CTR_BMT_Buffer->push(mf_return);
+                else
+                    return;
+        }
         if (m_CTRcache->waiting_for_fill(mf_return)) {
             // print_addr("wating for fill:\t\t", mf); 
             if (m_CTRcache->fill_port_free()) {
@@ -1243,13 +1241,15 @@ void mee::META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
         mf_return = m_unit->dram_dispather_queue_top(m_data_type);
 #endif
         
-#ifdef BMT_Enable
-        if (m_data_type == CTR && (mf_return->get_access_type() == META_ACC_R || mf_return->get_access_type() == META_ACC_W))
+        if (m_config->m_bmt_enable && m_data_type == CTR && (mf_return->get_access_type() == META_ACC_R || mf_return->get_access_type() == META_ACC_W)) {
             if (!m_META_RET_queue->full()) 
                 m_META_RET_queue->push(mf_return);
             else
                 return;
-#endif
+        }
+        if (m_data_type == CTR) {
+            print_addr("CTR fill:\t", mf_return);
+        }
         if ((mf_return->get_data_type() == m_data_type) && m_METAcache->waiting_for_fill(mf_return)) {
             // print_addr("wating for fill:\t\t", mf); 
             if (m_METAcache->fill_port_free()) {
@@ -1470,25 +1470,24 @@ void mee::simple_cycle(unsigned cycle) {
                     }
                     else {
 #ifndef MEE_SIMPLE
-                        gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);//Lazy_ftech_on_read
+                        gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);//Lazy_ftech_on_read
 #endif
-                        // gen_CTR_mf(mf, true,  META_ACC_W, 128, mf_id);
-                        gen_CTR_mf(mf, false,  META_ACC_W, 128, mf_id);
-                        m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, 0);
+                        // gen_CTR_mf(mf, true,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
+                        gen_CTR_mf(mf, false,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
+                        m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
                     }
 
-#ifdef MAC_Enable
-                    if (m_config->m_META_config.m_cache_type == SECTOR)
+                    if (m_config->m_mac_enable && m_config->m_L2_config.m_cache_type == SECTOR) {
                         gen_MAC_mf(mf, true, META_ACC_W, 4, mf_id);
                         // gen_MAC_mf(mf, false, META_ACC_W, 4, mf_id);
-                    else
+                    } else if (m_config->m_mac_enable) {
                         gen_MAC_mf(mf, true, META_ACC_W, 8, mf_id);
                         // gen_MAC_mf(mf, false, META_ACC_W, 8, mf_id);
+                    }
+
+#ifdef PAR_Enable
+                    gen_PAR_mf(mf, false, META_ACC_W, 16, mf_id);
 #endif
-                    if (m_config->m_META_config.m_cache_type == SECTOR)
-                        gen_PAR_mf(mf, false, META_ACC_W, 16, mf_id);
-                    else
-                        gen_PAR_mf(mf, false, META_ACC_W, 16, mf_id);
                     // m_AES_queue->push(mf);  //写密文请求，将明文送入AES中加密
 #ifdef AES_Enable
                     push_cipher_request(mf);
@@ -1515,19 +1514,18 @@ void mee::simple_cycle(unsigned cycle) {
                     }
                     else {
                         if (m_common_ctr->CCSM_scope(mf->get_addr())) {
-                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, mf_id);
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);
                         } else {
-                            gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);
-                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 128, 0);    
+                            gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
                         }
                     }
                     // gen_CTR_mf(mf, false, META_ACC_R, 128, mf_counter);
-#ifdef MAC_Enable
-                    if (m_config->m_META_config.m_cache_type == SECTOR)
+                    if (m_config->m_mac_enable && m_config->m_L2_config.m_cache_type == SECTOR) {
                         gen_MAC_mf(mf, false, META_ACC_R, 4, mf_id);
-                    else
+                    } else if (m_config->m_mac_enable) {
                         gen_MAC_mf(mf, false, META_ACC_R, 8, mf_id);
-#endif
+                    }
                 }
 #ifdef CTR_HIERACHY
                 m_unit->L2_mee_queue_pop(spid, NORM);
@@ -1575,10 +1573,10 @@ void mee::simple_cycle(unsigned cycle) {
             // printf("GGGGGGGGGGGGGG\n");
         }
     }
-    #ifdef MAC_Enable
-    MAC_CHECK_cycle();
-    MAC_cycle();
-    #endif
+    if (m_config->m_mac_enable) {
+        MAC_CHECK_cycle();
+        MAC_cycle();
+    }
     BMT_CHECK_cycle();
     BMT_cycle();
     PAR_cycle();
@@ -1590,27 +1588,23 @@ void mee::simple_cycle(unsigned cycle) {
 }
 
 void mee::mee_to_dispather_cycle() {
-#ifndef MEE_Enable
-    if (!m_L2_mee_input_buffer->empty()) {
+    if (!m_config->m_mee_enable && !m_L2_mee_input_buffer->empty()) {
         mem_fetch *mf = m_L2_mee_input_buffer->top();
         if (!m_unit->mee_dispather_queue_full(NORM)) {
             m_unit->mee_dispather_queue_push(mf, NORM);
             m_L2_mee_input_buffer->pop();
         }
     }
-#endif
 }
 
 void mee::dispather_to_mee_cycle() {
-#ifndef MEE_Enable
-    if (!m_unit->dram_dispather_queue_empty(NORM)) {
+    if (!m_config->m_mee_enable && !m_unit->dram_dispather_queue_empty(NORM)) {
         mem_fetch *mf_return = m_unit->dram_dispather_queue_top(NORM);
         if (!m_mee_L2_output_buffer->full()) {
             m_mee_L2_output_buffer->push(mf_return);
             m_unit->dram_dispather_queue_pop(NORM);
         }
     }
-#endif
 }
 
 void mee::cycle(unsigned cycle) {

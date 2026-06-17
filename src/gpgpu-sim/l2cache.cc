@@ -144,22 +144,24 @@ memory_partition_unit::memory_partition_unit(unsigned partition_id,
   m_mf_allocator = new partition_mf_allocator(config);
 
   if (!m_config->m_META_config.disabled()) {
-    #ifdef COMPRESSION_Enable
-    m_CTRcache =
-        new ctr_cache(CTRc_name, m_config->m_CTR_config, -1, -1, m_CTRinterface,
-                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
-    m_ctrModCount = m_CTRcache->m_ctrModCount;
-    #else
-    m_CTRcache =
-        new meta_cache(CTRc_name, m_config->m_CTR_config, -1, -1, m_CTRinterface,
-                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
-    m_ctrModCount = new counterMap();
-    #endif
-
+    if (m_config->m_compression_enable) {
+      ctr_cache *ctr_cache_inst =
+          new ctr_cache(CTRc_name, m_config->m_CTR_config, -1, -1,
+                        m_CTRinterface, m_mf_allocator,
+                        IN_PARTITION_L2_MISS_QUEUE, gpu);
+      m_CTRcache = ctr_cache_inst;
+      m_ctrModCount = ctr_cache_inst->m_ctrModCount;
+    } else {
+      m_CTRcache =
+          new meta_cache(CTRc_name, m_config->m_CTR_config, -1, -1,
+                         m_CTRinterface, m_mf_allocator,
+                         IN_PARTITION_L2_MISS_QUEUE, gpu);
+      m_ctrModCount = new counterMap();
+    }
     m_PARcache =
-        new meta_cache(PARc_name, m_config->m_META_config, -1, -1, m_PARinterface,
-                     m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
-
+        new meta_cache(PARc_name, m_config->m_META_config, -1, -1,
+                       m_PARinterface, m_mf_allocator,
+                       IN_PARTITION_L2_MISS_QUEUE, gpu);
     m_MACcache =
         new meta_cache(MACc_name, m_config->m_MAC_config, -1, -1, m_MACinterface,
                      m_mf_allocator, IN_PARTITION_L2_MISS_QUEUE, gpu);
@@ -379,19 +381,12 @@ void memory_partition_unit::cache_cycle(unsigned cycle) {
   // printf("memory_partition_unit cycle: %d\n", cycle);
     
   // L2_to_mee_cycle();
-  // #ifndef MEE_Enable
-  // m_mee->mee_to_dispather_cycle();
-  // #endif
   // mee_dispath_cycle();
-#ifdef MEE_Enable
-  m_mee->simple_cycle(cycle);
-#else
-  m_mee->cycle(cycle);
-#endif
+  if (m_config->m_mee_enable)
+    m_mee->simple_cycle(cycle);
+  else
+    m_mee->cycle(cycle);
   // dram_dispath_cycle();
-  // #ifndef MEE_Enable
-  // m_mee->dispather_to_mee_cycle();
-  // #endif
   // mee_to_L2_cycle();
 
 
