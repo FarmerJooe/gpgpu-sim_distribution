@@ -331,7 +331,7 @@ void mee::meta_access(
     mem_access_sector_mask_t sector_mask;
     unsigned data_size = 0;
     if (size == 128) {
-        assert(m_config->m_META_config.m_cache_type == SECTOR);
+        // assert(m_config->m_META_config.m_cache_type == SECTOR);
         for (unsigned i = 0; i < size / 32; i++) 
             sector_mask.set(i);
         addr = addr >> 7 << 7;
@@ -352,15 +352,15 @@ void mee::meta_access(
         wid, sid, tpc, m_config, cycle, original_mf);
 
     std::vector<mem_fetch *> reqs;
-    if (m_config->m_META_config.m_cache_type == SECTOR)
-        reqs = m_unit->m_sub_partition[0]->breakdown_request_to_sector_requests(mf);
-    else
+    // if (m_config->m_META_config.m_cache_type == SECTOR)
+    //     reqs = m_unit->m_sub_partition[0]->breakdown_request_to_sector_requests(mf);
+    // else
         reqs.push_back(mf);
 
     assert(m_data_type != MAC || reqs.size() == 1);
 
     for (unsigned i = 0; i < reqs.size(); ++i) {
-        assert(reqs.size() == 1);
+        // assert(reqs.size() == 1);
         mem_fetch *req = reqs[i];
         // req->set_id(mf_id);
         req->set_data_type(m_data_type);
@@ -731,7 +731,7 @@ void mee::BMT_CHECK_cycle() {
         // if (mf->get_sub_partition_id() == 0) 
         //     printf("%x\n", OTP_addr);
         // assert(mf);
-        if (m_BMT_set[HASH_id] && ((m_config->m_META_config.m_cache_type == SECTOR && !m_BMT_queue->full(2)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_BMT_queue->full(2)))) { //得到了BMT与Hash值，BMT Check完成, 计算下一层BMT
+        if (m_BMT_set[HASH_id] && ((m_config->m_BMT_config.m_cache_type == SECTOR && !m_BMT_queue->full(2)) || (m_config->m_BMT_config.m_cache_type != SECTOR && !m_BMT_queue->full(2)))) { //得到了BMT与Hash值，BMT Check完成, 计算下一层BMT
             m_BMT_set[HASH_id]--;
             m_BMT_CHECK_queue->pop();
             if (mf->get_hash_enqueue_time()) {
@@ -965,17 +965,11 @@ void mee::MAC_cycle() {
         m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
     if (!m_MAC_RET_queue->empty()) {
         mem_fetch *mf_return = m_MAC_RET_queue->top();
-        if (mf_return->is_write()) {    //写MAC完成
+        if (!m_MAC_CHECK_queue->full()) {
+            m_MAC_CHECK_queue->push(mf_return); //MAC读MISS完成，得到MAC值，发往MAC Check
             m_MAC_RET_queue->pop();
-            // delete mf_return;//删除2
-        } else {    //MAC读MISS返回
-            assert(!mf_return->is_write());
-            if (!m_MAC_CHECK_queue->full()) {
-                m_MAC_CHECK_queue->push(mf_return); //MAC读MISS完成，得到MAC值，发往MAC Check
-                m_MAC_RET_queue->pop();
-            } else {
-                stats->record_stage_stall(HASH_QUEUE_FULL_STALL);
-            }
+        } else {
+            stats->record_stage_stall(HASH_QUEUE_FULL_STALL);
         }
     }
 
@@ -1017,12 +1011,8 @@ void mee::MAC_cycle() {
             }
         }
         if (status == HIT) {
-            if (mf->is_write()) {   //MAC写HIT，则MAC Hash值使用结束
-                // m_MAC_set[mf->get_id()]--;
-            } else {
-                mf->set_hash_enqueue_time(now);
-                m_MAC_CHECK_queue->push(mf);    //MAC读HIT，得到MAC值，发往MAC Check
-            }
+            mf->set_hash_enqueue_time(now);
+            m_MAC_CHECK_queue->push(mf);    //MAC读HIT，得到MAC值，发往MAC Check
             print_addr("MAC cycle access HIT:\t", mf);
             print_status(m_MACcache, mf);
             m_MAC_queue->pop();
@@ -1122,7 +1112,7 @@ void mee::BMT_cycle() {
         }
         if (status == HIT) {
             print_addr("BMT access HIT:\t", mf);
-            if (mf->get_id() && !mf->is_write()) {
+            if (mf->get_id()) {
                 unsigned long long now =
                     m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
                 mf->set_hash_enqueue_time(now);
@@ -1456,7 +1446,7 @@ void mee::simple_cycle(unsigned cycle) {
             assert(mf->is_raw());
             // printf("TTTTTTTTTTTTTTTT\n");
             // mee to dram
-            if (((m_config->m_META_config.m_cache_type == SECTOR && !m_CTR_queue->full(2)) || (m_config->m_META_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
+            if (((m_config->m_CTR_config.m_cache_type == SECTOR && !m_CTR_queue->full(2)) || (m_config->m_CTR_config.m_cache_type != SECTOR && !m_CTR_queue->full(2)))
 #ifndef AES_Enable
                 && !m_unit->mee_dispather_queue_full(NORM)
 #endif    
@@ -1488,13 +1478,13 @@ void mee::simple_cycle(unsigned cycle) {
                         m_common_ctr->update_CCSM(mf->get_addr(), 1);
                     }
 
-                    if (m_config->m_META_config.m_cache_type == SECTOR) {
+                    if (m_config->m_CTR_config.m_cache_type == SECTOR) {
 #ifndef MEE_SIMPLE
                         gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);//Lazy_ftech_on_read
 #endif
 
 #ifdef META_WB
-                        gen_CTR_mf(mf, true,  META_ACC_W, 32, mf_id);
+                        gen_CTR_mf(mf, true,  META_ACC_W, 32, 0);
 #endif
                         if (m_config->m_ccsm_enable) {
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
@@ -1539,7 +1529,7 @@ void mee::simple_cycle(unsigned cycle) {
 #ifdef AES_Enable
                     push_cipher_request(mf);
 #endif
-                    if (m_config->m_META_config.m_cache_type == SECTOR) {
+                    if (m_config->m_CTR_config.m_cache_type == SECTOR) {
                         if (m_config->m_ccsm_enable && m_common_ctr->CCSM_scope(mf->get_addr())) {
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, mf_id);
                         } else {
@@ -1582,9 +1572,9 @@ void mee::simple_cycle(unsigned cycle) {
                     stats->record_stage_stall(CIPHER_QUEUE_FULL_STALL);
                 if (m_MAC_queue->full())
                     stats->record_stage_stall(MAC_QUEUE_FULL_STALL);
-                if ((m_config->m_META_config.m_cache_type == SECTOR &&
+                if ((m_config->m_CTR_config.m_cache_type == SECTOR &&
                      m_CTR_queue->full(8)) ||
-                    (m_config->m_META_config.m_cache_type != SECTOR &&
+                    (m_config->m_CTR_config.m_cache_type != SECTOR &&
                      m_CTR_queue->full(2)))
                     stats->record_stage_stall(CTR_META_RESERVATION_STALL);
             //     if (DL_CNT >= 10000) {
@@ -1614,8 +1604,10 @@ void mee::simple_cycle(unsigned cycle) {
         MAC_CHECK_cycle();
         MAC_cycle();
     }
-    BMT_CHECK_cycle();
-    BMT_cycle();
+    if (m_config->m_mac_enable) {
+        BMT_CHECK_cycle();
+        BMT_cycle();
+    }
     if (m_config->m_par_enable)
         PAR_cycle();
     HASH_cycle();
