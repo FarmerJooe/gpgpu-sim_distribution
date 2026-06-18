@@ -124,12 +124,12 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    // if (m_unit->get_mpid() == 0) {
-    //     printf("%s\t", s);
-    //     if (mf->get_original_mf())
-    //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
-    //     printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
-    // }
+    if (m_unit->get_mpid() == 1) {
+        printf("%s\t", s);
+        if (mf->get_original_mf())
+            printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
+        printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
+    }
 }
 
 void mee::print_status(class data_cache *m_METAcache, mem_fetch *mf) {
@@ -781,7 +781,7 @@ void mee::CTR_cycle() {
             // delete mf_return;//删除1
         } else {    //CTR读MISS返回，CTR写一定命中
             // assert(!mf_return->is_write());
-            ;//print_addr("CTR MISS return:\t\t", mf_return);
+            print_addr("CTR MISS return:\t\t", mf_return);
             if (!m_OTP_queue->full()) { //CTR读MISS，则应生成CTR to BMT任务
                 // m_ctr_rdret_addr = mf_return->get_addr();
                 // m_ctr_wr_addr[mf_return->get_addr()]++; //CTR读MISS后，CTR++，然后写CTR
@@ -802,7 +802,7 @@ void mee::CTR_cycle() {
 
     if (!m_CTR_queue->empty() && !m_unit->mee_dispather_queue_full(CTR) && !output_full && port_free) {
         mem_fetch *mf = m_CTR_queue->top();
-        ;//print_addr("CTR cycle access:\t\t", mf);
+        print_addr("CTR cycle access:\t\t", mf);
         memory_stats_t *stats = m_gpu->get_memory_stats();
         unsigned long long now =
             m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
@@ -846,7 +846,7 @@ void mee::CTR_cycle() {
                 #endif
             }
             if (mf->get_access_type() != META_RBW) {
-                ;//print_addr("CTR Read Hit:\t", mf);
+                print_addr("CTR Read Hit:\t", mf);
                 if (mf->get_id())
                     m_OTP_queue->push(new unsigned(mf->get_id()));  //CTR HIT后计算OTP用于加密/解密
                 if (mf->get_id())
@@ -1387,7 +1387,7 @@ void mee::simple_cycle(unsigned cycle) {
                     // if (!m_Ciphertext_queue->full()) {
                     unsigned mf_id = next_mf_id();
                     mf->set_id(mf_id);
-                    ;//print_addr("L2 to mee Write: ", mf);
+                    print_addr("L2 to mee Write: ", mf);
 
                     if (m_config->m_CTR_config.m_cache_type == SECTOR) {
 #ifndef MEE_SIMPLE
@@ -1427,7 +1427,7 @@ void mee::simple_cycle(unsigned cycle) {
                     // m_unit->mee_dispather_queue_push(mf);    //读密文请求，发往DRAM中读密文
                     unsigned mf_id = next_mf_id();
                     mf->set_id(mf_id);
-                    ;//print_addr("L2 to mee Read: ", mf);
+                    print_addr("L2 to mee Read: ", mf);
 #ifdef AES_Enable
                     push_cipher_request(mf);
 #endif
