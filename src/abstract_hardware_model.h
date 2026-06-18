@@ -30,6 +30,7 @@
 // #define MEE_SIMPLE
 // #define CTR_HIERACHY
 // #define EXC_EN
+#define META_WB
 #define AES_Enable
 #define DEADLOCK_EN
 #define META_IDEAL

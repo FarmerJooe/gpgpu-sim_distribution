@@ -131,12 +131,12 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    if (m_unit->get_mpid() == 1) {
-        printf("%s\t", s);
-        if (mf->get_original_mf())
-            printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
-        printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
-    }
+    // if (m_unit->get_mpid() == 1) {
+    //     printf("%s\t", s);
+    //     if (mf->get_original_mf())
+    //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
+    //     printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
+    // }
 }
 
 void mee::print_status(class data_cache *m_METAcache, mem_fetch *mf) {
@@ -1262,7 +1262,7 @@ void mee::META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
                 return;
         }
         if (m_data_type == CTR) {
-            ;//print_addr("CTR fill:\t", mf_return);
+            print_addr("CTR fill:\t", mf_return);
         }
         if ((mf_return->get_data_type() == m_data_type) && m_METAcache->waiting_for_fill(mf_return)) {
             // ;//print_addr("wating for fill:\t\t", mf); 
