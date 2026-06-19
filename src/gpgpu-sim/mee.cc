@@ -124,7 +124,7 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    if (m_unit->get_mpid() == 1) {
+    if (m_unit->get_mpid() == 18) {
         printf("%s\t", s);
         if (mf->get_original_mf())
             printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
@@ -707,12 +707,16 @@ void mee::BMT_CHECK_cycle() {
                                             now - mf->get_hash_enqueue_time());
                 mf->reset_hash_enqueue_time();
             }
-            // ;//print_addr("BMT Hash:\t", mf);
+            print_addr("BMT Hash:\t", mf);
             //计算下一层BMT
             if (mf->get_BMT_Layer() == BMT_L4) {
                 // printf("AAAAAAAAAAAA\n");
                 BMT_busy = false;
                 m_n_reqs_in_BMT--;
+                print_addr("BMT check over:\t", mf);
+                if(m_unit->get_mpid() == 18)
+                    printf("m_n_reqs_in_BMT--:\t%d\n", m_n_reqs_in_BMT);
+
                 if (mf->get_id())
                     BMT_counter++;
             } else {
@@ -762,10 +766,12 @@ void mee::BMT_CHECK_cycle() {
         // assert(cnt);
         mem_fetch *mf = m_CTR_BMT_Buffer->top();
             // gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, mf->get_id());
-        ;//print_addr("CTR to BMT:\t", mf);
+        print_addr("CTR to BMT:\t", mf);
         // if (m_unit->get_mpid() == 13)
         //     printf("BMT_CHECK_queue size = %d\n", m_BMT_CHECK_queue->get_n_element());
         m_n_reqs_in_BMT++;
+        if(m_unit->get_mpid() == 18)
+                    printf("m_n_reqs_in_BMT++:\t%d\n", m_n_reqs_in_BMT);
         m_BMT_CHECK_queue->push(mf);
         m_HASH_queue->push(new hash{BMT, mf->get_id(), mf->is_write()});
         m_CTR_BMT_Buffer->pop();
@@ -781,7 +787,7 @@ void mee::CTR_cycle() {
             // delete mf_return;//删除1
         } else {    //CTR读MISS返回，CTR写一定命中
             // assert(!mf_return->is_write());
-            print_addr("CTR MISS return:\t\t", mf_return);
+            //print_addr("CTR MISS return:\t\t", mf_return);
             if (!m_OTP_queue->full()) { //CTR读MISS，则应生成CTR to BMT任务
                 // m_ctr_rdret_addr = mf_return->get_addr();
                 // m_ctr_wr_addr[mf_return->get_addr()]++; //CTR读MISS后，CTR++，然后写CTR
@@ -802,7 +808,7 @@ void mee::CTR_cycle() {
 
     if (!m_CTR_queue->empty() && !m_unit->mee_dispather_queue_full(CTR) && !output_full && port_free) {
         mem_fetch *mf = m_CTR_queue->top();
-        print_addr("CTR cycle access:\t\t", mf);
+        //print_addr("CTR cycle access:\t\t", mf);
         memory_stats_t *stats = m_gpu->get_memory_stats();
         unsigned long long now =
             m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
@@ -836,7 +842,7 @@ void mee::CTR_cycle() {
         if (status == HIT) {
             m_CTR_queue->pop();
             if (mf->is_write()) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
-                print_addr("CTR Write Hit:\t", mf);
+                // print_addr("CTR Write Hit:\t", mf);
                 // m_OTP_set[mf->get_id()]--;
                 #ifdef BMT_Enable
                 if (mf->get_id())
@@ -846,7 +852,7 @@ void mee::CTR_cycle() {
                 #endif
             }
             if (mf->get_access_type() != META_RBW) {
-                print_addr("CTR Read Hit:\t", mf);
+                //print_addr("CTR Read Hit:\t", mf);
                 if (mf->get_id())
                     m_OTP_queue->push(new unsigned(mf->get_id()));  //CTR HIT后计算OTP用于加密/解密
                 if (mf->get_id())
@@ -856,7 +862,7 @@ void mee::CTR_cycle() {
             // }
         } else if (status != RESERVATION_FAIL) {
             // set wating for CTR fill
-            print_addr("CTR MISS:\t", mf);
+            //print_addr("CTR MISS:\t", mf);
             m_CTR_queue->pop();
             // assert(!mf->is_write());
             if (mf->get_access_type() != META_RBW) {
@@ -1189,7 +1195,7 @@ void mee::META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
                 return;
 #endif
         if (m_data_type == CTR) {
-            print_addr("CTR fill:\t", mf_return);
+            //print_addr("CTR fill:\t", mf_return);
         }
         if ((mf_return->get_data_type() == m_data_type) && m_METAcache->waiting_for_fill(mf_return)) {
             // ;//print_addr("wating for fill:\t\t", mf); 
@@ -1387,7 +1393,7 @@ void mee::simple_cycle(unsigned cycle) {
                     // if (!m_Ciphertext_queue->full()) {
                     unsigned mf_id = next_mf_id();
                     mf->set_id(mf_id);
-                    print_addr("L2 to mee Write: ", mf);
+                    //print_addr("L2 to mee Write: ", mf);
 
                     if (m_config->m_CTR_config.m_cache_type == SECTOR) {
 #ifndef MEE_SIMPLE
@@ -1399,10 +1405,10 @@ void mee::simple_cycle(unsigned cycle) {
                     }
                     else {
 #ifndef MEE_SIMPLE
-                        gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);//Lazy_ftech_on_read
+                        gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);//Lazy_ftech_on_read
 #endif
 #ifdef META_WB
-                        gen_CTR_mf(mf, true,  META_ACC_W, 128, 0);
+                        gen_CTR_mf(mf, true,  META_ACC_W, m_config->m_CTR_config.m_line_sz, 0);
 #endif
                     }
 
@@ -1427,7 +1433,7 @@ void mee::simple_cycle(unsigned cycle) {
                     // m_unit->mee_dispather_queue_push(mf);    //读密文请求，发往DRAM中读密文
                     unsigned mf_id = next_mf_id();
                     mf->set_id(mf_id);
-                    print_addr("L2 to mee Read: ", mf);
+                    //print_addr("L2 to mee Read: ", mf);
 #ifdef AES_Enable
                     push_cipher_request(mf);
 #endif
@@ -1435,7 +1441,7 @@ void mee::simple_cycle(unsigned cycle) {
                         gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);
                     }
                     else {
-                        gen_CTR_mf(mf, false, META_ACC_R, 128, mf_id);
+                        gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);
                     }
                     // gen_CTR_mf(mf, false, META_ACC_R, 128, mf_counter);
 #ifdef MAC_Enable
