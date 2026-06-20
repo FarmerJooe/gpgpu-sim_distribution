@@ -131,12 +131,12 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    if (m_unit->get_mpid() == 18) {
-        printf("%s\t", s);
-        if (mf->get_original_mf())
-            printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
-        printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
-    }
+    // if (m_unit->get_mpid() == 18) {
+    //     printf("%s\t", s);
+    //     if (mf->get_original_mf())
+    //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
+    //     printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
+    // }
 }
 
 void mee::print_status(class data_cache *m_METAcache, mem_fetch *mf) {
@@ -746,8 +746,8 @@ void mee::BMT_CHECK_cycle() {
                 print_addr("BMT check over:\t", mf);
                 BMT_busy = false;
                 m_n_reqs_in_BMT--;
-                if (m_unit->get_mpid() == 18)
-                    printf("m_n_reqs_in_BMT--:\t%d\n", m_n_reqs_in_BMT);
+                // if (m_unit->get_mpid() == 18)
+                //     printf("m_n_reqs_in_BMT--:\t%d\n", m_n_reqs_in_BMT);
                 if (mf->get_id())
                     BMT_counter++;
             } else {
@@ -793,7 +793,7 @@ void mee::BMT_CHECK_cycle() {
     // }
 
     // CTR to BMT
-    if (!m_CTR_BMT_Buffer->empty() && m_n_reqs_in_BMT < 64 && !m_HASH_queue->full()) {
+    if (!m_CTR_BMT_Buffer->empty() && !m_HASH_queue->full() && !m_BMT_CHECK_queue->full()) {
         // assert(cnt);
         mem_fetch *mf = m_CTR_BMT_Buffer->top();
             // gen_BMT_mf(mf, mf->is_write(), META_ACC, 8, mf->get_id());
@@ -801,8 +801,8 @@ void mee::BMT_CHECK_cycle() {
         // if (m_unit->get_mpid() == 13)
         //     printf("BMT_CHECK_queue size = %d\n", m_BMT_CHECK_queue->get_n_element());
         m_n_reqs_in_BMT++;
-        if (m_unit->get_mpid() == 18)
-                    printf("m_n_reqs_in_BMT++:\t%d\n", m_n_reqs_in_BMT);
+        // if (m_unit->get_mpid() == 18)
+        //             printf("m_n_reqs_in_BMT++:\t%d\n", m_n_reqs_in_BMT);
         m_BMT_CHECK_queue->push(mf);
         m_HASH_queue->push(new hash{BMT, mf->get_id(), mf->is_write()});
         m_CTR_BMT_Buffer->pop();
@@ -1603,7 +1603,7 @@ void mee::simple_cycle(unsigned cycle) {
         MAC_CHECK_cycle();
         MAC_cycle();
     }
-    if (m_config->m_mac_enable) {
+    if (m_config->m_bmt_enable) {
         BMT_CHECK_cycle();
         BMT_cycle();
     }
