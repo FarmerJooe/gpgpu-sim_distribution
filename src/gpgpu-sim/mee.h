@@ -163,6 +163,7 @@ class mee {
         set m_MAC_set;      //<hash(密文), cnt>
         table m_BMT_table;  //<BMT, hash(CTR/LBMT)>
         set m_BMT_set;      //<hash, cnt>
+        unsigned bmt_set_476 = 0;
         //1111 1111 1111 1111 1100 0000 1111 1000
         mem_fetch *BMT_ROOT_mf = NULL;
         int cnt = 0;
