@@ -1,0 +1,406 @@
+In file included from cuda-sim.h:36:0,
+                 from cuda-sim.cc:31:
+../abstract_hardware_model.h: In member function ‘virtual bool mem_fetch_interface::full(unsigned int, bool, data_type) const’:
+../abstract_hardware_model.h:938:77: warning: no return statement in function returning non-void [-Wreturn-type]
+   virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
+                                                                             ^
+../abstract_hardware_model.h: In member function ‘virtual void inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1010:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from cuda-sim.h:36:0,
+                 from cuda-sim.cc:31:
+../abstract_hardware_model.h: In member function ‘virtual void warp_inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1204:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from ../gpgpu-sim/shader.h:52:0,
+                 from cuda-sim.h:37,
+                 from cuda-sim.cc:31:
+../gpgpu-sim/gpu-cache.h: In member function ‘void data_cache::print_cache_status_breakdown()’:
+../gpgpu-sim/gpu-cache.h:1855:180: warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘long long unsigned int’ [-Wformat=]
+       printf("[%d] data miss = %.5lf, data access = %d, data miss = %d\n", i, (double)(m_tot_misses[i]) / (double)(m_tot_accesses[i] + 0.00001), m_tot_accesses[i], m_tot_misses[i]);
+                                                                                                                                                                                    ^
+../gpgpu-sim/gpu-cache.h:1855:180: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘long long unsigned int’ [-Wformat=]
+In file included from cuda-sim.h:37:0,
+                 from cuda-sim.cc:31:
+../gpgpu-sim/shader.h: In constructor ‘scheduler_unit::scheduler_unit(shader_core_stats*, shader_core_ctx*, Scoreboard*, simt_stack**, std::vector<shd_warp_t*>*, register_set*, register_set*, register_set*, register_set*, register_set*, std::vector<register_set*>&, register_set*, int)’:
+../gpgpu-sim/shader.h:440:32: warning: ‘scheduler_unit::m_spec_cores_out’ will be initialized after [-Wreorder]
+   std::vector<register_set *> &m_spec_cores_out;
+                                ^
+../gpgpu-sim/shader.h:439:17: warning:   ‘register_set* scheduler_unit::m_mem_out’ [-Wreorder]
+   register_set *m_mem_out;
+                 ^
+../gpgpu-sim/shader.h:334:3: warning:   when initialized here [-Wreorder]
+   scheduler_unit(shader_core_stats *stats, shader_core_ctx *shader,
+   ^
+cuda-sim.cc: In member function ‘void cuda_sim::ptx_print_insn(address_type, FILE*)’:
+cuda-sim.cc:547:55: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, "<no instruction at address 0x%x>", pc);
+                                                       ^
+cuda-sim.cc: In member function ‘std::__cxx11::string cuda_sim::ptx_get_insn_str(address_type)’:
+cuda-sim.cc:561:68: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 4 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     snprintf(buff, STR_SIZE, "<no instruction at address 0x%x>", pc);
+                                                                    ^
+cuda-sim.cc:561:68: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 4 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+cuda-sim.cc: In member function ‘void function_info::add_param_data(unsigned int, gpgpu_ptx_sim_arg*)’:
+cuda-sim.cc:1376:53: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘addr_t {aka long long unsigned int}’ [-Wformat=]
+           m_symtab->get_shared_next() + num_bits / 8);
+                                                     ^
+cuda-sim.cc:1376:53: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 4 has type ‘addr_t {aka long long unsigned int}’ [-Wformat=]
+cuda-sim.cc: In member function ‘void function_info::list_param(FILE*) const’:
+cuda-sim.cc:1505:58: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 4 has type ‘addr_t {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fout, "%s: %#08x\n", name.c_str(), param_addr);
+                                                          ^
+cuda-sim.cc: In member function ‘void function_info::ptx_jit_config(std::map<long long unsigned int, long unsigned int>, memory_space*, gpgpu_t*, dim3, dim3)’:
+cuda-sim.cc:1533:3: warning: NULL used in arithmetic [-Wpointer-arith]
+   assert(system(buff) != NULL);
+   ^
+cuda-sim.cc: In member function ‘void ptx_thread_info::ptx_exec_inst(warp_inst_t&, unsigned int)’:
+cuda-sim.cc:1883:39: warning: format ‘%u’ expects argument of type ‘unsigned int’, but argument 12 has type ‘addr_t {aka long long unsigned int}’ [-Wformat=]
+           m_last_set_operand_value.u64);
+                                       ^
+cuda-sim.cc: In member function ‘void cuda_sim::read_sim_environment_variables()’:
+cuda-sim.cc:2378:37: warning: format ‘%d’ expects argument of type ‘int*’, but argument 3 has type ‘addr_t* {aka long long unsigned int*}’ [-Wformat=]
+     sscanf(dbg_pc, "%d", &g_debug_pc);
+                                     ^
+cuda-sim.cc: In member function ‘void function_info::ptx_jit_config(std::map<long long unsigned int, long unsigned int>, memory_space*, gpgpu_t*, dim3, dim3)’:
+cuda-sim.cc:1535:24: warning: ignoring return value of ‘char* fgets(char*, int, FILE*)’, declared with attribute warn_unused_result [-Wunused-result]
+   fgets(buff, 1024, fp);
+                        ^
+meta_cache_unit.cc:1:29: fatal error: META_CACHE_UNIT.h: No such file or directory
+compilation terminated.
+make[1]: *** [Makefile:93: /home/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/gpgpu-sim/meta_cache_unit.o] Error 1
+make[1]: *** Waiting for unfinished jobs....
+mee.cc:2:29: fatal error: META_CACHE_UNIT.h: No such file or directory
+compilation terminated.
+make[1]: *** [Makefile:93: /home/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/gpgpu-sim/mee.o] Error 1
+In file included from ../abstract_hardware_model.h:260:0,
+                 from mem_fetch.h:33,
+                 from mee.h:11,
+                 from prediction.h:1,
+                 from prediction.cc:1:
+../stream_manager.h: In member function ‘bool CUevent_st::done() const’:
+../stream_manager.h:67:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   bool done() const { return m_updates == m_issued; }
+                                        ^
+In file included from ../abstract_hardware_model.h:260:0,
+                 from mem_fetch.h:33,
+                 from traffic_breakdown.cc:2:
+../stream_manager.h: In member function ‘bool CUevent_st::done() const’:
+../stream_manager.h:67:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   bool done() const { return m_updates == m_issued; }
+                                        ^
+In file included from mem_fetch.h:33:0,
+                 from mee.h:11,
+                 from prediction.h:1,
+                 from prediction.cc:1:
+../abstract_hardware_model.h: In member function ‘virtual bool mem_fetch_interface::full(unsigned int, bool, data_type) const’:
+../abstract_hardware_model.h:938:77: warning: no return statement in function returning non-void [-Wreturn-type]
+   virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
+                                                                             ^
+../abstract_hardware_model.h: In member function ‘virtual void inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1010:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from mem_fetch.h:33:0,
+                 from mee.h:11,
+                 from prediction.h:1,
+                 from prediction.cc:1:
+../abstract_hardware_model.h: In member function ‘virtual void warp_inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1204:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from mem_fetch.h:33:0,
+                 from traffic_breakdown.cc:2:
+../abstract_hardware_model.h: In member function ‘virtual bool mem_fetch_interface::full(unsigned int, bool, data_type) const’:
+../abstract_hardware_model.h:938:77: warning: no return statement in function returning non-void [-Wreturn-type]
+   virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
+                                                                             ^
+../abstract_hardware_model.h: In member function ‘virtual void inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1010:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from mem_fetch.h:33:0,
+                 from traffic_breakdown.cc:2:
+../abstract_hardware_model.h: In member function ‘virtual void warp_inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1204:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from ../abstract_hardware_model.h:260:0,
+                 from shader.h:49,
+                 from shader.cc:31:
+../stream_manager.h: In member function ‘bool CUevent_st::done() const’:
+../stream_manager.h:67:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   bool done() const { return m_updates == m_issued; }
+                                        ^
+In file included from ../abstract_hardware_model.h:260:0,
+                 from stack.h:32,
+                 from stack.cc:29:
+../stream_manager.h: In member function ‘bool CUevent_st::done() const’:
+../stream_manager.h:67:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   bool done() const { return m_updates == m_issued; }
+                                        ^
+In file included from l2cache.h:35:0,
+                 from mee.h:12,
+                 from prediction.h:1,
+                 from prediction.cc:1:
+gpu-cache.h: In member function ‘void data_cache::print_cache_status_breakdown()’:
+gpu-cache.h:1855:180: warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘long long unsigned int’ [-Wformat=]
+       printf("[%d] data miss = %.5lf, data access = %d, data miss = %d\n", i, (double)(m_tot_misses[i]) / (double)(m_tot_accesses[i] + 0.00001), m_tot_accesses[i], m_tot_misses[i]);
+                                                                                                                                                                                    ^
+gpu-cache.h:1855:180: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘long long unsigned int’ [-Wformat=]
+In file included from gpu-sim.h:44:0,
+                 from ctr-cache.h:6,
+                 from l2cache.h:36,
+                 from mee.h:12,
+                 from prediction.h:1,
+                 from prediction.cc:1:
+shader.h: In constructor ‘scheduler_unit::scheduler_unit(shader_core_stats*, shader_core_ctx*, Scoreboard*, simt_stack**, std::vector<shd_warp_t*>*, register_set*, register_set*, register_set*, register_set*, register_set*, std::vector<register_set*>&, register_set*, int)’:
+shader.h:440:32: warning: ‘scheduler_unit::m_spec_cores_out’ will be initialized after [-Wreorder]
+   std::vector<register_set *> &m_spec_cores_out;
+                                ^
+shader.h:439:17: warning:   ‘register_set* scheduler_unit::m_mem_out’ [-Wreorder]
+   register_set *m_mem_out;
+                 ^
+shader.h:334:3: warning:   when initialized here [-Wreorder]
+   scheduler_unit(shader_core_stats *stats, shader_core_ctx *shader,
+   ^
+shader.h: In member function ‘virtual bool specialized_unit::can_issue(const warp_inst_t&) const’:
+shader.h:1312:17: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+     if (inst.op != m_supported_op) {
+                 ^
+In file included from shader.h:49:0,
+                 from shader.cc:31:
+../abstract_hardware_model.h: In member function ‘virtual bool mem_fetch_interface::full(unsigned int, bool, data_type) const’:
+../abstract_hardware_model.h:938:77: warning: no return statement in function returning non-void [-Wreturn-type]
+   virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
+                                                                             ^
+../abstract_hardware_model.h: In member function ‘virtual void inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1010:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from l2cache.h:36:0,
+                 from mee.h:12,
+                 from prediction.h:1,
+                 from prediction.cc:1:
+ctr-cache.h: In member function ‘unsigned int ctr_cache::get_ctr_data_sigments(new_addr_type)’:
+ctr-cache.h:158:13: warning: variable ‘minors’ set but not used [-Wunused-but-set-variable]
+         int minors[32];
+             ^
+In file included from mee.h:12:0,
+                 from prediction.h:1,
+                 from prediction.cc:1:
+l2cache.h: In constructor ‘metainterface::metainterface(fifo_pipeline<mem_fetch>*, gpgpu_sim*, memory_stats_t*)’:
+l2cache.h:474:20: warning: ‘metainterface::m_gpu’ will be initialized after [-Wreorder]
+   class gpgpu_sim *m_gpu;
+                    ^
+l2cache.h:473:25: warning:   ‘memory_stats_t* metainterface::m_stats’ [-Wreorder]
+   class memory_stats_t *m_stats;
+                         ^
+l2cache.h:442:3: warning:   when initialized here [-Wreorder]
+   metainterface(fifo_pipeline<mem_fetch> *pipeline, gpgpu_sim *m_gpu, memory_stats_t *stats):
+   ^
+l2cache.h: In member function ‘virtual void metainterface::push(mem_fetch*)’:
+l2cache.h:463:20: warning: unused variable ‘dtype’ [-Wunused-variable]
+     enum data_type dtype = mf->get_data_type();
+                    ^
+In file included from mee.h:17:0,
+                 from prediction.h:1,
+                 from prediction.cc:1:
+prediction.h: At global scope:
+prediction.h:12:5: error: ‘new_adr_type’ does not name a type
+     new_adr_type get_index(new_adr_type addr);
+     ^
+prediction.h:14:14: error: ‘new_adr_type’ has not been declared
+     void set(new_adr_type addr, unsigned value);
+              ^
+prediction.h:16:16: error: ‘new_adr_type’ has not been declared
+     bool match(new_adr_type addr, unsigned value);
+                ^
+prediction.h:35:1: error: expected ‘;’ after class definition
+ }
+ ^
+prediction.h: In constructor ‘read_only_predictor::read_only_predictor()’:
+prediction.h:31:39: error: no matching function for call to ‘predictor::predictor()’
+     read_only_predictor() : predictor();
+                                       ^
+prediction.h:8:5: note: candidate: predictor::predictor(unsigned int)
+     predictor(unsigned scale_shift);
+     ^
+prediction.h:8:5: note:   candidate expects 1 argument, 0 provided
+prediction.h:6:7: note: candidate: constexpr predictor::predictor(const predictor&)
+ class predictor {
+       ^
+prediction.h:6:7: note:   candidate expects 1 argument, 0 provided
+prediction.h:31:39: error: expected ‘{’ at end of input
+     read_only_predictor() : predictor();
+                                       ^
+prediction.cc: At global scope:
+prediction.cc:3:1: error: ‘prediction’ does not name a type
+ prediction::prediction(unsigned scale_shift):
+ ^
+prediction.cc:8:1: error: ‘prediction’ does not name a type
+ prediction::~prediction() {
+ ^
+prediction.cc:12:1: error: ‘new_adr_type’ does not name a type
+ new_adr_type prediction::get_index(new_adr_type addr) {
+ ^
+prediction.cc:23:6: error: ‘prediction’ has not been declared
+ void prediction::set(new_adr_type addr, unsigned value) {
+      ^
+prediction.cc:23:22: error: variable or field ‘set’ declared void
+ void prediction::set(new_adr_type addr, unsigned value) {
+                      ^
+prediction.cc:23:22: error: ‘new_adr_type’ was not declared in this scope
+prediction.cc:23:41: error: expected primary-expression before ‘unsigned’
+ void prediction::set(new_adr_type addr, unsigned value) {
+                                         ^
+prediction.cc:30:6: error: ‘prediction’ has not been declared
+ bool prediction::match(new_adr_type addr, unsigned value) {
+      ^
+prediction.cc:30:24: error: ‘new_adr_type’ was not declared in this scope
+ bool prediction::match(new_adr_type addr, unsigned value) {
+                        ^
+prediction.cc:30:43: error: expected primary-expression before ‘unsigned’
+ bool prediction::match(new_adr_type addr, unsigned value) {
+                                           ^
+prediction.cc:30:57: error: expression list treated as compound expression in initializer [-fpermissive]
+ bool prediction::match(new_adr_type addr, unsigned value) {
+                                                         ^
+prediction.cc:30:59: error: expected ‘,’ or ‘;’ before ‘{’ token
+ bool prediction::match(new_adr_type addr, unsigned value) {
+                                                           ^
+In file included from shader.h:49:0,
+                 from shader.cc:31:
+../abstract_hardware_model.h: In member function ‘virtual void warp_inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1204:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from ../abstract_hardware_model.h:260:0,
+                 from l2cache.cc:37:
+../stream_manager.h: In member function ‘bool CUevent_st::done() const’:
+../stream_manager.h:67:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   bool done() const { return m_updates == m_issued; }
+                                        ^
+In file included from stack.h:32:0,
+                 from stack.cc:29:
+../abstract_hardware_model.h: In member function ‘virtual bool mem_fetch_interface::full(unsigned int, bool, data_type) const’:
+../abstract_hardware_model.h:938:77: warning: no return statement in function returning non-void [-Wreturn-type]
+   virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
+                                                                             ^
+../abstract_hardware_model.h: In member function ‘virtual void inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1010:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from stack.h:32:0,
+                 from stack.cc:29:
+../abstract_hardware_model.h: In member function ‘virtual void warp_inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1204:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from ../abstract_hardware_model.h:260:0,
+                 from gpu-sim.h:39,
+                 from visualizer.cc:32:
+../stream_manager.h: In member function ‘bool CUevent_st::done() const’:
+../stream_manager.h:67:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   bool done() const { return m_updates == m_issued; }
+                                        ^
+In file included from ../abstract_hardware_model.h:260:0,
+                 from scoreboard.h:38,
+                 from scoreboard.cc:29:
+../stream_manager.h: In member function ‘bool CUevent_st::done() const’:
+../stream_manager.h:67:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   bool done() const { return m_updates == m_issued; }
+                                        ^
+In file included from ../abstract_hardware_model.h:260:0,
+                 from stat-tool.h:32,
+                 from stat-tool.cc:29:
+../stream_manager.h: In member function ‘bool CUevent_st::done() const’:
+../stream_manager.h:67:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   bool done() const { return m_updates == m_issued; }
+                                        ^
+In file included from l2cache.cc:37:0:
+../abstract_hardware_model.h: In member function ‘virtual bool mem_fetch_interface::full(unsigned int, bool, data_type) const’:
+../abstract_hardware_model.h:938:77: warning: no return statement in function returning non-void [-Wreturn-type]
+   virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
+                                                                             ^
+../abstract_hardware_model.h: In member function ‘virtual void inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1010:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from l2cache.cc:37:0:
+../abstract_hardware_model.h: In member function ‘virtual void warp_inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1204:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+make[1]: *** [Makefile:93: /home/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/gpgpu-sim/prediction.o] Error 1
+In file included from gpu-sim.h:39:0,
+                 from visualizer.cc:32:
+../abstract_hardware_model.h: In member function ‘virtual bool mem_fetch_interface::full(unsigned int, bool, data_type) const’:
+../abstract_hardware_model.h:938:77: warning: no return statement in function returning non-void [-Wreturn-type]
+   virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
+                                                                             ^
+../abstract_hardware_model.h: In member function ‘virtual void inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1010:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from gpu-sim.h:39:0,
+                 from visualizer.cc:32:
+../abstract_hardware_model.h: In member function ‘virtual void warp_inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1204:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from scoreboard.h:38:0,
+                 from scoreboard.cc:29:
+../abstract_hardware_model.h: In member function ‘virtual bool mem_fetch_interface::full(unsigned int, bool, data_type) const’:
+../abstract_hardware_model.h:938:77: warning: no return statement in function returning non-void [-Wreturn-type]
+   virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
+                                                                             ^
+../abstract_hardware_model.h: In member function ‘virtual void inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1010:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from stat-tool.h:32:0,
+                 from stat-tool.cc:29:
+../abstract_hardware_model.h: In member function ‘virtual bool mem_fetch_interface::full(unsigned int, bool, data_type) const’:
+../abstract_hardware_model.h:938:77: warning: no return statement in function returning non-void [-Wreturn-type]
+   virtual bool full(unsigned size, bool write, enum data_type dtype) const {};
+                                                                             ^
+../abstract_hardware_model.h: In member function ‘virtual void inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1010:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from scoreboard.h:38:0,
+                 from scoreboard.cc:29:
+../abstract_hardware_model.h: In member function ‘virtual void warp_inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1204:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from stat-tool.h:32:0,
+                 from stat-tool.cc:29:
+../abstract_hardware_model.h: In member function ‘virtual void warp_inst_t::print_insn(FILE*) const’:
+../abstract_hardware_model.h:1204:43: warning: format ‘%x’ expects argument of type ‘unsigned int’, but argument 3 has type ‘address_type {aka long long unsigned int}’ [-Wformat=]
+     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
+                                           ^
+In file included from gpu-sim.h:43:0,
+                 from visualizer.cc:32:
+gpu-cache.h: In member function ‘void data_cache::print_cache_status_breakdown()’:
+gpu-cache.h:1855:180: warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘long long unsigned int’ [-Wformat=]
+       printf("[%d] data miss = %.5lf, data access = %d, data miss = %d\n", i, (double)(m_tot_misses[i]) / (double)(m_tot_accesses[i] + 0.00001), m_tot_accesses[i], m_tot_misses[i]);
+                                                                                                                                                                                    ^
+gpu-cache.h:1855:180: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘long long unsigned int’ [-Wformat=]
+In file included from shader.h:52:0,
+                 from shader.cc:31:
+gpu-cache.h: In member function ‘void data_cache::print_cache_status_breakdown()’:
+gpu-cache.h:1855:180: warning: format ‘%d’ expects argument of type ‘int’, but argument 4 has type ‘long long unsigned int’ [-Wformat=]
+       printf("[%d] data miss = %.5lf, data access = %d, data miss = %d\n", i, (double)(m_tot_misses[i]) / (double)(m_tot_accesses[i] + 0.00001), m_tot_accesses[i], m_tot_misses[i]);
+                                                                                                                                                                                    ^
+gpu-cache.h:1855:180: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘long long unsigned int’ [-Wformat=]
+make[1]: *** [Makefile:93: /home/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/gpgpu-sim/l2cache.o] Interrupt
+make[1]: *** [Makefile:93: /home/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/gpgpu-sim/scoreboard.o] Interrupt
+make[1]: *** [Makefile:93: /home/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/gpgpu-sim/shader.o] Interrupt
+make[1]: *** [Makefile:93: /home/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/gpgpu-sim/stat-tool.o] Interrupt
+make[1]: *** [Makefile:93: /home/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/gpgpu-sim/traffic_breakdown.o] Interrupt
+make[1]: *** [Makefile:93: /home/zhangqr/gpuroot/gpgpu-sim_distribution/build/gcc-5.3.1/cuda-11010/release/gpgpu-sim/visualizer.o] Interrupt
+make: *** [Makefile:218: gpgpu-sim_uarch] Interrupt

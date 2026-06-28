@@ -154,6 +154,14 @@ class memory_partition_unit {
   void mee_L2_queue_push(unsigned spid, class mem_fetch *mf);
   bool mee_L2_queue_full(unsigned spid) const;
 
+  fifo_pipeline<mem_fetch> * get_mee_dispather_queue(enum data_type dtype) {
+    return m_mee_dispather_queue[dtype];
+  }
+
+   fifo_pipeline<mem_fetch> * get_dram_dispather_queue(enum data_type dtype) {
+    return m_dram_dispather_queue[dtype];
+  }
+
   class memory_sub_partition **m_sub_partition;
   counterMap *m_ctrModCount;
 
@@ -255,6 +263,7 @@ class memory_partition_unit {
   class ECCEngine *m_ecc;
   friend class mee;
   friend class common_ctr;
+  friend class META_CACHE_UNIT;
 };
 
 class memory_sub_partition {

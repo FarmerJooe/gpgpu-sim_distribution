@@ -5,6 +5,10 @@
 // class new_addr_type;
 // class mem_access_type;
 // class memory_config;
+class predictor;
+class read_only_predictor;
+class streaming_predictor;
+
 #ifndef MEE_H
 #define MEE_H
 
@@ -41,9 +45,9 @@ class mee {
         void MAC_CHECK_cycle();
         void ECC_CHECK_cycle();
         void BMT_CHECK_cycle();
-        new_addr_type get_partition_addr(new_addr_type addr);
-        new_addr_type get_partition_id(new_addr_type addr);
-        new_addr_type get_addr(new_addr_type partition_id, new_addr_type partition_addr);
+        static new_addr_type get_partition_addr(new_addr_type addr);
+        static new_addr_type get_partition_id(new_addr_type addr);
+        static new_addr_type get_global_addr(new_addr_type partition_id, new_addr_type partition_addr);
         void push_cipher_request(mem_fetch *mf);
         unsigned next_mf_id();
 
@@ -98,17 +102,17 @@ class mee {
         class memory_stats_t *m_stats;
         class gpgpu_sim *m_gpu;
         class ECCEngine *m_ecc;
-        fifo_pipeline<mem_fetch> *m_PAR_queue;
         fifo_pipeline<mem_fetch> *m_CTR_queue;
         fifo_pipeline<mem_fetch> *m_Ciphertext_queue;
         fifo_pipeline<mem_fetch> *m_mee_dram_sync_queue;
         fifo_pipeline<mem_fetch> *m_MAC_queue;
         fifo_pipeline<mem_fetch> *m_BMT_queue;
+        fifo_pipeline<mem_fetch> *m_PAR_queue;
 
-        fifo_pipeline<mem_fetch> *m_PAR_RET_queue;
         fifo_pipeline<mem_fetch> *m_CTR_RET_queue;
         fifo_pipeline<mem_fetch> *m_MAC_RET_queue;
         fifo_pipeline<mem_fetch> *m_BMT_RET_queue;
+        fifo_pipeline<mem_fetch> *m_PAR_RET_queue;
         fifo_pipeline<mem_fetch> *m_Ciphertext_RET_queue;
 
         fifo_pipeline<unsigned> *m_OTP_queue;
@@ -191,6 +195,11 @@ class mee {
         common_ctr *m_common_ctr;
         counterSet *m_ctrSet;
         counterSet* get_ctrSet() { return m_ctrSet; }
+        // counterMap* m_read_only_predicator;
+        // counterMap* m_streaming_predicator;
+
+        read_only_predictor *m_rd_pred;
+        streaming_predictor *m_str_pred;
 
 };
 

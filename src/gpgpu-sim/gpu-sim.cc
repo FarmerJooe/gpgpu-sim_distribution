@@ -251,6 +251,9 @@ void memory_config::reg_options(class OptionParser *opp) {
   option_parser_register(opp, "-gpgpu_meta_par_enable", OPT_BOOL,
                          &m_par_enable,
                          "Enable PAR metadata generation", "1");
+  option_parser_register(opp, "-gpgpu_meta_shm_enable", OPT_BOOL,
+                         &m_shm_enable,
+                         "Enable SHM metadata prediction path", "1");
 
   option_parser_register(opp, "-l2_ideal", OPT_BOOL, &l2_ideal,
                          "Use a ideal L2 cache that always hit", "0");
@@ -968,7 +971,7 @@ void gpgpu_sim::set_kernel_done(kernel_info_t *kernel) { // todo-CCSM
 
   for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
     m_memory_partition_unit[i]->scanning_proceduce();
-  } 
+  }
 
   unsigned uid = kernel->get_uid();
   m_finished_kernel.push_back(uid);
@@ -2479,7 +2482,7 @@ void shader_core_ctx::dump_warp_state(FILE *fout) const {
     m_warp[w]->print(fout);
 }
 
-void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) { // todo-CCSM
+void gpgpu_sim::perf_memcpy_to_gpu(size_t dst_start_addr, size_t count) {
   if (m_memory_config->m_perf_sim_memcpy) {
     // if(!m_config.trace_driven_mode)    //in trace-driven mode, CUDA runtime
     // can start nre data structure at any position 	assert (dst_start_addr %
