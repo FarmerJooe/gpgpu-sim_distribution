@@ -253,7 +253,7 @@ void memory_config::reg_options(class OptionParser *opp) {
                          "Enable PAR metadata generation", "1");
   option_parser_register(opp, "-gpgpu_meta_shm_enable", OPT_BOOL,
                          &m_shm_enable,
-                         "Enable SHM metadata prediction path", "1");
+                         "Enable SHM metadata prediction path", "0");
 
   option_parser_register(opp, "-l2_ideal", OPT_BOOL, &l2_ideal,
                          "Use a ideal L2 cache that always hit", "0");
