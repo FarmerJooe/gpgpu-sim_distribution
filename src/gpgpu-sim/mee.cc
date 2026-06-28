@@ -131,7 +131,7 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    // if (m_unit->get_mpid() == 19) {
+    // if (m_unit->get_mpid() == 24) {
     //     printf("%s\t", s);
     //     if (mf->get_original_mf())
     //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
@@ -735,12 +735,11 @@ void mee::BMT_CHECK_cycle() {
         // if (mf->get_sub_partition_id() == 0) 
         //     printf("%x\n", OTP_addr);
         // assert(mf);
-        assert(bmt_set_476 == m_BMT_set[476]);
         if (m_BMT_set[HASH_id] && ((m_config->m_BMT_config.m_cache_type == SECTOR && !m_BMT_queue->full(2)) || (m_config->m_BMT_config.m_cache_type != SECTOR && !m_BMT_queue->full(2)))) { //得到了BMT与Hash值，BMT Check完成, 计算下一层BMT
             m_BMT_set[HASH_id]--;
             // if (m_unit->get_mpid() == 19)
             //         printf("BMT_set[%d]-- : %d\n", HASH_id, m_BMT_set[HASH_id]);
-            if (HASH_id == 476) bmt_set_476--;
+            // if (HASH_id == 476) bmt_set_476--;
             m_BMT_CHECK_queue->pop();
             if (mf->get_hash_enqueue_time()) {
                 stats->record_stage_latency(BMT_CHECK_STAGE,
@@ -1161,7 +1160,7 @@ void mee::META_fill_responses(class data_cache *m_METAcache, fifo_pipeline<mem_f
         memory_stats_t *stats = m_gpu->get_memory_stats();
         unsigned long long now =
             m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
-        if (mf->get_access_type() == META_ACC_R && mf->get_id())
+        if (mf->get_id())
             m_META_RET_queue->push(mf);
         // assert(mf->get_access_type() == META_ACC_R);
         // if (m_METAcache == m_BMTcache)
