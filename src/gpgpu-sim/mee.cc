@@ -137,12 +137,12 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    // if (m_unit->get_mpid() == 24) {
+    // if (m_unit->get_mpid() == 6) {
     //     printf("%s\t", s);
     // //     if (mf->get_original_mf())
     // //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
     //     printf("addr: %x\twr: %d\tdata_type: %d\tBMT_Layer: %d\tsp_id: %d\tsp_addr: %x\taccess type:%d\tmf_id: %d\tcycle: %d\n", mf->get_addr(),mf->is_write(), mf->get_data_type(), mf->get_BMT_Layer(), mf->get_sub_partition_id(), mf->get_partition_addr(), mf->get_access_type(), mf->get_id(), m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle);        // print_tag();
-    // // }
+    // }
 }
 
 void mee::print_status(class data_cache *m_METAcache, mem_fetch *mf) {
@@ -1321,6 +1321,7 @@ void mee::simple_cycle(unsigned cycle) {
     // pr(m_CTR_BMT_Buffer);
     // META Cache fill responses
     META_fill_responses(m_CTRcache, m_CTR_RET_queue, CTR_mask);
+    META_fill_responses(m_PARcache, m_PAR_RET_queue, PAR_mask);
     META_fill_responses(m_MACcache, m_MAC_RET_queue, MAC_mask);
     // for (int layer = 1; layer <= 4; layer++){    
     META_fill_responses(m_BMTcache, m_BMT_RET_queue, BMT_mask[1]);
@@ -1331,6 +1332,7 @@ void mee::simple_cycle(unsigned cycle) {
 #else
     META_fill(m_CTRcache, m_CTR_BMT_Buffer, NULL, CTR_mask, CTR_base, CTR);
 #endif
+    META_fill(m_PARcache, m_PAR_RET_queue, NULL, PAR_mask, PAR_base, PAR);
     META_fill(m_MACcache, m_MAC_RET_queue, NULL, MAC_mask, MAC_base, MAC);
     META_fill(m_BMTcache, m_BMT_RET_queue, NULL, BMT_mask[1], BMT_base[1], BMT);
 
@@ -1694,7 +1696,7 @@ void mee::dispather_to_mee_cycle() {
 void mee::cycle(unsigned cycle) {
     #ifndef CTR_HIERACHY
     dispather_to_mee_cycle();
-    mee_to_dispather_cycle();    
+    mee_to_dispather_cycle();
     #endif
 }
 
