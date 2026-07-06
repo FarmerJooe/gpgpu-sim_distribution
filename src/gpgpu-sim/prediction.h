@@ -35,11 +35,20 @@ class read_only_predictor : public predictor {
 public:
     read_only_predictor();
 
+    void record_access(new_addr_type addr, bool write);
+    prediction_accuracy_stats get_accuracy_stats() const;
+
     new_addr_type get_index(new_addr_type addr) {
         return predictor::get_index(addr, REGION_SCALE_SHIFT);
     }
 
 private:
+    struct region_profile {
+        unsigned long long predicted_read_only = 0;
+        unsigned long long predicted_non_read_only = 0;
+        bool written = false;
+    };
+    std::map<new_addr_type, region_profile> m_region_profiles;
 };
 
 class streaming_predictor : public predictor {
@@ -54,9 +63,24 @@ public:
 
     void check_streaming(unsigned long long cycle);
 
+    void record_access(new_addr_type addr, unsigned long long cycle);
+    prediction_accuracy_stats get_accuracy_stats() const;
+
 private:
 
+    struct oracle_phase {
+        unsigned long long start_cycle = 0;
+        unsigned long long predicted_streaming = 0;
+        unsigned long long predicted_random = 0;
+        unsigned accesses = 0;
+        bool blocks[32] = {};
+    };
+
+    void finish_oracle_phase(oracle_phase &phase);
+
     class MAT_UNIT* m_mat_unit;
+    std::map<new_addr_type, oracle_phase> m_oracle_phases;
+    prediction_accuracy_stats m_accuracy_stats;
 
 };
 

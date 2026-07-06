@@ -167,6 +167,10 @@ class memory_partition_unit {
 
   void update_region_map(new_addr_type addr);
   void scanning_proceduce();
+  unsigned long long get_common_counter_served() const;
+  unsigned long long get_normal_counter_served() const;
+  prediction_accuracy_stats get_read_only_accuracy_stats() const;
+  prediction_accuracy_stats get_streaming_accuracy_stats() const;
   
  private:
   unsigned m_id;
@@ -190,6 +194,8 @@ class memory_partition_unit {
  public:
   unsigned long long m_cache_NORM_acc;
   unsigned long long m_cache_CTR_acc;
+  unsigned long long m_cache_CCSM_acc;
+  unsigned long long m_cache_PAR_acc;
   unsigned long long m_cache_MAC_acc;
   unsigned long long m_cache_BMT_acc;
   unsigned long long m_cache_meta_wb;

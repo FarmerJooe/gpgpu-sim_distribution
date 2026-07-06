@@ -62,6 +62,12 @@ enum streaming_prediction_status {
   PREDICTED_NON_STREAMING = 1
 };
 
+struct prediction_accuracy_stats {
+  prediction_accuracy_stats() : correct(0), incorrect(0) {}
+  unsigned long long correct;
+  unsigned long long incorrect;
+};
+
 enum data_type {
   TOT = 0,
   BMT,

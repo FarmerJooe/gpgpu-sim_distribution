@@ -133,11 +133,27 @@ void mee::mee_print_stat_pw() const{
 
 }
 
+unsigned long long mee::get_common_counter_served() const {
+    return m_common_ctr->get_common_counter_served();
+}
+
+unsigned long long mee::get_normal_counter_served() const {
+    return m_common_ctr->get_normal_counter_served();
+}
+
+prediction_accuracy_stats mee::get_read_only_accuracy_stats() const {
+    return m_rd_pred->get_accuracy_stats();
+}
+
+prediction_accuracy_stats mee::get_streaming_accuracy_stats() const {
+    return m_str_pred->get_accuracy_stats();
+}
+
 int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    // if (m_unit->get_mpid() == 6) {
+    // if (m_unit->get_mpid() >= 0) {
     //     printf("%s\t", s);
     // //     if (mf->get_original_mf())
     // //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
@@ -225,10 +241,10 @@ new_addr_type mee::get_global_addr(new_addr_type sub_partition_id, new_addr_type
 void mee::gen_PAR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned size, unsigned mf_id) {
     new_addr_type partition_addr = get_partition_addr(mf->get_addr());
     new_addr_type sub_partition_id = get_partition_id(mf->get_addr());
-    if (m_config->m_META_config.m_cache_type == SECTOR)
+    if (m_config->m_L2_config.m_cache_type == SECTOR)
         partition_addr = partition_addr >> 5 << 2;
     else 
-        partition_addr = partition_addr >> 6 << 3;
+        partition_addr = partition_addr >> 7 << 3;
     new_addr_type PAR_addr  = get_global_addr(sub_partition_id, partition_addr);
     PAR_addr |= PAR_base;
 
@@ -1482,9 +1498,14 @@ void mee::simple_cycle(unsigned cycle) {
                     // if (!m_Ciphertext_queue->full()) {
                     unsigned mf_id = next_mf_id();
                     mf->set_id(mf_id);
+                    if (m_config->m_shm_enable) {
+                        m_rd_pred->record_access(mf->get_addr(), true);
+                        m_str_pred->record_access(mf->get_addr(), cycle);
+                    }
                     // print_addr("L2 to mee Write: ", mf);
 
                     if (m_config->m_ccsm_enable) {
+                        m_common_ctr->record_counter_service(false);
                         m_common_ctr->update_region_map(mf->get_addr());
                         m_common_ctr->update_CCSM(mf->get_addr(), 1);
                     }
@@ -1514,6 +1535,7 @@ void mee::simple_cycle(unsigned cycle) {
                         gen_CTR_mf(mf, true,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
 #endif
                         // gen_CTR_mf(mf, false,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
+                        print_addr("gen CTR wr:\t", mf);
                         if (m_config->m_ccsm_enable)
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
                     }
@@ -1526,6 +1548,7 @@ void mee::simple_cycle(unsigned cycle) {
                             gen_MAC_mf(mf, true, META_ACC_W, 8, mf_id);
                             // gen_MAC_mf(mf, false, META_ACC_W, 8, mf_id);
                         }
+                        print_addr("gen MAC wr:\t", mf);
                     } else {
                         if (m_config->m_mac_enable && !m_str_pred->match(mf->get_addr(), PREDICTED_STREAMING)) {
                             if (m_config->m_META_config.m_cache_type == SECTOR) {
@@ -1555,29 +1578,43 @@ void mee::simple_cycle(unsigned cycle) {
                     // m_unit->mee_dispather_queue_push(mf);    //读密文请求，发往DRAM中读密文
                     unsigned mf_id = next_mf_id();
                     mf->set_id(mf_id);
+                    if (m_config->m_shm_enable) {
+                        m_rd_pred->record_access(mf->get_addr(), false);
+                        m_str_pred->record_access(mf->get_addr(), cycle);
+                    }
                     // print_addr("L2 to mee Read: ", mf);
 #ifdef AES_Enable
                     push_cipher_request(mf);
 #endif
 
                     if (m_config->m_CTR_config.m_cache_type == SECTOR) {
-                        if (m_config->m_ccsm_enable && m_common_ctr->CCSM_scope(mf->get_addr())) {
+                        bool common = m_config->m_ccsm_enable &&
+                                      m_common_ctr->CCSM_scope(mf->get_addr());
+                        if (m_config->m_ccsm_enable)
+                            m_common_ctr->record_counter_service(common);
+                        if (common) {
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, mf_id);
                         } else if (m_config->m_shm_enable && m_rd_pred->match(mf->get_addr(), PREDICTED_READ_ONLY)) {
                             m_OTP_queue->push(new unsigned(mf->get_id()));
                         } else {
                             gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);
+                            print_addr("gen CTR rd:\t", mf);
                             if (m_config->m_ccsm_enable)
                                 m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
                         }
                     }
                     else {
-                        if (m_config->m_ccsm_enable && m_common_ctr->CCSM_scope(mf->get_addr())) {
+                        bool common = m_config->m_ccsm_enable &&
+                                      m_common_ctr->CCSM_scope(mf->get_addr());
+                        if (m_config->m_ccsm_enable)
+                            m_common_ctr->record_counter_service(common);
+                        if (common) {
                             m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);
                         } else if (m_config->m_shm_enable && m_rd_pred->match(mf->get_addr(), PREDICTED_READ_ONLY)) {
                             m_OTP_queue->push(new unsigned(mf->get_id()));
                         } else {
                             gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);
+                            print_addr("gen CTR rd:\t", mf);
                             if (m_config->m_ccsm_enable)
                                 m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
                         }
@@ -1590,15 +1627,17 @@ void mee::simple_cycle(unsigned cycle) {
                             } else {
                                 gen_MAC_mf(mf, false, META_ACC_R, 8, mf_id);
                             }
+                            print_addr("gen MAC rd:\t", mf);
                         } else if (m_str_pred->match(mf->get_addr(), PREDICTED_STREAMING)) {
-                            print_addr("Streaming read predicted:\t", mf);
+                            // print_addr("Streaming read predicted:\t", mf);
                             if (m_config->m_META_config.m_cache_type == SECTOR) {
                                 gen_MAC_mf(mf, false, META_ACC_R, 4, mf_id);
                             } else {
                                 gen_MAC_mf(mf, false, META_ACC_R, 8, mf_id);
                             }
+                            print_addr("gen MAC rd:\t", mf);
                         } else {
-                            print_addr("Non-Streaming read predicted:\t", mf);
+                            // print_addr("Non-Streaming read predicted:\t", mf);
                             m_HASH_queue->push(new hash{MAC, mf->get_id(), mf->is_write()});
                             //to-do
                         }

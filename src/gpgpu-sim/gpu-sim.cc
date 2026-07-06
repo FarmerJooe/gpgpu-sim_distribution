@@ -1510,6 +1510,8 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
   
   unsigned long long m_cache_tot_NORM_acc = 0;
   unsigned long long m_cache_tot_CTR_acc = 0;
+  unsigned long long m_cache_tot_CCSM_acc = 0;
+  unsigned long long m_cache_tot_PAR_acc = 0;
   unsigned long long m_cache_tot_MAC_acc = 0;
   unsigned long long m_cache_tot_BMT_acc = 0;
   unsigned long long m_cache_tot_meta_wb = 0;
@@ -1517,6 +1519,8 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
   for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
     m_cache_tot_NORM_acc += m_memory_partition_unit[i]->m_cache_NORM_acc;
     m_cache_tot_CTR_acc += m_memory_partition_unit[i]->m_cache_CTR_acc;
+    m_cache_tot_CCSM_acc += m_memory_partition_unit[i]->m_cache_CCSM_acc;
+    m_cache_tot_PAR_acc += m_memory_partition_unit[i]->m_cache_PAR_acc;
     m_cache_tot_MAC_acc += m_memory_partition_unit[i]->m_cache_MAC_acc;
     m_cache_tot_BMT_acc += m_memory_partition_unit[i]->m_cache_BMT_acc;
     m_cache_tot_meta_wb += m_memory_partition_unit[i]->m_cache_meta_wb;
@@ -1524,10 +1528,49 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
 
   printf("m_cache_tot_NORM_acc = %lld\n", m_cache_tot_NORM_acc);
   printf("m_cache_tot_CTR_acc = %lld\n", m_cache_tot_CTR_acc);
+  printf("m_cache_tot_CCSM_acc = %lld\n", m_cache_tot_CCSM_acc);
+  printf("m_cache_tot_PAR_acc = %lld\n", m_cache_tot_PAR_acc);
   printf("m_cache_tot_MAC_acc = %lld\n", m_cache_tot_MAC_acc);
   printf("m_cache_tot_BMT_acc = %lld\n", m_cache_tot_BMT_acc);
   printf("m_cache_tot_meta_wb = %lld\n", m_cache_tot_meta_wb);
 
+}
+
+void gpgpu_sim::gpu_print_security_prediction_stats() {
+  unsigned long long common = 0, normal = 0;
+  prediction_accuracy_stats ro, stream;
+
+  for (unsigned i = 0; i < m_memory_config->m_n_mem; ++i) {
+    memory_partition_unit *partition = m_memory_partition_unit[i];
+    common += partition->get_common_counter_served();
+    normal += partition->get_normal_counter_served();
+    prediction_accuracy_stats part_ro =
+        partition->get_read_only_accuracy_stats();
+    prediction_accuracy_stats part_stream =
+        partition->get_streaming_accuracy_stats();
+    ro.correct += part_ro.correct;
+    ro.incorrect += part_ro.incorrect;
+    stream.correct += part_stream.correct;
+    stream.incorrect += part_stream.incorrect;
+  }
+
+  unsigned long long common_total = common + normal;
+  unsigned long long ro_total = ro.correct + ro.incorrect;
+  unsigned long long stream_total = stream.correct + stream.incorrect;
+
+  printf("\n========= security optimization metrics =========\n");
+  printf("common_counter_served = %llu\n", common);
+  printf("normal_counter_served = %llu\n", normal);
+  printf("common_counter_coverage = %.6f\n",
+         common_total ? (double)common / common_total : 0.0);
+  printf("read_only_prediction_correct = %llu\n", ro.correct);
+  printf("read_only_prediction_incorrect = %llu\n", ro.incorrect);
+  printf("read_only_prediction_accuracy = %.6f\n",
+         ro_total ? (double)ro.correct / ro_total : 0.0);
+  printf("streaming_prediction_correct = %llu\n", stream.correct);
+  printf("streaming_prediction_incorrect = %llu\n", stream.incorrect);
+  printf("streaming_prediction_accuracy = %.6f\n",
+         stream_total ? (double)stream.correct / stream_total : 0.0);
 }
 
 void gpgpu_sim::gpu_print_ECC_status() {
@@ -1821,6 +1864,7 @@ void gpgpu_sim::gpu_print_stat() {
   
   // mf data type breakdown
   gpu_print_METACache_data_type_breakdown();
+  gpu_print_security_prediction_stats();
   // ecc status
   gpu_print_ECC_status();
   gpu_print_ctrModCount_breakdown();

@@ -36,6 +36,32 @@ read_only_predictor::read_only_predictor():
     predictor() {
 }
 
+void read_only_predictor::record_access(new_addr_type addr, bool write) {
+    new_addr_type index = get_index(addr);
+    region_profile &profile = m_region_profiles[index];
+    if (match(addr, PREDICTED_READ_ONLY))
+        profile.predicted_read_only++;
+    else
+        profile.predicted_non_read_only++;
+    profile.written |= write;
+}
+
+prediction_accuracy_stats read_only_predictor::get_accuracy_stats() const {
+    prediction_accuracy_stats stats;
+    for (std::map<new_addr_type, region_profile>::const_iterator it =
+             m_region_profiles.begin(); it != m_region_profiles.end(); ++it) {
+        const region_profile &profile = it->second;
+        if (profile.written) {
+            stats.correct += profile.predicted_non_read_only;
+            stats.incorrect += profile.predicted_read_only;
+        } else {
+            stats.correct += profile.predicted_read_only;
+            stats.incorrect += profile.predicted_non_read_only;
+        }
+    }
+    return stats;
+}
+
 streaming_predictor::streaming_predictor():
     predictor() {
     m_mat_unit = new MAT_UNIT(this);
@@ -47,6 +73,60 @@ void streaming_predictor::update(new_addr_type addr, bool wr, unsigned long long
 
 void streaming_predictor::check_streaming(unsigned long long cycle) {
     m_mat_unit->check_streaming(cycle);
+}
+
+void streaming_predictor::finish_oracle_phase(oracle_phase &phase) {
+    bool streaming = phase.accesses == 32;
+    for (unsigned i = 0; i < 32 && streaming; ++i)
+        streaming &= phase.blocks[i];
+
+    if (streaming) {
+        m_accuracy_stats.correct += phase.predicted_streaming;
+        m_accuracy_stats.incorrect += phase.predicted_random;
+    } else {
+        m_accuracy_stats.correct += phase.predicted_random;
+        m_accuracy_stats.incorrect += phase.predicted_streaming;
+    }
+}
+
+void streaming_predictor::record_access(new_addr_type addr,
+                                        unsigned long long cycle) {
+    new_addr_type chunk = get_index(addr);
+    oracle_phase &phase = m_oracle_phases[chunk];
+
+    if (phase.accesses && cycle - phase.start_cycle > 6000) {
+        finish_oracle_phase(phase);
+        phase = oracle_phase();
+    }
+    if (!phase.accesses) phase.start_cycle = cycle;
+
+    if (match(addr, PREDICTED_STREAMING))
+        phase.predicted_streaming++;
+    else
+        phase.predicted_random++;
+
+    new_addr_type partition_addr = mee::get_partition_addr(addr);
+    unsigned offset = (partition_addr & 0x3FF) >> 5;
+    phase.blocks[offset] = true;
+    phase.accesses++;
+
+    if (phase.accesses == 32) {
+        finish_oracle_phase(phase);
+        m_oracle_phases.erase(chunk);
+    }
+}
+
+prediction_accuracy_stats streaming_predictor::get_accuracy_stats() const {
+    prediction_accuracy_stats stats = m_accuracy_stats;
+    for (std::map<new_addr_type, oracle_phase>::const_iterator it =
+             m_oracle_phases.begin(); it != m_oracle_phases.end(); ++it)
+        if (it->second.predicted_random || it->second.predicted_streaming) {
+            // An unfinished monitoring phase is non-streaming because not all
+            // blocks were observed, matching the oracle MAT criterion.
+            stats.correct += it->second.predicted_random;
+            stats.incorrect += it->second.predicted_streaming;
+        }
+    return stats;
 }
 
 MAT::MAT(MAT_UNIT* unit):

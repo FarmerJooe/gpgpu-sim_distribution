@@ -601,6 +601,7 @@ class gpgpu_sim : public gpgpu_t {
   const gpgpu_sim_config &get_config() const { return m_config; }
   void gpu_print_METACache_stat(char META[]);
   void gpu_print_METACache_data_type_breakdown();
+  void gpu_print_security_prediction_stats();
   void gpu_print_ECC_status();
   bool hasGlobalECCError();
   void gpu_print_ctrModCount_breakdown();

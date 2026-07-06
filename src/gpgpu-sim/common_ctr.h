@@ -32,6 +32,17 @@ public:
     void scan_region(new_addr_type region_addr);
     void scan_segment(new_addr_type segment_addr);
 
+    void record_counter_service(bool common) {
+        if (common) m_common_counter_served++;
+        else m_normal_counter_served++;
+    }
+    unsigned long long get_common_counter_served() const {
+        return m_common_counter_served;
+    }
+    unsigned long long get_normal_counter_served() const {
+        return m_normal_counter_served;
+    }
+
     class mee* m_mee;
     class memory_partition_unit *m_unit;
     const memory_config *m_config;
@@ -46,6 +57,8 @@ public:
     fifo_pipeline<mem_fetch> *m_META_queue;
     fifo_pipeline<mem_fetch> *m_META_RET_queue;
     enum data_type m_data_type;
+    unsigned long long m_common_counter_served = 0;
+    unsigned long long m_normal_counter_served = 0;
 
     unsigned m_META_base = 0x00;
     unsigned m_meta_scale_shift = 12;

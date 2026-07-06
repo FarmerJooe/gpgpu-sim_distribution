@@ -338,7 +338,7 @@ void common_ctr::scan_segment(new_addr_type segment_addr) {
         and_sum &= (*m_mee->m_ctrModCount)[CTR_addr];
         or_sum  |= (*m_mee->m_ctrModCount)[CTR_addr];
         if (and_sum != or_sum) {
-            common_valid = 1;
+            common_valid = 0;
             break;
         }
 

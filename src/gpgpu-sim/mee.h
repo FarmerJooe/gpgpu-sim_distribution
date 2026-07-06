@@ -195,6 +195,10 @@ class mee {
         common_ctr *m_common_ctr;
         counterSet *m_ctrSet;
         counterSet* get_ctrSet() { return m_ctrSet; }
+        unsigned long long get_common_counter_served() const;
+        unsigned long long get_normal_counter_served() const;
+        prediction_accuracy_stats get_read_only_accuracy_stats() const;
+        prediction_accuracy_stats get_streaming_accuracy_stats() const;
         // counterMap* m_read_only_predicator;
         // counterMap* m_streaming_predicator;
 
