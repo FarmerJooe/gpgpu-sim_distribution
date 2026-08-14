@@ -153,7 +153,7 @@ int decode(int addr) {
     return (addr & 16128) >> 8;
 }
 void mee::print_addr(char s[], mem_fetch *mf) const{
-    // if (m_unit->get_mpid() >= 0) {
+    // if (m_unit->get_mpid() == 0) {
     //     printf("%s\t", s);
     // //     if (mf->get_original_mf())
     // //         printf("original_addr: %x\toriginal_sp_addr: %x\t", mf->get_original_mf()->get_addr(), mf->get_original_mf()->get_partition_addr());
@@ -244,7 +244,7 @@ void mee::gen_PAR_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
     if (m_config->m_L2_config.m_cache_type == SECTOR)
         partition_addr = partition_addr >> 5 << 2;
     else 
-        partition_addr = partition_addr >> 7 << 3;
+        partition_addr = partition_addr >> 7 << 4;
     new_addr_type PAR_addr  = get_global_addr(sub_partition_id, partition_addr);
     PAR_addr |= PAR_base;
 
@@ -298,12 +298,12 @@ void mee::gen_MAC_mf(mem_fetch *mf, bool wr, mem_access_type meta_acc, unsigned 
     if (m_config->m_L2_config.m_cache_type == SECTOR)
         partition_addr = partition_addr >> 3;
     else
-        partition_addr = partition_addr >> 4;
+        partition_addr = partition_addr >> 3;
 
     if (m_config->m_L2_config.m_cache_type == SECTOR)
         partition_addr = partition_addr >> 2 << 2;
     else
-        partition_addr = partition_addr >> 3 << 3;
+        partition_addr = partition_addr >> 4 << 4;
 
     new_addr_type MAC_addr  = get_global_addr(sub_partition_id, partition_addr);
     MAC_addr |= MAC_base;
@@ -944,12 +944,14 @@ void mee::CTR_cycle() {
         }
         if (status == HIT) {
             m_CTR_queue->pop();
-            if (mf->is_write()) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
+            if (mf->get_access_type() == META_ACC_W) {   //CTR更新了，BMT也要更新，生成CTR to BMT任务
                 // print_addr("CTR Write Hit:\t", mf);
                 // m_OTP_set[mf->get_id()]--;
                 if (m_config->m_bmt_enable) {
-                    if (mf->get_id())
+                    if (mf->get_id()) {
+                        print_addr("CTR to BMT for write:\t", mf);
                         m_CTR_BMT_Buffer->push(mf);
+                    }
                     if (mf->get_id())
                         CTR_counter++;
                 }
@@ -1132,7 +1134,7 @@ void mee::BMT_cycle() {
         enum cache_request_status status = m_BMTcache->access(mf->get_addr(), mf, m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle, events);
         bool write_sent = was_write_sent(events);
         bool read_sent = was_read_sent(events);
-        // print_addr("BMT cycle access:\t", mf);
+        print_addr("BMT cycle access:\t", mf);
         if (status != RESERVATION_FAIL) { 
             unsigned long long now =
                 m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
@@ -1233,7 +1235,7 @@ void mee::CTR_fill() {
         if (m_config->m_bmt_enable) {
             // assert(mf_return->get_access_type() == META_ACC);
             if (mf_return->get_access_type() == META_ACC_R || mf_return->get_access_type() == META_ACC_W)
-                if (!m_CTR_BMT_Buffer->full())
+                if (!m_CTR_BMT_Buffer->full()) 
                     m_CTR_BMT_Buffer->push(mf_return);
                 else
                     return;
@@ -1288,8 +1290,10 @@ void mee::META_fill(class data_cache *m_METAcache, fifo_pipeline<mem_fetch> *m_M
 #endif
         
         if (m_config->m_bmt_enable && m_data_type == CTR && (mf_return->get_access_type() == META_ACC_R || mf_return->get_access_type() == META_ACC_W)) {
-            if (!m_META_RET_queue->full()) 
+            if (!m_META_RET_queue->full()) {
                 m_META_RET_queue->push(mf_return);
+                print_addr("CTR to BMT for fill:\t", mf_return);
+            }
             else
                 return;
         }
@@ -1516,28 +1520,28 @@ void mee::simple_cycle(unsigned cycle) {
 
                     if (m_config->m_CTR_config.m_cache_type == SECTOR) {
 #ifndef MEE_SIMPLE
-                        gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);//Lazy_ftech_on_read
+                        gen_CTR_mf(mf, false, META_ACC_W, 32, mf_id);//Lazy_ftech_on_read
 #endif
 
 #ifdef META_WB
-                        gen_CTR_mf(mf, true,  META_ACC_W, 32, 0);
+                        gen_CTR_mf(mf, true, META_ACC_W, 32, 0);
 #endif
                         if (m_config->m_ccsm_enable) {
-                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_W, 32, 0);
                         }
                     }
                     else {
 #ifndef MEE_SIMPLE
-                        gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);//Lazy_ftech_on_read
+                        gen_CTR_mf(mf, false, META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);//Lazy_ftech_on_read
 #endif
 
 #ifdef META_WB
-                        gen_CTR_mf(mf, true,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
+                        gen_CTR_mf(mf, true,  META_ACC_W, m_config->m_CTR_config.m_line_sz, 0);
 #endif
                         // gen_CTR_mf(mf, false,  META_ACC_W, m_config->m_CTR_config.m_line_sz, mf_id);
-                        print_addr("gen CTR wr:\t", mf);
+                        // print_addr("gen CTR wr:\t", mf);
                         if (m_config->m_ccsm_enable)
-                            m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
+                            m_common_ctr->gen_META_mf(mf, false, META_ACC_W, m_config->m_CTR_config.m_line_sz, 0);
                     }
 
                     if (!m_config->m_shm_enable) {
@@ -1548,7 +1552,7 @@ void mee::simple_cycle(unsigned cycle) {
                             gen_MAC_mf(mf, true, META_ACC_W, 8, mf_id);
                             // gen_MAC_mf(mf, false, META_ACC_W, 8, mf_id);
                         }
-                        print_addr("gen MAC wr:\t", mf);
+                        // print_addr("gen MAC wr:\t", mf);
                     } else {
                         if (m_config->m_mac_enable && !m_str_pred->match(mf->get_addr(), PREDICTED_STREAMING)) {
                             if (m_config->m_META_config.m_cache_type == SECTOR) {
@@ -1598,7 +1602,7 @@ void mee::simple_cycle(unsigned cycle) {
                             m_OTP_queue->push(new unsigned(mf->get_id()));
                         } else {
                             gen_CTR_mf(mf, false, META_ACC_R, 32, mf_id);
-                            print_addr("gen CTR rd:\t", mf);
+                            // print_addr("gen CTR rd:\t", mf);
                             if (m_config->m_ccsm_enable)
                                 m_common_ctr->gen_META_mf(mf, false, META_ACC_R, 32, 0);
                         }
@@ -1614,7 +1618,7 @@ void mee::simple_cycle(unsigned cycle) {
                             m_OTP_queue->push(new unsigned(mf->get_id()));
                         } else {
                             gen_CTR_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, mf_id);
-                            print_addr("gen CTR rd:\t", mf);
+                            // print_addr("gen CTR rd:\t", mf);
                             if (m_config->m_ccsm_enable)
                                 m_common_ctr->gen_META_mf(mf, false, META_ACC_R, m_config->m_CTR_config.m_line_sz, 0);
                         }
@@ -1627,7 +1631,7 @@ void mee::simple_cycle(unsigned cycle) {
                             } else {
                                 gen_MAC_mf(mf, false, META_ACC_R, 8, mf_id);
                             }
-                            print_addr("gen MAC rd:\t", mf);
+                            // print_addr("gen MAC rd:\t", mf);
                         } else if (m_str_pred->match(mf->get_addr(), PREDICTED_STREAMING)) {
                             // print_addr("Streaming read predicted:\t", mf);
                             if (m_config->m_META_config.m_cache_type == SECTOR) {
@@ -1635,7 +1639,7 @@ void mee::simple_cycle(unsigned cycle) {
                             } else {
                                 gen_MAC_mf(mf, false, META_ACC_R, 8, mf_id);
                             }
-                            print_addr("gen MAC rd:\t", mf);
+                            // print_addr("gen MAC rd:\t", mf);
                         } else {
                             // print_addr("Non-Streaming read predicted:\t", mf);
                             m_HASH_queue->push(new hash{MAC, mf->get_id(), mf->is_write()});

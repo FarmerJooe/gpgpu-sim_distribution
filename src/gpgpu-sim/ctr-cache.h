@@ -317,7 +317,7 @@ public:
             wb->set_data_type(mf->get_data_type());
             wb->set_chip(mf->get_tlx_addr().chip);
             wb->set_parition(mf->get_tlx_addr().sub_partition);
-            wb->set_id(mf->get_id());
+            wb->set_id(0);
             send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted),
                             time, events);
         }

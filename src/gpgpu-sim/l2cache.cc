@@ -650,9 +650,7 @@ void memory_partition_unit::dispather_to_dram_cycle() {
     m_dram->push(mf);
     print_trace("dram push: ", mf);
 
-    if (mf->get_access_type() == META_WRBK_ACC) 
-      m_cache_meta_wb++;
-    else if (mf->get_data_type() == NORM) 
+    if (mf->get_data_type() == NORM) 
       m_cache_NORM_acc++;
     else if (mf->get_data_type() == CTR)
       m_cache_CTR_acc++;

@@ -1532,7 +1532,7 @@ void gpgpu_sim::gpu_print_METACache_data_type_breakdown() {
   printf("m_cache_tot_PAR_acc = %lld\n", m_cache_tot_PAR_acc);
   printf("m_cache_tot_MAC_acc = %lld\n", m_cache_tot_MAC_acc);
   printf("m_cache_tot_BMT_acc = %lld\n", m_cache_tot_BMT_acc);
-  printf("m_cache_tot_meta_wb = %lld\n", m_cache_tot_meta_wb);
+  // printf("m_cache_tot_meta_wb = %lld\n", m_cache_tot_meta_wb);
 
 }
 
